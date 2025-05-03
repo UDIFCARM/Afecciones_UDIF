@@ -279,17 +279,6 @@ if modo == "Por parcela":
     else:
         st.error(f"No se pudo cargar el shapefile para el municipio: {municipio_sel}")
 
-if st.button("Generar informe"):
-    plantilla_path = "plantilla_informe_afecciones.docx"  # o usar file_uploader si lo cargas dinámicamente
-    docx_out = f"informe_{uuid.uuid4().hex[:8]}.docx"
-    pdf_out = f"informe_{uuid.uuid4().hex[:8]}.pdf"
-
-    pdf_generado = generar_pdf_desde_docx(datos, plantilla_path, docx_out, pdf_out)
-
-    if pdf_generado:
-        st.session_state['pdf_file'] = pdf_generado
-        st.success("✅ Informe generado correctamente. Puedes descargarlo a continuación.")
-
 # Si el modo es "Por coordenadas" NO se solicita la entrada previa
 # Se incluirán los inputs de coordenadas en el formulario
 
@@ -394,6 +383,35 @@ if submitted:
         generar_pdf(datos, x, y, pdf_filename)
         st.session_state['pdf_file'] = pdf_filename
 
+# Función para generar el informe y manejar el flujo de trabajo
+if st.button("Generar informe"):
+    try:
+        # Ruta de la plantilla DOCX y nombres de salida
+        plantilla_path = "plantilla_informe_afecciones.docx"  # O usar file_uploader si lo cargas dinámicamente
+        docx_out = f"informe_{uuid.uuid4().hex[:8]}.docx"
+        pdf_out = f"informe_{uuid.uuid4().hex[:8]}.pdf"
+
+        # Asegúrate de que 'datos' esté disponible y correctamente formateado
+        if 'datos' not in locals():
+            st.error("No se han encontrado los datos para generar el informe.")
+        else:
+            # Llamada a la función para generar el PDF desde el DOCX
+            pdf_generado = generar_pdf_desde_docx(datos, plantilla_path, docx_out, pdf_out)
+
+            if pdf_generado:
+                # Guardar el archivo en la sesión para que esté disponible
+                st.session_state['pdf_file'] = pdf_generado
+
+                # Mostrar el mensaje de éxito
+                st.success("✅ Informe generado correctamente. Puedes descargarlo a continuación.")
+
+                # Enlace para descargar el PDF generado
+                with open(pdf_generado, "rb") as f:
+                    st.download_button("Descargar informe PDF", f, file_name=pdf_out)
+
+    except Exception as e:
+        st.error(f"❌ Ocurrió un error al generar el informe: {str(e)}")
+
 # Generar pdf desde plantilla
 def generar_pdf_desde_docx(datos, plantilla_url, output_docx, output_pdf):
     try:
@@ -451,7 +469,6 @@ def generar_pdf_desde_docx(datos, plantilla_url, output_docx, output_pdf):
 
         # Solo convertir a PDF si es compatible
         try:
-            from docx2pdf import convert
             convert(output_docx, output_pdf)
             return output_pdf
         except Exception as e:
@@ -461,6 +478,7 @@ def generar_pdf_desde_docx(datos, plantilla_url, output_docx, output_pdf):
     except Exception as e:
         st.error(f"❌ Error al generar el informe: {e}")
         return None
+
 
 # ✅ Definir URL de la plantilla DOCX (en formato RAW de GitHub)
 plantilla_url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/plantilla_informe_afecciones.docx"
