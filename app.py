@@ -282,15 +282,6 @@ if modo == "Por parcela":
 # Se incluirán los inputs de coordenadas en el formulario
 
 with st.form("formulario"):
-    fecha_solicitud = st.date_input("Fecha de la solicitud")
-    nombre = st.text_input("Nombre")
-    apellidos = st.text_input("Apellidos")
-    dni = st.text_input("DNI")
-    direccion = st.text_input("Dirección")
-    telefono = st.text_input("Teléfono")
-    email = st.text_input("Correo electrónico")
-    objeto = st.text_area("Objeto de la solicitud", max_chars=255)
-
     # Si el modo es "Por coordenadas", incluir campos para las coordenadas en el formulario
     if modo == "Por coordenadas":
         x = st.number_input("Coordenada X (ETRS89)", format="%.2f", help="Introduce coordenadas en metros, sistema ETRS89 / UTM zona 30")
@@ -299,6 +290,14 @@ with st.form("formulario"):
         # Muestra las coordenadas calculadas y las pone como campo oculto para el formulario
         st.info(f"Coordenadas obtenidas de la parcela: X = {x}, Y = {y}")
         
+    fecha_solicitud = st.date_input("Fecha de la solicitud")
+    nombre = st.text_input("Nombre")
+    apellidos = st.text_input("Apellidos")
+    dni = st.text_input("DNI")
+    direccion = st.text_input("Dirección")
+    telefono = st.text_input("Teléfono")
+    email = st.text_input("Correo electrónico")
+    objeto = st.text_area("Objeto de la solicitud", max_chars=255)       
     submitted = st.form_submit_button("Generar informe")
 
 if 'mapa_html' not in st.session_state:
