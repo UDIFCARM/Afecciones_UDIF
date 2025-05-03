@@ -98,24 +98,20 @@ def transformar_coordenadas(x, y):
 
 # Función para obtener municipio, polígono y parcela a partir de coordenadas
 def obtener_info_coordenadas(x, y):
-    punto = Point(x, y)
-    
-    # Iterar sobre los shapefiles de cada municipio
+    punto = Point(x, y)  # Coordenadas ETRS89 (X, Y)
+
     for municipio, base_name in shp_urls.items():
         gdf = cargar_shapefile_desde_github(base_name)
-        
+
         if gdf is not None:
-            # Realizar una búsqueda espacial
-            gdf["geometry"] = gdf.geometry.apply(lambda geom: geom.buffer(0))  # Buffer para evitar problemas de geometría
-            municipios = gdf[gdf.contains(punto)]
-            if not municipios.empty:
-                # Encontramos el municipio, polígono y parcela
-                municipio_sel = municipio
-                masa_sel = municipios["MASA"].iloc[0]
-                parcela_sel = municipios["PARCELA"].iloc[0]
-                return municipio_sel, masa_sel, parcela_sel
-                
-    return None, None, None  # Si no se encuentra nada
+            gdf["geometry"] = gdf.geometry.apply(lambda geom: geom.buffer(0))  # Reparar geometrías
+            seleccion = gdf[gdf.contains(punto)]
+            if not seleccion.empty:
+                masa = seleccion["MASA"].iloc[0]
+                parcela = seleccion["PARCELA"].iloc[0]
+                return municipio, masa, parcela
+
+    return None, None, None
 
 # Función para consultar si el punto está dentro de algún polígono del GeoJSON
 def consultar_geojson(x, y, geojson_url, nombre_afeccion="Afección", campo_nombre="nombre"):
@@ -299,23 +295,21 @@ if modo == "Por parcela":
     else:
         st.error(f"No se pudo cargar el shapefile para el municipio: {municipio_sel}")
 
-# Si el modo es "Por coordenadas" NO se solicita la entrada previa
-# Se incluirán los campos para introducir coordenadas X, Y (ETRS89)
+# ---- BÚSQUEDA POR COORDENADAS ----
 else:
     x = st.number_input("Longitud (X) - Coordenadas ETRS89", value=0.0)
     y = st.number_input("Latitud (Y) - Coordenadas ETRS89", value=0.0)
 
-if x != 0.0 and y != 0.0:
-    lon, lat = transformar_coordenadas(x, y)
-    st.write(f"Las coordenadas transformadas son: Long: {lon}, Lat: {lat}")
-    
-    # Obtener municipio, polígono y parcela a partir de las coordenadas
-    municipio_sel, masa_sel, parcela_sel = obtener_info_coordenadas(lon, lat)
-    
-    if municipio_sel:
-        st.write(f"Municipio: {municipio_sel}")
-        st.write(f"Polígono: {masa_sel}")
-        st.write(f"Parcela: {parcela_sel}")
+    if x != 0.0 and y != 0.0:
+        municipio_sel, masa_sel, parcela_sel = obtener_info_coordenadas(x, y)
+
+        if municipio_sel:
+            st.success("Parcela encontrada correctamente.")
+            st.write(f"Municipio: {municipio_sel}")
+            st.write(f"Polígono: {masa_sel}")
+            st.write(f"Parcela: {parcela_sel}")
+        else:
+            st.warning("No se encontró ninguna parcela para esas coordenadas.")
 
 with st.form("formulario"):
     # Si el modo es "Por coordenadas", incluir campos para las coordenadas en el formulario
