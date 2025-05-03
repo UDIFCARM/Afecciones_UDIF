@@ -64,30 +64,32 @@ shp_urls = {
 
 }
 
-def cargar_shapefile_desde_github(nombre_base):
-    base_url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/CATASTRO"
-    extensiones = ["shp", "shx", "dbf", "prj"]
-    temp_dir = tempfile.mkdtemp()
-    archivos = {}
+# Función para cargar shapefiles desde GitHub
+@st.cache_data
+def cargar_shapefile_desde_github(municipio):
+    base_url = f"https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/CATASTRO/{municipio}"
+    extensiones = [".shp", ".shx", ".dbf", ".prj"]
+    archivos_locales = {}
 
-    for ext in extensiones:
-        url = f"{base_url}/{nombre_base}.{ext}"
-        local_path = os.path.join(temp_dir, f"{nombre_base}.{ext}")
-        r = requests.get(url)
-        if r.status_code == 200:
-            with open(local_path, "wb") as f:
-                f.write(r.content)
-            archivos[ext] = local_path
+    with tempfile.TemporaryDirectory() as tmpdir:
+        for ext in extensiones:
+            nombre_archivo = f"{municipio}{ext}"
+            url = f"{base_url}/{nombre_archivo}"
+            respuesta = requests.get(url)
+            if respuesta.status_code == 200:
+                ruta_local = os.path.join(tmpdir, nombre_archivo)
+                with open(ruta_local, "wb") as f:
+                    f.write(respuesta.content)
+                archivos_locales[ext] = ruta_local
+            else:
+                st.warning(f"No se encontró: {url}")
+
+        if all(ext in archivos_locales for ext in [".shp", ".shx", ".dbf"]):
+            gdf = gpd.read_file(archivos_locales[".shp"])
+            return gdf
         else:
-            st.error(f"No se pudo descargar: {url}")
+            st.error("Faltan archivos esenciales para cargar el shapefile.")
             return None
-
-    try:
-        gdf = gpd.read_file(archivos["shp"])
-        return gdf
-    except Exception as e:
-        st.error(f"Error al leer el shapefile: {e}")
-        return None
 
 # Función para transformar coordenadas de ETRS89 a WGS84 (Long, Lat)
 def transformar_coordenadas(x, y):
@@ -239,9 +241,10 @@ modo = st.radio("Selecciona el modo de búsqueda", ["Por coordenadas", "Por parc
 
 # Cargar el shapefile correspondiente al municipio seleccionado
 if modo == "Por parcela":
-    municipio_sel = st.selectbox("Municipio", sorted(gdf["TM"].unique()))
-    gdf = cargar_shapefile_desde_github(shp_urls[municipio_sel])
-    
+    municipio_sel = st.selectbox("Municipio", sorted(shp_urls.keys()))
+    nombre_base = shp_urls[municipio_sel]
+    gdf = cargar_shapefile_desde_github(nombre_base)
+
     if gdf is not None:
         masa_sel = st.selectbox("Polígono", sorted(gdf["MASA"].unique()))
         parcela_sel = st.selectbox("Parcela", sorted(gdf[gdf["MASA"] == masa_sel]["PARCELA"].unique()))
@@ -259,19 +262,38 @@ if modo == "Por parcela":
             y = punto_centro.y         
                     
             st.success("Parcela cargada correctamente.")
-            municipio_sel = municipio_sel  # Asegurarse de que municipio_sel esté disponible
             st.write(f"Municipio: {municipio_sel}")
             st.write(f"Polígono: {masa_sel}")
             st.write(f"Parcela: {parcela_sel}")
         else:
             st.error("La geometría seleccionada no es un polígono válido.")
 else:
+    # Coordenadas
     x = st.number_input("Coordenada X (ETRS89)", format="%.2f")
     y = st.number_input("Coordenada Y (ETRS89)", format="%.2f")
 
     municipio_sel = "Coordenadas no asociadas a municipio"  # Valor predeterminado para el modo "Por coordenadas"
+
+    # Crear un punto a partir de las coordenadas
+    punto = Point(x, y)
+
+    # Buscar el municipio asociado al punto
+    encontrado = False
+    for municipio, archivo_url in shp_urls.items():
+        # Cargar el shapefile del municipio correspondiente
+        gdf_municipio = cargar_shapefile_desde_github(f"https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/CATASTRO/{archivo_url}")
+        
+        if gdf_municipio is not None:
+            # Verificar si el punto está dentro del municipio
+            if gdf_municipio.geometry.contains(punto).any():
+                municipio_sel = municipio
+                encontrado = True
+                break
     
-    # Otras condiciones y flujo del código para el caso de coordenadas
+    if encontrado:
+        st.success(f"Las coordenadas corresponden al municipio: {municipio_sel}")
+    else:
+        st.error("Las coordenadas no corresponden a ningún municipio.")
     
 with st.form("formulario"):
     fecha_solicitud = st.date_input("Fecha de la solicitud")
