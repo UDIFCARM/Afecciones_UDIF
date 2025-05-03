@@ -296,11 +296,6 @@ if submitted:
     else:
         lon, lat = transformar_coordenadas(x, y)
 
-        # Mostrar los datos seleccionados (municipio, polígono, parcela)
-        st.write(f"Municipio seleccionado: {municipio_sel}")
-        st.write(f"Polígono seleccionado: {masa_sel}")
-        st.write(f"Parcela seleccionada: {parcela_sel}")
-
         # URLs GeoJSON
         enp_url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/GeoJSON/ENP.json"
         zepa_url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/GeoJSON/ZEPA.json"
