@@ -239,7 +239,7 @@ modo = st.radio("Selecciona el modo de búsqueda", ["Por coordenadas", "Por parc
 
 # Cargar el shapefile correspondiente al municipio seleccionado
 if modo == "Por parcela":
-    municipio_sel = st.selectbox("Municipio", list(gdf["TM"].unique()))
+    municipio_sel = st.selectbox("Municipio", list(shp_urls.keys()))  # Se obtiene la lista de claves del diccionario
     gdf = cargar_shapefile_desde_github(shp_urls[municipio_sel])
     
     if gdf is not None:
@@ -269,8 +269,8 @@ if modo == "Por parcela":
             st.write(f"Parcela: {parcela_sel}")
         else:
             st.error("La geometría seleccionada no es un polígono válido.")
-
 else:
+    # Modo por coordenadas: solo pedimos las coordenadas sin seleccionar municipio ni polígono
     x = st.number_input("Coordenada X (ETRS89)", format="%.2f")
     y = st.number_input("Coordenada Y (ETRS89)", format="%.2f")
     
