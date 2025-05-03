@@ -71,6 +71,7 @@ def cargar_shapefile_desde_github(nombre_base):
 
     for ext in extensiones:
         url = f"{base_url}/{nombre_base}.{ext}"
+        st.write(f"URL generada: {url}")
         local_path = os.path.join(temp_dir, f"{nombre_base}.{ext}")
         r = requests.get(url)
         if r.status_code == 200:
