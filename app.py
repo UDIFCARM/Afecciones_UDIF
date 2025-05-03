@@ -355,7 +355,7 @@ if submitted:
             html(f.read(), height=500)
 
 # Botones de descarga
-if st.session_state['mapa_html'] and st.session_state['pdf_file']:
+if st.session_state['mapa_html']
 
     with open(st.session_state['mapa_html'], "r") as f:
         st.download_button("🌍 Descargar mapa HTML", f, file_name="mapa_busqueda.html")
