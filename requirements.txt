@@ -9,5 +9,6 @@ selenium
 chromedriver
 python-docx
 docxtpl
+docx2pdf
 xmltodict
 fiona
