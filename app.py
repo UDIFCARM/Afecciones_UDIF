@@ -239,7 +239,7 @@ modo = st.radio("Selecciona el modo de búsqueda", ["Por coordenadas", "Por parc
 
 # Cargar el shapefile correspondiente al municipio seleccionado
 if modo == "Por parcela":
-    municipio_sel = st.selectbox("Municipio", sorted(gdf["TM"].unique()))
+    municipio_sel = st.selectbox("Municipio", list(gdf["TM"].unique()))
     gdf = cargar_shapefile_desde_github(shp_urls[municipio_sel])
     
     if gdf is not None:
