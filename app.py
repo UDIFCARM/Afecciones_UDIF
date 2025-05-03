@@ -273,6 +273,12 @@ if modo == "Por parcela":
 else:
     x = st.number_input("Coordenada X (ETRS89)", format="%.2f")
     y = st.number_input("Coordenada Y (ETRS89)", format="%.2f")
+
+# Luego, muestra la información solo si se ha seleccionado un municipio
+if modo == "Por parcela":
+    st.write(f"Municipio seleccionado: {municipio_sel}")
+else:
+    st.write(f"Coordenadas ingresadas: X = {x}, Y = {y}")
     
 with st.form("formulario"):
     fecha_entrada = st.date_input("Fecha de entrada")
