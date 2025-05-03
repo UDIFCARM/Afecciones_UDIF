@@ -477,7 +477,7 @@ if archivo_generado:
     st.success("✅ Informe generado correctamente.")
         
 # Botones de descarga
-iif "informe_file" in st.session_state and st.session_state["informe_file"]:
+if "informe_file" in st.session_state and st.session_state["informe_file"]:
     with open(st.session_state["informe_file"], "rb") as f:
         st.download_button(
             "📄 Descargar informe",
