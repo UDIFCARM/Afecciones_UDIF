@@ -240,19 +240,19 @@ modo = st.radio("Selecciona el modo de búsqueda", ["Por coordenadas", "Por parc
 if modo == "Por parcela":
     municipio_sel = st.selectbox("Municipio", list(shp_urls.keys()))
     gdf = cargar_shapefile_desde_github(shp_urls[municipio_sel])
-    if gdf is not None:
+    if gdf.empty:
+        st.error(f"No se encontraron datos para el municipio {municipio_sel}.")
+    else:
         gdf_filtrado = gdf[gdf["MUNICIPIO"] == municipio_sel]
-        st.write(f"Parcelas en {municipio_sel}: {len(gdf_filtrado)}")
-        
-        # Selección de polígono y parcela
-        masa_sel = st.selectbox("Selecciona el polígono", gdf_filtrado["MASA"].unique())
-        parcela_sel = st.selectbox("Selecciona la parcela", gdf_filtrado[gdf_filtrado["MASA"] == masa_sel]["PARCELA"].unique())
-
-        # Obtención del centro del polígono
-        parcela = gdf_filtrado[(gdf_filtrado["MASA"] == masa_sel) & (gdf_filtrado["PARCELA"] == parcela_sel)]
-        punto_centro = parcela.geometry.centroid.iloc[0]
-        x = punto_centro.x
-        y = punto_centro.y
+        if gdf_filtrado.empty:
+            st.warning(f"No se encontraron parcelas en {municipio_sel}")
+        else:
+            st.write(f"Parcelas en {municipio_sel}: {len(gdf_filtrado)}")
+            parcela_sel = st.selectbox("Selecciona la parcela", gdf_filtrado["PARCELA"].unique())
+            parcela = gdf_filtrado[gdf_filtrado["PARCELA"] == parcela_sel]
+            punto_centro = parcela.geometry.centroid.iloc[0]
+            x = punto_centro.x
+            y = punto_centro.y
 else:
     x = st.number_input("Coordenada X (ETRS89)", format="%.2f")
     y = st.number_input("Coordenada Y (ETRS89)", format="%.2f")
