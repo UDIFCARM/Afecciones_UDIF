@@ -11,7 +11,7 @@ import os
 from shapely.geometry import Point
 import uuid
 from datetime import datetime
-from docx import Document
+from docx2pdf import convert
 from branca.element import Template, MacroElement
 
 # Diccionario con los nombres de municipios y sus nombres base de archivo
@@ -233,6 +233,75 @@ def generar_pdf(datos, x, y, filename):
     pdf.output(filename)
     return filename
 
+from docx2pdf import convert
+import uuid
+import os
+
+# Función para cargar la plantilla DOCX, modificarla y convertirla a PDF
+def generar_pdf_con_template(datos, x, y, template_path, output_filename):
+    # Cargar la plantilla DOCX
+    doc = Document(template_path)
+    
+    # Rellenar los campos en la plantilla
+    for para in doc.paragraphs:
+        if '{{nombre}}' in para.text:
+            para.text = para.text.replace('{{nombre}}', datos['nombre'])
+        if '{{apellidos}}' in para.text:
+            para.text = para.text.replace('{{apellidos}}', datos['apellidos'])
+        if '{{dni}}' in para.text:
+            para.text = para.text.replace('{{dni}}', datos['dni'])
+        if '{{direccion}}' in para.text:
+            para.text = para.text.replace('{{direccion}}', datos['dirección'])
+        if '{{telefono}}' in para.text:
+            para.text = para.text.replace('{{telefono}}', datos['teléfono'])
+        if '{{email}}' in para.text:
+            para.text = para.text.replace('{{email}}', datos['email'])
+        if '{{objeto}}' in para.text:
+            para.text = para.text.replace('{{objeto}}', datos['objeto de la solicitud'])
+        if '{{fecha_solicitud}}' in para.text:
+            para.text = para.text.replace('{{fecha_solicitud}}', datos['fecha_solicitud'])
+        if '{{fecha_informe}}' in para.text:
+            para.text = para.text.replace('{{fecha_informe}}', datos['fecha_informe'])
+        if '{{coordenadas_x}}' in para.text:
+            para.text = para.text.replace('{{coordenadas_x}}', str(x))
+        if '{{coordenadas_y}}' in para.text:
+            para.text = para.text.replace('{{coordenadas_y}}', str(y))
+        if '{{municipio}}' in para.text:
+            para.text = para.text.replace('{{municipio}}', datos['municipio'])
+        if '{{poligono}}' in para.text:
+            para.text = para.text.replace('{{poligono}}', datos['polígono'])
+        if '{{parcela}}' in para.text:
+            para.text = para.text.replace('{{parcela}}', datos['parcela'])
+        if '{{afeccion_mup}}' in para.text:
+            para.text = para.text.replace('{{afeccion_mup}}', datos['afección MUP'])
+        if '{{afeccion_vp}}' in para.text:
+            para.text = para.text.replace('{{afeccion_vp}}', datos['afección VP'])
+        if '{{afeccion_enp}}' in para.text:
+            para.text = para.text.replace('{{afeccion_enp}}', datos['afección ENP'])
+        if '{{afeccion_zepa}}' in para.text:
+            para.text = para.text.replace('{{afeccion_zepa}}', datos['afección ZEPA'])
+        if '{{afeccion_lic}}' in para.text:
+            para.text = para.text.replace('{{afeccion_lic}}', datos['afección LIC'])
+        if '{{afeccion_tm}}' in para.text:
+            para.text = para.text.replace('{{afeccion_tm}}', datos['afección TM'])
+    
+    # Guardar el documento modificado en DOCX
+    doc.save(output_filename)
+    
+    # Convertir el archivo DOCX a PDF
+    pdf_filename = output_filename.replace(".docx", ".pdf")
+    convert(output_filename, pdf_filename)
+    
+    return pdf_filename
+
+# Generación de PDF utilizando la plantilla DOCX
+def generar_pdf(datos, x, y, template_path="plantilla_informe.docx"):
+    # Generar el archivo de salida DOCX
+    docx_file = f'informe_{uuid.uuid4().hex[:8]}.docx'
+    pdf_file = generar_pdf_con_template(datos, x, y, template_path, docx_file)
+    
+    return pdf_file
+
 # Interfaz de Streamlit
 st.title("\U0001F5FA️ Informe de Afecciones Ambientales")
 
@@ -361,6 +430,9 @@ if submitted:
             "polígono": masa_sel if modo == "Por parcela" else "N/A",  # Solo en modo parcela
             "parcela": parcela_sel if modo == "Por parcela" else "N/A"  # Solo en modo parcela  
         }
+
+        # Generar el informe PDF
+        pdf_file = generar_pdf(datos, x, y)
         
         # Crear mapa con afecciones
         mapa_html, afecciones = crear_mapa(lon, lat, afecciones)
