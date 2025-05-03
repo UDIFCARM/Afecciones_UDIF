@@ -395,14 +395,21 @@ if submitted:
         st.session_state['pdf_file'] = pdf_filename
 
 # Generar pdf desde plantilla
-def generar_pdf_desde_docx(datos, plantilla_path, output_docx, output_pdf):
+def generar_pdf_desde_docx(datos, plantilla_url, output_docx, output_pdf):
     try:
-        if not os.path.exists(plantilla_path):
-            raise FileNotFoundError(f"Plantilla no encontrada: {plantilla_path}")
+        # Descargar plantilla desde GitHub (raw)
+        response = requests.get(plantilla_url)
+        if response.status_code != 200:
+            raise Exception("No se pudo descargar la plantilla desde GitHub.")
 
-        doc = DocxTemplate(plantilla_path)
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".docx") as tmp:
+            tmp.write(response.content)
+            plantilla_local = tmp.name
 
-        # Extraer información de MUP
+        # Cargar plantilla
+        doc = DocxTemplate(plantilla_local)
+
+        # Separar info de MUP si aplica
         if datos.get("afección MUP", "").startswith("Dentro de MUP"):
             for linea in datos["afección MUP"].split("\n"):
                 if linea.startswith("ID:"): datos["mup_id"] = linea.replace("ID:", "").strip()
@@ -412,6 +419,7 @@ def generar_pdf_desde_docx(datos, plantilla_path, output_docx, output_pdf):
         else:
             datos["mup_id"] = datos["mup_nombre"] = datos["mup_municipio"] = datos["mup_propiedad"] = "No aplica"
 
+        # Diccionario de contexto para renderizado
         contexto = {
             "fecha_solicitud": datos["fecha_solicitud"],
             "fecha_informe": datos["fecha_informe"],
@@ -441,18 +449,41 @@ def generar_pdf_desde_docx(datos, plantilla_path, output_docx, output_pdf):
         doc.render(contexto)
         doc.save(output_docx)
 
-        convert(output_docx, output_pdf)
-
-        return output_pdf
+        # Solo convertir a PDF si es compatible
+        try:
+            from docx2pdf import convert
+            convert(output_docx, output_pdf)
+            return output_pdf
+        except Exception as e:
+            print("❌ No se pudo convertir a PDF. Se entregará solo el DOCX.")
+            return output_docx  # Devuelve DOCX si falla la conversión a PDF
 
     except Exception as e:
-        st.error(f"❌ Error al generar el PDF: {e}")
+        st.error(f"❌ Error al generar el informe: {e}")
         return None
 
+# Ruta directa a la plantilla en GitHub (raw)
+plantilla_url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/plantilla_informe_afecciones.docx"
+
+# Crear nombres únicos para los archivos generados
+docx_out = f"informe_{uuid.uuid4().hex[:8]}.docx"
+pdf_out = f"informe_{uuid.uuid4().hex[:8]}.pdf"
+
+# Generar el informe
+archivo_generado = generar_pdf_desde_docx(datos, plantilla_url, docx_out, pdf_out)
+
+if archivo_generado:
+    st.session_state["informe_file"] = archivo_generado
+    st.success("✅ Informe generado correctamente.")
+        
 # Botones de descarga
-if st.session_state['mapa_html'] and st.session_state['pdf_file']:
-    with open(st.session_state['pdf_file'], "rb") as f:
-        st.download_button("📄 Descargar informe PDF", f, file_name="informe_afecciones.pdf")
+iif "informe_file" in st.session_state and st.session_state["informe_file"]:
+    with open(st.session_state["informe_file"], "rb") as f:
+        st.download_button(
+            "📄 Descargar informe",
+            f,
+            file_name="informe_afecciones.pdf" if st.session_state["informe_file"].endswith(".pdf") else "informe_afecciones.docx"
+        )
 
     with open(st.session_state['mapa_html'], "r") as f:
         st.download_button("🌍 Descargar mapa HTML", f, file_name="mapa_busqueda.html")
