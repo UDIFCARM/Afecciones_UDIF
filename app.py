@@ -353,10 +353,6 @@ if submitted:
         with open(mapa_html, 'r') as f:
             html(f.read(), height=500)
 # pdf
-st.title("Generador de informes de afecciones")
-municipio = st.text_input("Municipio")
-afecciones = st.text_area("Afecciones detectadas")
-
 if st.button("Generar informe PDF"):
     if municipio and afecciones:
         plantilla_url = "https://github.com/UDIFCARM/Afecciones_UDIF/raw/main/plantilla_informe_afecciones.docx"
