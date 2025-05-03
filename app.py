@@ -352,6 +352,23 @@ if submitted:
 
         with open(mapa_html, 'r') as f:
             html(f.read(), height=500)
+# pdf
+st.title("Generador de informes de afecciones")
+municipio = st.text_input("Municipio")
+afecciones = st.text_area("Afecciones detectadas")
+
+if st.button("Generar informe PDF"):
+    if municipio and afecciones:
+        plantilla_url = "https://github.com/UDIFCARM/Afecciones_UDIF/raw/main/plantilla_informe_afecciones.docx"
+        plantilla_path = descargar_plantilla(plantilla_url)
+        
+        datos = {
+            "municipio": municipio,
+            "afecciones": afecciones,
+        }
+
+        docx_completado = rellenar_plantilla(plantilla_path, datos)
+        pdf_generado = convertir_a_pdf(docx_completado)
 
 # pdf
 # 1. Descargar plantilla desde GitHub
@@ -389,8 +406,8 @@ def convertir_a_pdf(docx_path):
 
 # Botones de descarga
 if st.session_state['mapa_html'] and st.session_state['pdf_file']:
-    with open(st.session_state['pdf_file'], "rb") as f:
-        st.download_button("📄 Descargar informe PDF", f, file_name="informe_afecciones.pdf")
+    with open(pdf_generado, "rb") as f:
+        st.download_button("📥 Descargar PDF", f, file_name="informe_afecciones.pdf")
 
     with open(st.session_state['mapa_html'], "r") as f:
         st.download_button("🌍 Descargar mapa HTML", f, file_name="mapa_busqueda.html")
