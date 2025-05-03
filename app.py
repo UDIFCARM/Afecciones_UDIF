@@ -236,8 +236,15 @@ if modo == "Por parcela":
             st.error("La geometría seleccionada no es un polígono válido.")
 
 else:
+    # Búsqueda por coordenadas
     x = st.number_input("Coordenada X (ETRS89)", format="%.2f")
     y = st.number_input("Coordenada Y (ETRS89)", format="%.2f")
+    
+    if x == 0 or y == 0:
+        st.warning("Por favor, ingresa coordenadas válidas para X y Y. Los valores no pueden ser 0.")
+        x, y = None, None  # No continuar si las coordenadas son inválidas
+    else:
+        st.write(f"Coordenadas introducidas: X = {x}, Y = {y}")
     
 with st.form("formulario"):
     fecha_solicitud = st.date_input("Fecha de la solicitud")
