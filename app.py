@@ -438,7 +438,7 @@ def generar_pdf_desde_docx(datos, plantilla_url, output_docx, output_pdf):
             datos["mup_id"] = datos["mup_nombre"] = datos["mup_municipio"] = datos["mup_propiedad"] = "No aplica"
 
         # Diccionario de contexto para renderizado
-        contexto = {
+        datos = {
             "fecha_solicitud": datos["fecha_solicitud"],
             "fecha_informe": datos["fecha_informe"],
             "nombre": datos["nombre"],
