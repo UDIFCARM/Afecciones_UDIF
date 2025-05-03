@@ -284,8 +284,6 @@ with st.form("formulario"):
     telefono = st.text_input("Teléfono")
     email = st.text_input("Correo electrónico")
     objeto = st.text_area("Objeto de la solicitud", max_chars=255)
-    x = st.number_input("Coordenada X (ETRS89)", format="%.2f", help="Introduce coordenadas en metros, sistema ETRS89 / UTM zona 30")
-    y = st.number_input("Coordenada Y (ETRS89)", format="%.2f")
     submitted = st.form_submit_button("Generar informe")
 
 if 'mapa_html' not in st.session_state:
