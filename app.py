@@ -11,7 +11,7 @@ import os
 from shapely.geometry import Point
 import uuid
 from datetime import datetime
-from docx import Document
+from docxtpl import DocxTemplate
 from docx2pdf import convert
 from branca.element import Template, MacroElement
 
@@ -392,7 +392,7 @@ if st.button("Generar informe"):
         pdf_out = f"informe_{uuid.uuid4().hex[:8]}.pdf"
 
         # Asegúrate de que 'datos' esté disponible y correctamente formateado
-        if 'datos' not in locals():
+        if 'datos' not in locals() or datos is None:
             st.error("No se han encontrado los datos para generar el informe.")
         else:
             # Llamada a la función para generar el PDF desde el DOCX
@@ -464,12 +464,12 @@ def generar_pdf_desde_docx(datos, plantilla_url, output_docx, output_pdf):
             "lic": datos["afección LIC"],
         }
 
+        # Renderizar documento DOCX
         doc.render(contexto)
         doc.save(output_docx)
 
         # Solo convertir a PDF si es compatible
         try:
-            from docx2pdf import convert
             convert(output_docx, output_pdf)
             return output_pdf
         except Exception as e:
@@ -479,6 +479,24 @@ def generar_pdf_desde_docx(datos, plantilla_url, output_docx, output_pdf):
     except Exception as e:
         st.error(f"❌ Error al generar el informe: {e}")
         return None
+
+# ✅ Definir URL de la plantilla DOCX (en formato RAW de GitHub)
+plantilla_url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/plantilla_informe_afecciones.docx"
+
+# Crear nombres únicos para los archivos generados
+docx_out = f"informe_{uuid.uuid4().hex[:8]}.docx"
+pdf_out = f"informe_{uuid.uuid4().hex[:8]}.pdf"
+
+# Verificar si 'datos' está disponible para proceder
+if 'datos' not in locals() or datos is None:
+    st.error("❌ No se han encontrado los datos para generar el informe.")
+else:
+    # Generar el informe
+    archivo_generado = generar_pdf_desde_docx(datos, plantilla_url, docx_out, pdf_out)
+
+    if archivo_generado:
+        st.session_state["informe_file"] = archivo_generado
+        st.success("✅ Informe generado correctamente.")
         
 # Botones de descarga
 if "informe_file" in st.session_state and st.session_state["informe_file"]:
