@@ -386,8 +386,8 @@ if submitted:
 # Función para generar el informe y manejar el flujo de trabajo
 if st.button("Generar informe"):
     try:
-        # Ruta de la plantilla DOCX y nombres de salida
-        plantilla_path = "plantilla_informe_afecciones.docx"  # O usar file_uploader si lo cargas dinámicamente
+        # Ruta de la plantilla DOCX (usando la URL RAW de GitHub)
+        plantilla_url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/plantilla_informe_afecciones.docx"
         docx_out = f"informe_{uuid.uuid4().hex[:8]}.docx"
         pdf_out = f"informe_{uuid.uuid4().hex[:8]}.pdf"
 
@@ -396,7 +396,7 @@ if st.button("Generar informe"):
             st.error("No se han encontrado los datos para generar el informe.")
         else:
             # Llamada a la función para generar el PDF desde el DOCX
-            pdf_generado = generar_pdf_desde_docx(datos, plantilla_path, docx_out, pdf_out)
+            pdf_generado = generar_pdf_desde_docx(datos, plantilla_url, docx_out, pdf_out)
 
             if pdf_generado:
                 # Guardar el archivo en la sesión para que esté disponible
@@ -469,6 +469,7 @@ def generar_pdf_desde_docx(datos, plantilla_url, output_docx, output_pdf):
 
         # Solo convertir a PDF si es compatible
         try:
+            from docx2pdf import convert
             convert(output_docx, output_pdf)
             return output_pdf
         except Exception as e:
@@ -478,21 +479,6 @@ def generar_pdf_desde_docx(datos, plantilla_url, output_docx, output_pdf):
     except Exception as e:
         st.error(f"❌ Error al generar el informe: {e}")
         return None
-
-
-# ✅ Definir URL de la plantilla DOCX (en formato RAW de GitHub)
-plantilla_url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/plantilla_informe_afecciones.docx"
-
-# Crear nombres únicos para los archivos generados
-docx_out = f"informe_{uuid.uuid4().hex[:8]}.docx"
-pdf_out = f"informe_{uuid.uuid4().hex[:8]}.pdf"
-
-# Generar el informe
-archivo_generado = generar_pdf_desde_docx(datos, plantilla_url, docx_out, pdf_out)
-
-if archivo_generado:
-    st.session_state["informe_file"] = archivo_generado
-    st.success("✅ Informe generado correctamente.")
         
 # Botones de descarga
 if "informe_file" in st.session_state and st.session_state["informe_file"]:
