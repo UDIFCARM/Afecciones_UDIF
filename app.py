@@ -11,7 +11,7 @@ import os
 from shapely.geometry import Point
 import uuid
 from datetime import datetime
-from docx import Document
+from docx import Document 
 from branca.element import Template, MacroElement
 
 # Diccionario con los nombres de municipios y sus nombres base de archivo
@@ -209,29 +209,76 @@ def crear_mapa(x, y, afecciones=[]):
 
     return mapa_html, afecciones
 
-# Función para generar el PDF con los datos de la solicitud
-def generar_pdf(datos, x, y, filename):
-    pdf = FPDF()
-    pdf.add_page()
+def generar_informe(datos, plantilla_path="plantilla_informe_afecciones.docx"):
+    doc = Document(plantilla_path)
+    
+    for p in doc.paragraphs:
+        for key, value in datos.items():
+            marcador = f"{{{{{key}}}}}"
+            if marcador in p.text:
+                p.text = p.text.replace(marcador, str(value))
+    
+    output_path = "informe_generado.docx"
+    doc.save(output_path)
+    return output_path
 
-    pdf.set_font("Arial", "B", size=14)
-    pdf.cell(200, 10, "Informe de Afecciones Ambientales", ln=True, align="C")
+# Formulario en la app
+st.title("Generador de Informe de Afecciones Ambientales")
 
-    pdf.set_font("Arial", size=12)
-    pdf.ln(10)
+with st.form("formulario"):
+    nombre = st.text_input("Nombre")
+    apellidos = st.text_input("Apellidos")
+    dni = st.text_input("DNI")
+    direccion = st.text_input("Dirección")
+    telefono = st.text_input("Teléfono")
+    email = st.text_input("Correo electrónico")
+    objeto = st.text_area("Objeto de la solicitud")
 
-    for k, v in datos.items():
-        if k.lower() == "afección mup" and v.startswith("Dentro de MUP"): 
-            v_lines = v.split("\n")
-            for line in v_lines:
-                pdf.cell(200, 10, line, ln=True)
-        else:
-            pdf.multi_cell(0, 10, f"{k.capitalize()}: {v}")
+    municipio = st.text_input("Municipio")
+    poligono = st.text_input("Polígono")
+    parcela = st.text_input("Parcela")
+    coordenadas_x = st.text_input("Coordenada X")
+    coordenadas_y = st.text_input("Coordenada Y")
 
-    pdf.ln(5)
-    pdf.cell(200, 10, f"Coordenadas ETRS89: X = {x}, Y = {y}", ln=True)
-    pdf.output(filename)
-    return filename
+    mup_id = st.text_input("CUP")
+    mup_nombre = st.text_input("Nombre del MUP")
+    mup_municipio = st.text_input("Municipio del MUP")
+    mup_propiedad = st.text_input("Propiedad del MUP")
+
+    tm = st.text_input("Términos municipales afectados")
+    vp = st.text_input("Vías pecuarias")
+    enp = st.text_input("Espacios Naturales Protegidos")
+    zepa = st.text_input("Zonas ZEPA")
+    lic = st.text_input("Lugares de Importancia Comunitaria")
+
+    enviar = st.form_submit_button("Generar informe")
+
+if enviar:
+    datos = {
+        "fecha_solicitud": datetime.today().strftime("%d/%m/%Y"),
+        "fecha_informe": datetime.today().strftime("%d/%m/%Y"),
+        "nombre": nombre,
+        "apellidos": apellidos,
+        "dni": dni,
+        "direccion": direccion,
+        "telefono": telefono,
+        "email": email,
+        "objeto": objeto,
+        "municipio": municipio,
+        "poligono": poligono,
+        "parcela": parcela,
+        "coordenadas_x": coordenadas_x,
+        "coordenadas_y": coordenadas_y,
+        "mup_id": mup_id,
+        "mup_nombre": mup_nombre,
+        "mup_municipio": mup_municipio,
+        "mup_propiedad": mup_propiedad,
+        "tm": tm,
+        "vp": vp,
+        "enp": enp,
+        "zepa": zepa,
+        "lic": lic
+    }
 
 # Interfaz de Streamlit
 st.title("\U0001F5FA️ Informe de Afecciones Ambientales")
