@@ -209,30 +209,6 @@ def crear_mapa(x, y, afecciones=[]):
 
     return mapa_html, afecciones
 
-# Función para generar el PDF con los datos de la solicitud
-def generar_pdf(datos, x, y, filename):
-    pdf = FPDF()
-    pdf.add_page()
-
-    pdf.set_font("Arial", "B", size=14)
-    pdf.cell(200, 10, "Informe de Afecciones Ambientales", ln=True, align="C")
-
-    pdf.set_font("Arial", size=12)
-    pdf.ln(10)
-
-    for k, v in datos.items():
-        if k.lower() == "afección mup" and v.startswith("Dentro de MUP"): 
-            v_lines = v.split("\n")
-            for line in v_lines:
-                pdf.cell(200, 10, line, ln=True)
-        else:
-            pdf.multi_cell(0, 10, f"{k.capitalize()}: {v}")
-
-    pdf.ln(5)
-    pdf.cell(200, 10, f"Coordenadas ETRS89: X = {x}, Y = {y}", ln=True)
-    pdf.output(filename)
-    return filename
-
 # Interfaz de Streamlit
 st.title("\U0001F5FA️ Informe de Afecciones Ambientales")
 
@@ -377,10 +353,39 @@ if submitted:
         with open(mapa_html, 'r') as f:
             html(f.read(), height=500)
 
-        # PDF generado desde los datos
-        pdf_filename = f"informe_{uuid.uuid4().hex[:8]}.pdf"
-        generar_pdf(datos, x, y, pdf_filename)
-        st.session_state['pdf_file'] = pdf_filename
+# pdf
+# 1. Descargar plantilla desde GitHub
+@st.cache_data
+def descargar_plantilla(url):
+    response = requests.get(url)
+    if response.status_code == 200:
+        temp_docx = tempfile.NamedTemporaryFile(delete=False, suffix=".docx")
+        temp_docx.write(response.content)
+        temp_docx.close()
+        return temp_docx.name
+    else:
+        st.error("No se pudo descargar la plantilla.")
+        return None
+
+# 2. Reemplazar los campos
+def rellenar_plantilla(ruta_plantilla, datos):
+    doc = Document(ruta_plantilla)
+    for p in doc.paragraphs:
+        for key, value in datos.items():
+            if f"{{{{{key}}}}}" in p.text:
+                p.text = p.text.replace(f"{{{{{key}}}}}", str(value))
+
+    temp_doc_path = tempfile.NamedTemporaryFile(delete=False, suffix=".docx")
+    doc.save(temp_doc_path.name)
+    return temp_doc_path.name
+
+# 3. Convertir a PDF
+def convertir_a_pdf(docx_path):
+    temp_pdf_dir = tempfile.mkdtemp()
+    convert(docx_path, temp_pdf_dir)
+    pdf_path = os.path.join(temp_pdf_dir, os.path.basename(docx_path).replace(".docx", ".pdf"))
+    return pdf_path
+
 
 # Botones de descarga
 if st.session_state['mapa_html'] and st.session_state['pdf_file']:
