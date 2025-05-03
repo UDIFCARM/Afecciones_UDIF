@@ -210,30 +210,6 @@ def crear_mapa(x, y, afecciones=[]):
 
     return mapa_html, afecciones
 
-# Función para generar el PDF con los datos de la solicitud
-def generar_pdf(datos, x, y, filename):
-    pdf = FPDF()
-    pdf.add_page()
-
-    pdf.set_font("Arial", "B", size=14)
-    pdf.cell(200, 10, "Informe de Afecciones Ambientales", ln=True, align="C")
-
-    pdf.set_font("Arial", size=12)
-    pdf.ln(10)
-
-    for k, v in datos.items():
-        if k.lower() == "afección mup" and v.startswith("Dentro de MUP"): 
-            v_lines = v.split("\n")
-            for line in v_lines:
-                pdf.cell(200, 10, line, ln=True)
-        else:
-            pdf.multi_cell(0, 10, f"{k.capitalize()}: {v}")
-
-    pdf.ln(5)
-    pdf.cell(200, 10, f"Coordenadas ETRS89: X = {x}, Y = {y}", ln=True)
-    pdf.output(filename)
-    return filename
-
 # Interfaz de Streamlit
 st.title("\U0001F5FA️ Informe de Afecciones Ambientales")
 
