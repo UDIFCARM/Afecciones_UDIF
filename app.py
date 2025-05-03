@@ -237,11 +237,19 @@ st.title("\U0001F5FA️ Informe de Afecciones Ambientales")
 modo = st.radio("Selecciona el modo de búsqueda", ["Por coordenadas", "Por parcela"])
 
 # Cargar el shapefile correspondiente al municipio seleccionado
+# Asegúrate de tener `masa_sel` y `parcela_sel` definidos después de la selección del municipio
 if modo == "Por parcela":
     municipio_sel = st.selectbox("Municipio", list(shp_urls.keys()))
     gdf = cargar_shapefile_desde_github(shp_urls[municipio_sel])
     gdf_filtrado = gdf[gdf["MUNICIPIO"] == municipio_sel]
     st.write(f"Parcelas en {municipio_sel}: {len(gdf_filtrado)}")
+
+    # Selección de polígono y parcela
+    masa_sel = st.selectbox("Selecciona el polígono (Masa)", gdf_filtrado["MASA"].unique())
+    parcela_sel = st.selectbox("Selecciona la parcela", gdf_filtrado[gdf_filtrado["MASA"] == masa_sel]["PARCELA"].unique())
+
+    # Obtención de las coordenadas del centro de la parcela seleccionada
+    parcela = gdf_filtrado[gdf_filtrado["PARCELA"] == parcela_sel]
     punto_centro = parcela.geometry.centroid
     x = punto_centro.x
     y = punto_centro.y
