@@ -240,19 +240,31 @@ modo = st.radio("Selecciona el modo de búsqueda", ["Por coordenadas", "Por parc
 if modo == "Por parcela":
     municipio_sel = st.selectbox("Municipio", list(shp_urls.keys()))
     gdf = cargar_shapefile_desde_github(shp_urls[municipio_sel])
+    
+    # Asegúrate de que las columnas y valores sean correctos
+    gdf["MUNICIPIO"] = gdf["MUNICIPIO"].str.strip().str.upper()
+    municipio_sel = municipio_sel.strip().upper()
+    
     if gdf.empty:
         st.error(f"No se encontraron datos para el municipio {municipio_sel}.")
     else:
         gdf_filtrado = gdf[gdf["MUNICIPIO"] == municipio_sel]
+        
         if gdf_filtrado.empty:
-            st.warning(f"No se encontraron parcelas en {municipio_sel}")
+            st.warning(f"No se encontraron parcelas en {municipio_sel}.")
         else:
+            # Mostrar las parcelas disponibles
             st.write(f"Parcelas en {municipio_sel}: {len(gdf_filtrado)}")
+            
+            # Selección de la parcela
             parcela_sel = st.selectbox("Selecciona la parcela", gdf_filtrado["PARCELA"].unique())
             parcela = gdf_filtrado[gdf_filtrado["PARCELA"] == parcela_sel]
+            
+            # Obtener el centroide de la parcela
             punto_centro = parcela.geometry.centroid.iloc[0]
             x = punto_centro.x
             y = punto_centro.y
+            st.write(f"Centro de la parcela {parcela_sel}: ({x}, {y})")
 else:
     x = st.number_input("Coordenada X (ETRS89)", format="%.2f")
     y = st.number_input("Coordenada Y (ETRS89)", format="%.2f")
