@@ -482,7 +482,7 @@ def cargar_shapefile_desde_github(url):
 st.title("\U0001F5FA️ Informe de Afecciones Ambientales")
 
 # Modo de búsqueda
-modo = st.radio("Selecciona el modo de búsqueda", ["Por coordenadas", "Por parcela"])
+modo = st.radio("Selecciona el modo de búsqueda", ["Por coordenadas", "Por parcela"], key="modo_búsqueda")
 
 # Cargar el shapefile correspondiente al municipio seleccionado
 if modo == "Por parcela":
