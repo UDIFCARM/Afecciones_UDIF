@@ -382,6 +382,52 @@ if submitted:
         generar_pdf(datos, x, y, pdf_filename)
         st.session_state['pdf_file'] = pdf_filename
 
+def generar_word_desde_plantilla(datos, plantilla_url):
+    # Descargar la plantilla desde la URL proporcionada
+    response = requests.get(plantilla_url)
+    if response.status_code != 200:
+        st.error("No se pudo descargar la plantilla DOCX.")
+        return None
+
+    # Guardar la plantilla como archivo temporal
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".docx") as tmp:
+        tmp.write(response.content)
+        plantilla_path = tmp.name
+
+    # Cargar la plantilla y renderizar con los datos
+    doc = DocxTemplate(plantilla_path)
+    doc.render({
+        "fecha_solicitud": datos.get("fecha_solicitud", ""),
+        "fecha_informe": datos.get("fecha_informe", ""),
+        "nombre": datos.get("nombre", ""),
+        "apellidos": datos.get("apellidos", ""),
+        "dni": datos.get("dni", ""),
+        "direccion": datos.get("direccion", ""),
+        "telefono": datos.get("telefono", ""),
+        "email": datos.get("email", ""),
+        "objeto": datos.get("objeto", ""),
+        "municipio": datos.get("municipio", ""),
+        "poligono": datos.get("poligono", ""),
+        "parcela": datos.get("parcela", ""),
+        "coordenadas_x": datos.get("coordenadas_x", ""),
+        "coordenadas_y": datos.get("coordenadas_y", ""),
+        "mup_id": datos.get("mup_id", ""),
+        "mup_nombre": datos.get("mup_nombre", ""),
+        "mup_municipio": datos.get("mup_municipio", ""),
+        "mup_propiedad": datos.get("mup_propiedad", ""),
+        "tm": datos.get("tm", ""),
+        "vp": datos.get("vp", ""),
+        "enp": datos.get("enp", ""),
+        "zepa": datos.get("zepa", ""),
+        "lic": datos.get("lic", "")
+    })
+
+    # Guardar documento completado
+    output_path = os.path.join(tempfile.gettempdir(), f"informe_{uuid.uuid4().hex[:8]}.docx")
+    doc.save(output_path)
+
+    return output_path
+
 # Botones de descarga
 if st.session_state['mapa_html'] and st.session_state['pdf_file']:
     with open(st.session_state['pdf_file'], "rb") as f:
@@ -389,3 +435,12 @@ if st.session_state['mapa_html'] and st.session_state['pdf_file']:
 
     with open(st.session_state['mapa_html'], "r") as f:
         st.download_button("🌍 Descargar mapa HTML", f, file_name="mapa_busqueda.html")
+
+if docx_path:
+    with open(docx_path, "rb") as f:
+        st.download_button(
+            label="📄 Descargar informe Word",
+            data=f,
+            file_name="informe_ambiental.docx",
+            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        )
