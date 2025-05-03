@@ -90,6 +90,29 @@ def cargar_shapefile_desde_github(nombre_base):
         os.rmdir(temp_dir)
         return None
 
+def mostrar_poligonos_y_parcelas(municipio):
+    # Obtener el nombre base del archivo a partir del diccionario
+    nombre_base = shp_urls.get(municipio)
+    
+    if nombre_base:
+        gdf = cargar_shapefile_desde_github(nombre_base)
+        if gdf is not None:
+            # Asegúrate de que las columnas que contienen los polígonos y parcelas sean correctas
+            # Suponiendo que las columnas sean 'MASA' para los polígonos y 'PARCELA' para las parcelas
+            poligonos = gdf['MASA'].unique()
+            parcelas = gdf['PARCELA'].unique()
+
+            # Mostrar los polígonos y parcelas en selectores
+            poligono_seleccionado = st.selectbox('Selecciona un polígono', poligonos)
+            parcela_seleccionada = st.selectbox('Selecciona una parcela', parcelas)
+
+            st.write(f"Polígono seleccionado: {poligono_seleccionado}")
+            st.write(f"Parcela seleccionada: {parcela_seleccionada}")
+        else:
+            st.error(f"No se pudo cargar el shapefile para {municipio}")
+    else:
+        st.error(f"Municipio {municipio} no encontrado en el diccionario.")
+
 # Función para transformar coordenadas de ETRS89 a WGS84 (Long, Lat)
 def transformar_coordenadas(x, y):
     transformer = Transformer.from_crs("EPSG:25830", "EPSG:4326", always_xy=True)
