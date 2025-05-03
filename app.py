@@ -211,16 +211,37 @@ def crear_mapa(x, y, afecciones=[]):
 
 # Función para generar el PDF con los datos de la solicitud
 def rellenar_y_convertir_docx_a_pdf(datos, plantilla_path, output_pdf_path):
+    from docx import Document
+
+    def reemplazar_en_parrafos(parrafos):
+        for p in parrafos:
+            inline_text = p.text
+            for key, val in datos.items():
+                inline_text = inline_text.replace(f"{{{{{key}}}}}", str(val))
+            p.text = inline_text
+
+    # Cargar la plantilla
     doc = Document(plantilla_path)
-    for p in doc.paragraphs:
-        inline_text = p.text
-        for key, val in datos.items():
-            inline_text = inline_text.replace(f"{{{{{key}}}}}", str(val))
-        p.text = inline_text
+
+    # Reemplazar en párrafos
+    reemplazar_en_parrafos(doc.paragraphs)
+
+    # Reemplazar en tablas
+    for table in doc.tables:
+        for row in table.rows:
+            for cell in row.cells:
+                reemplazar_en_parrafos(cell.paragraphs)
+
+    # Guardar como docx temporal
     temp_docx = output_pdf_path.replace(".pdf", ".docx")
     doc.save(temp_docx)
+
+    # Convertir a PDF (LibreOffice o Word)
     if platform.system() in ["Linux", "Darwin"]:
-        subprocess.run(["libreoffice", "--headless", "--convert-to", "pdf", temp_docx, "--outdir", os.path.dirname(output_pdf_path)])
+        subprocess.run([
+            "libreoffice", "--headless", "--convert-to", "pdf",
+            temp_docx, "--outdir", os.path.dirname(output_pdf_path)
+        ])
     elif platform.system() == "Windows":
         import comtypes.client
         word = comtypes.client.CreateObject('Word.Application')
@@ -231,6 +252,7 @@ def rellenar_y_convertir_docx_a_pdf(datos, plantilla_path, output_pdf_path):
         word.Quit()
     else:
         raise Exception("Conversión a PDF no compatible en este sistema")
+
     return output_pdf_path
 
 # Interfaz de Streamlit
