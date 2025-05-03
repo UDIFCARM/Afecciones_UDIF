@@ -63,7 +63,6 @@ shp_urls = {
 
 }
 
-# Función para cargar el shapefile desde GitHub
 def cargar_shapefile_desde_github(nombre_base):
     base_url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/CATASTRO"
     extensiones = ["shp", "shx", "dbf", "prj"]
@@ -73,24 +72,20 @@ def cargar_shapefile_desde_github(nombre_base):
     # Descargamos cada uno de los archivos
     for ext in extensiones:
         url = f"{base_url}/{nombre_base}.{ext}"
-        st.write(f"Intentando descargar desde la URL: {url}")  # Verifica la URL aquí
-        local_path = os.path.join(temp_dir, f"{nombre_base}.{ext}")
-        
-        # Hacemos la solicitud HTTP
         r = requests.get(url)
         
         if r.status_code == 200:
+            local_path = os.path.join(temp_dir, f"{nombre_base}.{ext}")
             with open(local_path, "wb") as f:
                 f.write(r.content)
             archivos[ext] = local_path
         else:
-            st.error(f"No se pudo descargar el archivo {nombre_base}.{ext} desde: {url} (Código de estado: {r.status_code})")
+            st.error(f"No se pudo descargar el archivo {nombre_base}.{ext}.")
             return None
 
     # Verificamos si los archivos han sido descargados correctamente
     if len(archivos) == 4:
         try:
-            st.write(f"Archivos descargados correctamente: {archivos}")
             # Intentamos cargar el shapefile
             gdf = gpd.read_file(archivos["shp"])
             return gdf
@@ -100,6 +95,26 @@ def cargar_shapefile_desde_github(nombre_base):
     else:
         st.error("No se descargaron todos los archivos necesarios.")
         return None
+
+# Cargar el shapefile
+nombre_base = "nombre_del_shapefile"  # Cambia esto por el nombre de tu shapefile
+gdf = cargar_shapefile_desde_github(nombre_base)
+
+if gdf is not None:
+    # Mostrar los municipios como un selector desplegable
+    municipios = gdf['municipio'].unique()  # Asegúrate de que 'municipio' sea la columna correcta
+    municipio_seleccionado = st.selectbox("Selecciona un municipio", municipios)
+
+    # Filtrar el GeoDataFrame por el municipio seleccionado
+    gdf_filtrado = gdf[gdf['municipio'] == municipio_seleccionado]
+
+    # Mostrar los polígonos y parcelas correspondientes al municipio seleccionado
+    st.write(f"Mostrando los polígonos y parcelas del municipio: {municipio_seleccionado}")
+    st.map(gdf_filtrado)  # Mostrar el mapa con los polígonos de ese municipio
+
+    # Mostrar detalles adicionales (como las parcelas) si es necesario
+    st.write("Detalles de las parcelas:")
+    st.write(gdf_filtrado[['parcela', 'geometry']])  # Asegúrate de que 'parcela' y 'geometry' sean las columnas correctas
 
 # Función para transformar coordenadas de ETRS89 a WGS84 (Long, Lat)
 def transformar_coordenadas(x, y):
