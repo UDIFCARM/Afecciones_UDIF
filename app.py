@@ -209,29 +209,35 @@ def crear_mapa(x, y, afecciones=[]):
 
     return mapa_html, afecciones
 
-# Función para generar el PDF con los datos de la solicitud
-def generar_pdf(datos, x, y, filename):
-    pdf = FPDF()
-    pdf.add_page()
+# Función para generar el informe DOCX
+def generar_docx_desde_plantilla(datos, x, y, filename_salida):
+    url_plantilla = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/plantilla_informe_afecciones.docx"
 
-    pdf.set_font("Arial", "B", size=14)
-    pdf.cell(200, 10, "Informe de Afecciones Ambientales", ln=True, align="C")
+    # Descargar plantilla
+    response = requests.get(url_plantilla)
+    if response.status_code != 200:
+        st.error("No se pudo descargar la plantilla DOCX.")
+        return None
 
-    pdf.set_font("Arial", size=12)
-    pdf.ln(10)
+    plantilla = Document(BytesIO(response.content))
 
-    for k, v in datos.items():
-        if k.lower() == "afección mup" and v.startswith("Dentro de MUP"): 
-            v_lines = v.split("\n")
-            for line in v_lines:
-                pdf.cell(200, 10, line, ln=True)
-        else:
-            pdf.multi_cell(0, 10, f"{k.capitalize()}: {v}")
+    # Rellenar marcadores
+    for p in plantilla.paragraphs:
+        for k, v in datos.items():
+            marcador = f"{{{{{k}}}}}"
+            if marcador in p.text:
+                p.text = p.text.replace(marcador, str(v))
 
-    pdf.ln(5)
-    pdf.cell(200, 10, f"Coordenadas ETRS89: X = {x}, Y = {y}", ln=True)
-    pdf.output(filename)
-    return filename
+        if "{{x}}" in p.text:
+            p.text = p.text.replace("{{x}}", str(x))
+        if "{{y}}" in p.text:
+            p.text = p.text.replace("{{y}}", str(y))
+
+    # Guardar en memoria
+    output = BytesIO()
+    plantilla.save(output)
+    output.seek(0)
+    return output
 
 # Interfaz de Streamlit
 st.title("\U0001F5FA️ Informe de Afecciones Ambientales")
@@ -389,3 +395,9 @@ if st.session_state['mapa_html'] and st.session_state['pdf_file']:
 
     with open(st.session_state['mapa_html'], "r") as f:
         st.download_button("🌍 Descargar mapa HTML", f, file_name="mapa_busqueda.html")
+
+    docx_file = generar_docx_desde_plantilla(datos, x, y, "informe.docx")
+
+    if docx_file:
+        st.success("Informe generado correctamente.")
+        st.download_button("📄 Descargar informe DOCX", data=docx_file, file_name="informe_afecciones.docx")
