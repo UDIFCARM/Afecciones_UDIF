@@ -79,7 +79,7 @@ def cargar_shapefile_desde_github(base_name):
             
             response = requests.get(url)
             if response.status_code != 200:
-                print(f"Error al descargar {url}")
+                st.error(f"Error al descargar {url}")
                 return None  # Si falta algún archivo esencial, falla todo
             
             with open(local_path, "wb") as f:
@@ -238,7 +238,13 @@ st.title("\U0001F5FA️ Informe de Afecciones Ambientales")
 
 modo = st.radio("Selecciona el modo de búsqueda", ["Por coordenadas", "Por parcela"])
 
-# Cargar el shapefile correspondiente al municipio seleccionado
+# Variables iniciales de coordenadas y de selección (para el modo parcela)
+x = 0.0
+y = 0.0
+municipio_sel = ""
+masa_sel = ""
+parcela_sel = ""
+
 if modo == "Por parcela":
     municipio_sel = st.selectbox("Municipio", sorted(shp_urls.keys()))
     archivo_base = shp_urls[municipio_sel]
@@ -252,13 +258,14 @@ if modo == "Por parcela":
         parcela = gdf[(gdf["MASA"] == masa_sel) & (gdf["PARCELA"] == parcela_sel)]
         
         if parcela.geometry.geom_type.isin(['Polygon', 'MultiPolygon']).all():
+            # Calcular el centroide y asignar coordenadas
             puntos = parcela.copy()
             puntos["geometry"] = puntos.geometry.centroid
             puntos["longitude"] = puntos.geometry.x
             puntos["latitude"] = puntos.geometry.y
             parcela = puntos  
           
-            punto_centro = parcela.geometry.centroid.iloc[0]
+            punto_centro = parcela.geometry.iloc[0]
             x = punto_centro.x
             y = punto_centro.y         
                     
@@ -271,9 +278,8 @@ if modo == "Por parcela":
     else:
         st.error(f"No se pudo cargar el shapefile para el municipio: {municipio_sel}")
 
-else:
-    x = st.number_input("Coordenada X (ETRS89)", format="%.2f")
-    y = st.number_input("Coordenada Y (ETRS89)", format="%.2f")
+# Si el modo es "Por coordenadas" NO se solicita la entrada previa
+# Se incluirán los inputs de coordenadas en el formulario
 
 with st.form("formulario"):
     fecha_solicitud = st.date_input("Fecha de la solicitud")
@@ -284,6 +290,15 @@ with st.form("formulario"):
     telefono = st.text_input("Teléfono")
     email = st.text_input("Correo electrónico")
     objeto = st.text_area("Objeto de la solicitud", max_chars=255)
+
+    # Si el modo es "Por coordenadas", incluir campos para las coordenadas en el formulario
+    if modo == "Por coordenadas":
+        x = st.number_input("Coordenada X (ETRS89)", format="%.2f", help="Introduce coordenadas en metros, sistema ETRS89 / UTM zona 30")
+        y = st.number_input("Coordenada Y (ETRS89)", format="%.2f")
+    else:
+        # Muestra las coordenadas calculadas y las pone como campo oculto para el formulario
+        st.info(f"Coordenadas obtenidas de la parcela: X = {x}, Y = {y}")
+        
     submitted = st.form_submit_button("Generar informe")
 
 if 'mapa_html' not in st.session_state:
