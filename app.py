@@ -210,69 +210,6 @@ def crear_mapa(x, y, afecciones=[]):
 
     return mapa_html, afecciones
 
-# Función para generar el PDF con los datos de la solicitud
-# 1. Descargar la plantilla desde GitHub
-import requests
-
-url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/plantilla_informe_afecciones.docx"
-template_path = "plantilla.docx"
-
-response = requests.get(url)
-with open(template_path, "wb") as f:
-    f.write(response.content)
-
-# 2. Rellenar la plantilla con los datos usando docxtpl
-doc = DocxTemplate("plantilla.docx")
-
-# Diccionario con los datos de la solicitud
-contexto = {
-    'fecha_solicitud': fecha_solicitud,
-    'fecha_informe': fecha_informe,
-    'nombre': nombre,
-    'apellidos': apellidos,
-    'dni': dni,
-    'direccion': direccion,
-    'telefono': telefono,
-    'email': email,
-    'objeto': objeto,
-    'municipio': municipio,
-    'poligono': poligono,
-    'parcela': parcela,
-    'coordenadas_x': coordenadas_x,
-    'coordenadas_y': coordenadas_y,
-    'mup_id': mup_id,
-    'mup_nombre': mup_nombre,
-    'mup_municipio': mup_municipio,
-    'mup_propiedad': mup_propiedad,
-    'tm': tm,
-    'vp': vp,
-    'enp': enp,
-    'zepa': zepa,
-    'lic': lic
-}
-
-# Rellenar la plantilla con los datos
-doc.render(contexto)
-
-# Guardar el resultado como nuevo documento
-doc.save("informe_generado.docx")
-
-# 3. Convertir el .docx generado a PDF
-def docx_to_html(docx_path):
-    document = Document(docx_path)
-    html = "<html><body>"
-    for para in document.paragraphs:
-        html += f"<p>{para.text}</p>"
-    html += "</body></html>"
-    return html
-
-html_content = docx_to_html("informe_generado.docx")
-
-with open("temp.html", "w", encoding="utf-8") as f:
-    f.write(html_content)
-
-pdfkit.from_file("temp.html", "informe_generado.pdf")
-
 # Interfaz de Streamlit
 st.title("\U0001F5FA️ Informe de Afecciones Ambientales")
 
@@ -416,6 +353,69 @@ if submitted:
 
         with open(mapa_html, 'r') as f:
             html(f.read(), height=500)
+
+# Función para generar el PDF con los datos de la solicitud
+# 1. Descargar la plantilla desde GitHub
+import requests
+
+url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/plantilla_informe_afecciones.docx"
+template_path = "plantilla.docx"
+
+response = requests.get(url)
+with open(template_path, "wb") as f:
+    f.write(response.content)
+
+# 2. Rellenar la plantilla con los datos usando docxtpl
+doc = DocxTemplate("plantilla.docx")
+
+# Diccionario con los datos de la solicitud
+contexto = {
+    'fecha_solicitud': fecha_solicitud,
+    'fecha_informe': fecha_informe,
+    'nombre': nombre,
+    'apellidos': apellidos,
+    'dni': dni,
+    'direccion': direccion,
+    'telefono': telefono,
+    'email': email,
+    'objeto': objeto,
+    'municipio': municipio,
+    'poligono': poligono,
+    'parcela': parcela,
+    'coordenadas_x': coordenadas_x,
+    'coordenadas_y': coordenadas_y,
+    'mup_id': mup_id,
+    'mup_nombre': mup_nombre,
+    'mup_municipio': mup_municipio,
+    'mup_propiedad': mup_propiedad,
+    'tm': tm,
+    'vp': vp,
+    'enp': enp,
+    'zepa': zepa,
+    'lic': lic
+}
+
+# Rellenar la plantilla con los datos
+doc.render(contexto)
+
+# Guardar el resultado como nuevo documento
+doc.save("informe_generado.docx")
+
+# 3. Convertir el .docx generado a PDF
+def docx_to_html(docx_path):
+    document = Document(docx_path)
+    html = "<html><body>"
+    for para in document.paragraphs:
+        html += f"<p>{para.text}</p>"
+    html += "</body></html>"
+    return html
+
+html_content = docx_to_html("informe_generado.docx")
+
+with open("temp.html", "w", encoding="utf-8") as f:
+    f.write(html_content)
+
+pdfkit.from_file("temp.html", "informe_generado.pdf")
 
 # Botones de descarga
 if st.session_state['mapa_html'] and st.session_state['pdf_file']:
