@@ -204,38 +204,36 @@ modo = st.radio("Selecciona el modo de búsqueda", ["Por coordenadas", "Por parc
 
 # Cargar el shapefile correspondiente al municipio seleccionado
 if modo == "Por parcela":
-
     # Solo mostrar el selectbox de municipio si el modo es por parcela
     municipio_sel = st.selectbox("Municipio", list(shp_urls.keys()))
-
-if municipio_sel:  # Verificar que el municipio haya sido seleccionado 
-    gdf = cargar_shapefile_desde_github(shp_urls[municipio_sel])
+    if municipio_sel:  # Verificar que el municipio haya sido seleccionado 
+        gdf = cargar_shapefile_desde_github(shp_urls[municipio_sel])
     
-    if gdf is not None:
-        masa_sel = st.selectbox("Polígono", sorted(gdf["MASA"].unique()))
-        parcela_sel = st.selectbox("Parcela", sorted(gdf[gdf["MASA"] == masa_sel]["PARCELA"].unique()))
-        parcela = gdf[(gdf["MASA"] == masa_sel) & (gdf["PARCELA"] == parcela_sel)]
+        if gdf is not None:
+            masa_sel = st.selectbox("Polígono", sorted(gdf["MASA"].unique()))
+            parcela_sel = st.selectbox("Parcela", sorted(gdf[gdf["MASA"] == masa_sel]["PARCELA"].unique()))
+            parcela = gdf[(gdf["MASA"] == masa_sel) & (gdf["PARCELA"] == parcela_sel)]
 
-        # Asegurarse de que la geometría es un polígono
-        if parcela.geometry.geom_type.isin(['Polygon', 'MultiPolygon']).all():
-            # Calcular el centroide del polígono
-            puntos = parcela.copy()
-            puntos["geometry"] = puntos.geometry.centroid
-            puntos["longitude"] = puntos.geometry.x
-            puntos["latitude"] = puntos.geometry.y
-            parcela = puntos  # Sobrescribir con los centroides
+            # Asegurarse de que la geometría es un polígono
+            if parcela.geometry.geom_type.isin(['Polygon', 'MultiPolygon']).all():
+                # Calcular el centroide del polígono
+                puntos = parcela.copy()
+                puntos["geometry"] = puntos.geometry.centroid
+                puntos["longitude"] = puntos.geometry.x
+                puntos["latitude"] = puntos.geometry.y
+                parcela = puntos  # Sobrescribir con los centroides
           
-            # Obtener coordenadas del centroide
-            punto_centro = parcela.geometry.centroid.iloc[0]
-            x = punto_centro.x
-            y = punto_centro.y         
+                # Obtener coordenadas del centroide
+                punto_centro = parcela.geometry.centroid.iloc[0]
+                x = punto_centro.x
+                y = punto_centro.y         
                     
-            st.success("Parcela cargada correctamente.")
+                st.success("Parcela cargada correctamente.")
 
-            # Mostrar el municipio, polígono y parcela seleccionados
-            st.write(f"Municipio: {municipio_sel}")
-            st.write(f"Polígono: {masa_sel}")
-            st.write(f"Parcela: {parcela_sel}")
+                # Mostrar el municipio, polígono y parcela seleccionados
+                st.write(f"Municipio: {municipio_sel}")
+                st.write(f"Polígono: {masa_sel}")
+                st.write(f"Parcela: {parcela_sel}")
             else:
                 st.error("La geometría seleccionada no es un polígono válido.")
         else:
