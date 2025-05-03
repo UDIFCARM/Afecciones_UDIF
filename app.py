@@ -298,7 +298,7 @@ if 'pdf_file' not in st.session_state:
 
 if submitted:
     # Validación de entradas
-    f not nombre or not apellidos or not dni or x is None or y is None or x == 0 or y == 0:
+    if not nombre or not apellidos or not dni or x is None or y is None or x == 0 or y == 0:
         st.warning("Por favor, completa todos los campos obligatorios y asegúrate de que las coordenadas son correctas.")
     else:
         lon, lat = transformar_coordenadas(x, y)
