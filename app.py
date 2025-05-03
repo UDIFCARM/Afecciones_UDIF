@@ -384,9 +384,7 @@ if submitted:
             html(f.read(), height=500)
 
         # PDF generado desde los datos
-        pdf_filename = f"informe_{uuid.uuid4().hex[:8]}.pdf"
-        generar_pdf(datos, x, y, pdf_filename)
-        st.session_state['pdf_file'] = pdf_filename
+        docx_file = generar_docx_desde_plantilla(datos, x, y, "informe_afecciones.docx")
 
 # Botones de descarga
 if st.session_state['mapa_html'] and st.session_state['pdf_file']:
