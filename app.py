@@ -322,7 +322,7 @@ if submitted:
         afecciones = [afeccion_enp, afeccion_zepa, afeccion_lic, afeccion_vp, afeccion_tm, afeccion_mup]
         
         datos = {
-            "fecha_solicitud": fecha_solicitud.strftime('%d/%m/%Y'),
+            "fecha_entrada": fecha_solicitud.strftime('%d/%m/%Y'),
             "fecha_informe": datetime.today().strftime('%d/%m/%Y'),
             "nombre": nombre,
             "apellidos": apellidos,
