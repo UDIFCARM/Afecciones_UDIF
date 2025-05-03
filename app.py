@@ -392,12 +392,14 @@ if st.session_state['mapa_html'] and st.session_state['pdf_file']:
     with open(st.session_state['mapa_html'], "r") as f:
         st.download_button("🌍 Descargar mapa HTML", f, file_name="mapa_busqueda.html")
 
-docx_file = generar_docx_desde_plantilla(datos, x, y)
-
-if docx_file:
-    st.download_button(
-        "📄 Descargar informe DOCX",
-        data=docx_file,
-        file_name="informe_afecciones.docx",
-        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-    )
+if 'x' in locals() and 'y' in locals():
+    docx_file = generar_docx_desde_plantilla(datos, x, y)
+    if docx_file:
+        st.download_button(
+            "📄 Descargar informe DOCX",
+            data=docx_file,
+            file_name="informe_afecciones.docx",
+            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        )
+else:
+    st.error("Coordenadas X e Y no están definidas.")
