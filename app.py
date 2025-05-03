@@ -239,40 +239,39 @@ modo = st.radio("Selecciona el modo de búsqueda", ["Por coordenadas", "Por parc
 
 # Cargar el shapefile correspondiente al municipio seleccionado
 if modo == "Por parcela":
-    municipio_sel = st.selectbox("Municipio", list(shp_urls.keys()))  # Se obtiene la lista de claves del diccionario
+    municipio_sel = st.selectbox("Municipio", list(gdf["TM"].unique()))
     gdf = cargar_shapefile_desde_github(shp_urls[municipio_sel])
     
     if gdf is not None:
         masa_sel = st.selectbox("Polígono", sorted(gdf["MASA"].unique()))
         parcela_sel = st.selectbox("Parcela", sorted(gdf[gdf["MASA"] == masa_sel]["PARCELA"].unique()))
         parcela = gdf[(gdf["MASA"] == masa_sel) & (gdf["PARCELA"] == parcela_sel)]
-
-        # Asegurarse de que la geometría es un polígono
+        
         if parcela.geometry.geom_type.isin(['Polygon', 'MultiPolygon']).all():
-            # Calcular el centroide del polígono
             puntos = parcela.copy()
             puntos["geometry"] = puntos.geometry.centroid
             puntos["longitude"] = puntos.geometry.x
             puntos["latitude"] = puntos.geometry.y
-            parcela = puntos  # Sobrescribir con los centroides
+            parcela = puntos  
           
-            # Obtener coordenadas del centroide
             punto_centro = parcela.geometry.centroid.iloc[0]
             x = punto_centro.x
             y = punto_centro.y         
                     
             st.success("Parcela cargada correctamente.")
-
-            # Mostrar el municipio, polígono y parcela seleccionados
+            municipio_sel = municipio_sel  # Asegurarse de que municipio_sel esté disponible
             st.write(f"Municipio: {municipio_sel}")
             st.write(f"Polígono: {masa_sel}")
             st.write(f"Parcela: {parcela_sel}")
         else:
             st.error("La geometría seleccionada no es un polígono válido.")
 else:
-    # Modo por coordenadas: solo pedimos las coordenadas sin seleccionar municipio ni polígono
     x = st.number_input("Coordenada X (ETRS89)", format="%.2f")
     y = st.number_input("Coordenada Y (ETRS89)", format="%.2f")
+
+    municipio_sel = "Coordenadas no asociadas a municipio"  # Valor predeterminado para el modo "Por coordenadas"
+    
+    # Otras condiciones y flujo del código para el caso de coordenadas
     
 with st.form("formulario"):
     fecha_solicitud = st.date_input("Fecha de la solicitud")
