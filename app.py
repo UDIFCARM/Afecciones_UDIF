@@ -66,31 +66,34 @@ shp_urls = {
 
 # Función para cargar shapefiles desde GitHub
 @st.cache_data
-def cargar_shapefile_desde_github(municipio):
-    base_url = f"https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/CATASTRO/{municipio}"
-    extensiones = [".shp", ".shx", ".dbf", ".prj"]
-    archivos_locales = {}
+def cargar_shapefile_desde_github(nombre_base):
+    base_url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/CATASTRO"
+    extensiones = [".shp", ".shx", ".dbf", ".prj"]  # Añadir ".cpg" si lo necesitas
 
     with tempfile.TemporaryDirectory() as tmpdir:
+        rutas = {}
         for ext in extensiones:
-            nombre_archivo = f"{municipio}{ext}"
-            url = f"{base_url}/{nombre_archivo}"
-            respuesta = requests.get(url)
-            if respuesta.status_code == 200:
-                ruta_local = os.path.join(tmpdir, nombre_archivo)
-                with open(ruta_local, "wb") as f:
-                    f.write(respuesta.content)
-                archivos_locales[ext] = ruta_local
+            url = f"{base_url}/{nombre_base}{ext}"
+            local_path = os.path.join(tmpdir, f"{nombre_base}{ext}")
+            r = requests.get(url)
+            if r.status_code == 200:
+                with open(local_path, 'wb') as f:
+                    f.write(r.content)
+                rutas[ext] = local_path
             else:
-                st.warning(f"No se encontró: {url}")
+                st.warning(f"No se pudo descargar: {url}")
 
-        if all(ext in archivos_locales for ext in [".shp", ".shx", ".dbf"]):
-            gdf = gpd.read_file(archivos_locales[".shp"])
-            return gdf
+        # Verifica que tenemos los archivos clave
+        if all(ext in rutas for ext in [".shp", ".shx", ".dbf"]):
+            try:
+                gdf = gpd.read_file(rutas[".shp"])
+                return gdf
+            except Exception as e:
+                st.error(f"Error al leer shapefile: {e}")
+                return None
         else:
-            st.error("Faltan archivos esenciales para cargar el shapefile.")
+            st.error("Faltan archivos esenciales del shapefile.")
             return None
-
 # Función para transformar coordenadas de ETRS89 a WGS84 (Long, Lat)
 def transformar_coordenadas(x, y):
     transformer = Transformer.from_crs("EPSG:25830", "EPSG:4326", always_xy=True)
