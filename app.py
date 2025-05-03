@@ -204,7 +204,11 @@ modo = st.radio("Selecciona el modo de búsqueda", ["Por coordenadas", "Por parc
 
 # Cargar el shapefile correspondiente al municipio seleccionado
 if modo == "Por parcela":
+
+    # Solo mostrar el selectbox de municipio si el modo es por parcela
     municipio_sel = st.selectbox("Municipio", list(shp_urls.keys()))
+
+if municipio_sel:  # Verificar que el municipio haya sido seleccionado 
     gdf = cargar_shapefile_desde_github(shp_urls[municipio_sel])
     
     if gdf is not None:
@@ -232,8 +236,12 @@ if modo == "Por parcela":
             st.write(f"Municipio: {municipio_sel}")
             st.write(f"Polígono: {masa_sel}")
             st.write(f"Parcela: {parcela_sel}")
+            else:
+                st.error("La geometría seleccionada no es un polígono válido.")
         else:
-            st.error("La geometría seleccionada no es un polígono válido.")
+            st.error("No se pudo cargar el shapefile para el municipio seleccionado.")
+    else:
+        st.warning("Por favor, selecciona un municipio.")
 
 else:
     # Búsqueda por coordenadas
