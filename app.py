@@ -266,7 +266,7 @@ if modo == "Por parcela":
     if gdf is not None:
         # Asegúrate de que las columnas y valores sean correctos
         gdf["MUNICIPIO"] = gdf["MUNICIPIO"].fillna("").astype(str)
-        gdf["MUNICIPIO"] = gdf["MUNICIPIO"].str.strip().str.upper()
+        gdf["MUNICIPIO"] = gdf["MUNICIPIO"].str.strip().str.upper() 
         
         if gdf.empty:
             st.error(f"No se encontraron datos para el municipio {municipio_sel}.")
