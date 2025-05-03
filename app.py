@@ -16,17 +16,52 @@ from branca.element import Template, MacroElement
 
 # Diccionario con los nombres de municipios y sus nombres base de archivo
 shp_urls = {
-    "ABANILLA": "ABANILLA",
-    "ABARAN": "ABARAN",
-    "AGUILAS": "AGUILAS",
-    "ALBUDEITE": "ALBUDEITE",
-    "ALCANTARILLA": "ALCANTARILLA",
-    "ALEDO": "ALEDO",
-    "ALGUAZAS": "ALGUAZAS",
-    "ALHAMA_DE_MURCIA": "ALHAMA_DE_MURCIA",
-    "ARCHENA": "ARCHENA",
-    "TOTANA": "TOTANA",
-    # Agrega aquí más municipios si tienes los archivos en GitHub
+"ABANILLA": "ABANILLA",
+"ABARAN": "ABARAN",
+"AGUILAS": "AGUILAS",
+"ALBUDEITE": "ALBUDEITE",
+"ALCANTARILLA": "ALCANTARILLA",
+"ALEDO": "ALEDO",
+"ALGUAZAS": "ALGUAZAS",
+"ALHAMA_DE_MURCIA": "ALHAMA_DE_MURCIA",
+"ARCHENA": "ARCHENA",
+"BENIEL": "BENIEL",
+"BLANCA": "BLANCA",
+"BULLAS": "BULLAS",
+"CALASPARRA": "CALASPARRA",
+"CAMPOS_DEL_RIO": "CAMPOS_DEL_RIO",
+"CARAVACA_DE_LA_CRUZ": "CARAVACA_DE_LA_CRUZ",
+"CARTAGENA": "CARTAGENA",
+"CEHEGIN": "CEHEGIN",
+"CEUTI": "CEUTI",
+"CIEZA": "CIEZA",
+"FORTUNA": "FORTUNA",
+"FUENTE_ALAMO_DE_MURCIA": "FUENTE_ALAMO_DE_MURCIA",
+"JUMILLA": "JUMILLA",
+"LAS_TORRES_DE_COTILLAS": "LAS_TORRES_DE_COTILLAS",
+"LA_UNION": "LA_UNION",
+"LIBRILLA": "LIBRILLA",
+"LORCA": "LORCA",
+"LORQUI": "LORQUI",
+"LOS_ALCAZARES": "LOS_ALCAZARES",
+"MAZARRON": "MAZARRON",
+"MOLINA_DE_SEGURA": "MOLINA_DE_SEGURA",
+"MORATALLA": "MORATALLA",
+"MULA": "MULA",
+"MURCIA": "MURCIA",
+"OJOS": "OJOS",
+"PLIEGO": "PLIEGO",
+"PUERTO_LUMBRERAS": "PUERTO_LUMBRERAS",
+"RICOTE": "RICOTE",
+"SANTOMERA": "SANTOMERA",
+"SAN_JAVIER": "SAN_JAVIER",
+"SAN_PEDRO_DEL_PINATAR": "SAN_PEDRO_DEL_PINATAR",
+"TORRE_PACHECO": "TORRE_PACHECO",
+"TOTANA": "TOTANA",
+"ULEA": "ULEA",
+"VILLANUEVA_DEL_RIO_SEGURA": "VILLANUEVA_DEL_RIO_SEGURA",
+"YECLA": "YECLA",
+
 }
 
 def cargar_shapefile_desde_github(nombre_base):
@@ -205,36 +240,14 @@ modo = st.radio("Selecciona el modo de búsqueda", ["Por coordenadas", "Por parc
 # Cargar el shapefile correspondiente al municipio seleccionado
 if modo == "Por parcela":
     municipio_sel = st.selectbox("Municipio", list(shp_urls.keys()))
-    gdf = cargar_shapefile_desde_github(shp_urls[municipio_sel])
-    
-    if gdf is not None:
-        masa_sel = st.selectbox("Polígono", sorted(gdf["MASA"].unique()))
-        parcela_sel = st.selectbox("Parcela", sorted(gdf[gdf["MASA"] == masa_sel]["PARCELA"].unique()))
-        parcela = gdf[(gdf["MASA"] == masa_sel) & (gdf["PARCELA"] == parcela_sel)]
-
-        # Asegurarse de que la geometría es un polígono
-        if parcela.geometry.geom_type.isin(['Polygon', 'MultiPolygon']).all():
-            # Calcular el centroide del polígono
-            puntos = parcela.copy()
-            puntos["geometry"] = puntos.geometry.centroid
-            puntos["longitude"] = puntos.geometry.x
-            puntos["latitude"] = puntos.geometry.y
-            parcela = puntos  # Sobrescribir con los centroides
-          
-            # Obtener coordenadas del centroide
-            punto_centro = parcela.geometry.centroid.iloc[0]
-            x = punto_centro.x
-            y = punto_centro.y         
-                    
-            st.success("Parcela cargada correctamente.")
-
-            # Mostrar el municipio, polígono y parcela seleccionados
-            st.write(f"Municipio: {municipio_sel}")
-            st.write(f"Polígono: {masa_sel}")
-            st.write(f"Parcela: {parcela_sel}")
-        else:
-            st.error("La geometría seleccionada no es un polígono válido.")
-
+    gdf = cargar_shapefile_desde_github(shp_urls["TM"]== municipio_sel
+    masa_sel = st.selectbox("Polígono", sorted(gdf_filtrado["MASA"].unique()))
+    gdf_filtrado = gdf_filtrado[gdf_filtrado["MASA"] == masa_sel]
+    parcela_sel = st.selectbox("Parcela", sorted(gdf_filtrado["PARCELA"].unique()))
+    parcela = gdf_filtrado[gdf_filtrado["PARCELA"] == parcela_sel].iloc[0]
+    punto_centro = parcela.geometry.centroid
+    x = punto_centro.x
+    y = punto_centro.y
 else:
     x = st.number_input("Coordenada X (ETRS89)", format="%.2f")
     y = st.number_input("Coordenada Y (ETRS89)", format="%.2f")
