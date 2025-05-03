@@ -8,7 +8,7 @@ lxml
 selenium
 chromedriver
 python-docx
-docxtpl
+docx
 docx2pdf
 xmltodict
 fiona
