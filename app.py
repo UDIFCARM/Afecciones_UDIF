@@ -4,7 +4,6 @@ from streamlit.components.v1 import html
 from fpdf import FPDF
 from pyproj import Transformer
 import requests
-import xml.etree.ElementTree as ET
 import geopandas as gpd
 import tempfile
 import os
@@ -12,7 +11,7 @@ from shapely.geometry import Point
 import uuid
 from datetime import datetime
 from docx import Document
-from branca.element import Template, MacroElement 
+from branca.element import Template, MacroElement
 
 # Diccionario con los nombres de municipios y sus nombres base de archivo
 shp_urls = {
@@ -240,12 +239,9 @@ modo = st.radio("Selecciona el modo de búsqueda", ["Por coordenadas", "Por parc
 # Cargar el shapefile correspondiente al municipio seleccionado
 if modo == "Por parcela":
     municipio_sel = st.selectbox("Municipio", list(shp_urls.keys()))
-    gdf = cargar_shapefile_desde_github(shp_urls[municipio_sel])  # Corregido aquí
-    gdf_filtrado = gdf[gdf["MUNICIPIO"] == municipio_sel]  # Filtrado por municipio
-    masa_sel = st.selectbox("Polígono", sorted(gdf_filtrado["MASA"].unique()))
-    gdf_filtrado = gdf_filtrado[gdf_filtrado["MASA"] == masa_sel]
-    parcela_sel = st.selectbox("Parcela", sorted(gdf_filtrado["PARCELA"].unique()))
-    parcela = gdf_filtrado[gdf_filtrado["PARCELA"] == parcela_sel].iloc[0]
+    gdf = cargar_shapefile_desde_github(shp_urls[municipio_sel])
+    gdf_filtrado = gdf[gdf["MUNICIPIO"] == municipio_sel]
+    st.write(f"Parcelas en {municipio_sel}: {len(gdf_filtrado)}")
     punto_centro = parcela.geometry.centroid
     x = punto_centro.x
     y = punto_centro.y
