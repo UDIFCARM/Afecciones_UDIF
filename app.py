@@ -469,47 +469,68 @@ def generar_pdf(datos, x, y, filename):
     pdf.output(filename)
     return filename
 
-# Interfaz de Streamlit
+# Función para cargar shapefile desde GitHub
+def cargar_shapefile_desde_github(url):
+    try:
+        gdf = gpd.read_file(url)
+        return gdf
+    except Exception as e:
+        st.error(f"Error al cargar el shapefile: {e}")
+        return None
+
+# Título de la aplicación
 st.title("\U0001F5FA️ Informe de Afecciones Ambientales")
 
+# Modo de búsqueda
 modo = st.radio("Selecciona el modo de búsqueda", ["Por coordenadas", "Por parcela"])
 
 # Cargar el shapefile correspondiente al municipio seleccionado
 if modo == "Por parcela":
     municipio_sel = st.selectbox("Municipio", list(shp_urls.keys()))
+    
     gdf = cargar_shapefile_desde_github(shp_urls[municipio_sel])
     
-    # Asegúrate de que las columnas y valores sean correctos
-    gdf["MUNICIPIO"] = gdf["MUNICIPIO"].fillna("").astype(str)
-    gdf["MUNICIPIO"] = gdf["MUNICIPIO"].str.strip().str.upper()
-    
-    if gdf.empty:
-        st.error(f"No se encontraron datos para el municipio {municipio_sel}.")
-    else:
-        gdf_filtrado = gdf[gdf["MUNICIPIO"] == municipio_sel]
+    if gdf is not None:
+        st.write("Columnas disponibles en el shapefile:", gdf.columns)
         
-        if gdf_filtrado.empty:
-            st.warning(f"No se encontraron parcelas en {municipio_sel}.")
+        # Asegúrate de que las columnas sean correctas
+        if "MUNICIPIO" in gdf.columns and "PARCELA" in gdf.columns and "MASA" in gdf.columns:
+            gdf["MUNICIPIO"] = gdf["MUNICIPIO"].fillna("").astype(str)
+            gdf["MUNICIPIO"] = gdf["MUNICIPIO"].str.strip().str.upper()
+
+            if gdf.empty:
+                st.error(f"No se encontraron datos para el municipio {municipio_sel}.")
+            else:
+                gdf_filtrado = gdf[gdf["MUNICIPIO"] == municipio_sel]
+                
+                if gdf_filtrado.empty:
+                    st.warning(f"No se encontraron parcelas en {municipio_sel}.")
+                else:
+                    st.write(f"Parcelas en {municipio_sel}: {len(gdf_filtrado)}")
+                    
+                    parcela_sel = st.selectbox("Selecciona la parcela", gdf_filtrado["PARCELA"].unique())
+                    parcela = gdf_filtrado[gdf_filtrado["PARCELA"] == parcela_sel]
+                    
+                    # Verificar que el centroide esté disponible
+                    if parcela.geometry.is_valid.any():
+                        punto_centro = parcela.geometry.centroid.iloc[0]
+                        x = punto_centro.x
+                        y = punto_centro.y
+                        st.write(f"Centro de la parcela {parcela_sel}: ({x}, {y})")
+                    else:
+                        st.error("No se pudo calcular el centroide para esta parcela.")
+                    
+                    masa_sel = parcela["MASA"].iloc[0]
+                    st.write(f"Polígono seleccionado: {masa_sel}")
         else:
-            # Mostrar las parcelas disponibles
-            st.write(f"Parcelas en {municipio_sel}: {len(gdf_filtrado)}")
-            
-            # Selección de la parcela
-            parcela_sel = st.selectbox("Selecciona la parcela", gdf_filtrado["PARCELA"].unique())
-            parcela = gdf_filtrado[gdf_filtrado["PARCELA"] == parcela_sel]
-            
-            # Obtener el centroide de la parcela
-            punto_centro = parcela.geometry.centroid.iloc[0]
-            x = punto_centro.x
-            y = punto_centro.y
-            st.write(f"Centro de la parcela {parcela_sel}: ({x}, {y})")
-            
-            # Agregar el polígono
-            masa_sel = parcela["MASA"].iloc[0]  # Suponiendo que el campo que representa el polígono es "MASA"
-            st.write(f"Polígono seleccionado: {masa_sel}")
+            st.error("El shapefile no contiene las columnas necesarias.")
 else:
+    # Entrada de coordenadas manualmente
     x = st.number_input("Coordenada X (ETRS89)", format="%.2f")
     y = st.number_input("Coordenada Y (ETRS89)", format="%.2f")
+    
+    if not isinstance(x, (int, float)) or not isinstance(y, (int, float)):
+        st.error("Las coordenadas deben ser números válidos.")
     
 with st.form("formulario"):
     fecha_solicitud = st.date_input("Fecha de la solicitud")
