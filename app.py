@@ -275,7 +275,7 @@ else:
     y = st.number_input("Coordenada Y (ETRS89)", format="%.2f")
     
 with st.form("formulario"):
-    fecha_solicitud = st.date_input("Fecha de la solicitud")
+    fecha_entrada = st.date_input("Fecha de entrada")
     nombre = st.text_input("Nombre")
     apellidos = st.text_input("Apellidos")
     dni = st.text_input("DNI")
@@ -322,7 +322,7 @@ if submitted:
         afecciones = [afeccion_enp, afeccion_zepa, afeccion_lic, afeccion_vp, afeccion_tm, afeccion_mup]
         
         datos = {
-            "fecha_entrada": fecha_solicitud.strftime('%d/%m/%Y'),
+            "fecha_entrada": fecha_entrada.strftime('%d/%m/%Y'),
             "fecha_informe": datetime.today().strftime('%d/%m/%Y'),
             "nombre": nombre,
             "apellidos": apellidos,
