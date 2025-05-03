@@ -200,56 +200,74 @@ def generar_pdf(datos, x, y, filename):
 # Interfaz de Streamlit
 st.title("\U0001F5FA️ Informe de Afecciones Ambientales")
 
-# Cargar el shapefile correspondiente al municipio seleccionado
+# Selección de modo
 modo = st.radio("Selecciona el modo de búsqueda", ["Por coordenadas", "Por parcela"])
 
+# Si el usuario selecciona "Por parcela" (municipio, polígono y parcela)
 if modo == "Por parcela":
-    # Si el modo es "Por parcela", seleccionamos municipio, polígono y parcela
-    municipio_sel = st.selectbox("Municipio", ["Municipio A", "Municipio B", "Municipio C"])
+    st.header("Búsqueda por Municipio, Polígono y Parcela")
 
-    if municipio_sel:  # Asegurarse de que el municipio ha sido seleccionado
+    # Selección del municipio
+    municipio_sel = st.selectbox("Selecciona un municipio", ["Municipio A", "Municipio B", "Municipio C"])
+
+    if municipio_sel:  # Verificar que el municipio ha sido seleccionado
+        # Cargar el shapefile correspondiente al municipio
         gdf = cargar_shapefile_desde_github(f"https://github.com/{municipio_sel}.shp")
 
         if gdf is not None:
-            masa_sel = st.selectbox("Polígono", sorted(gdf["MASA"].unique()))
-            parcela_sel = st.selectbox("Parcela", sorted(gdf[gdf["MASA"] == masa_sel]["PARCELA"].unique()))
+            # Selección del polígono (MASA)
+            masa_sel = st.selectbox("Selecciona un polígono", sorted(gdf["MASA"].unique()))
+            if masa_sel:  # Verificar que se haya seleccionado un polígono
+                # Selección de la parcela
+                parcela_sel = st.selectbox("Selecciona una parcela", sorted(gdf[gdf["MASA"] == masa_sel]["PARCELA"].unique()))
 
-            parcela = gdf[(gdf["MASA"] == masa_sel) & (gdf["PARCELA"] == parcela_sel)]
-            
-            # Asegurarse de que la geometría es válida
-            if parcela.geometry.geom_type.isin(['Polygon', 'MultiPolygon']).all():
-                # Calcular el centroide del polígono
-                puntos = parcela.copy()
-                puntos["geometry"] = puntos.geometry.centroid
-                puntos["longitude"] = puntos.geometry.x
-                puntos["latitude"] = puntos.geometry.y
-                parcela = puntos  # Sobrescribir con los centroides
-                
-                # Obtener coordenadas del centroide
-                punto_centro = parcela.geometry.centroid.iloc[0]
-                x = punto_centro.x
-                y = punto_centro.y         
+                if parcela_sel:  # Verificar que se haya seleccionado una parcela
+                    # Obtener la parcela seleccionada
+                    parcela = gdf[(gdf["MASA"] == masa_sel) & (gdf["PARCELA"] == parcela_sel)]
+                    
+                    # Verificar que la geometría sea válida
+                    if parcela.geometry.geom_type.isin(['Polygon', 'MultiPolygon']).all():
+                        # Calcular el centroide de la parcela
+                        puntos = parcela.copy()
+                        puntos["geometry"] = puntos.geometry.centroid
+                        puntos["longitude"] = puntos.geometry.x
+                        puntos["latitude"] = puntos.geometry.y
+                        parcela = puntos  # Sobrescribir con los centroides
 
-                st.success("Parcela cargada correctamente.")
-                st.write(f"Municipio: {municipio_sel}")
-                st.write(f"Polígono: {masa_sel}")
-                st.write(f"Parcela: {parcela_sel}")
+                        # Mostrar resultados
+                        punto_centro = parcela.geometry.centroid.iloc[0]
+                        x = punto_centro.x
+                        y = punto_centro.y
+
+                        st.success("Parcela cargada correctamente.")
+                        st.write(f"Municipio: {municipio_sel}")
+                        st.write(f"Polígono: {masa_sel}")
+                        st.write(f"Parcela: {parcela_sel}")
+                        st.write(f"Coordenadas del centroide: X = {x}, Y = {y}")
+                    else:
+                        st.error("La geometría seleccionada no es un polígono válido.")
+                else:
+                    st.warning("Por favor, selecciona una parcela.")
             else:
-                st.error("La geometría seleccionada no es un polígono válido.")
+                st.warning("Por favor, selecciona un polígono.")
         else:
             st.error("No se pudo cargar el shapefile para el municipio seleccionado.")
     else:
         st.warning("Por favor, selecciona un municipio.")
-        
+
+# Si el usuario selecciona "Por coordenadas"
 elif modo == "Por coordenadas":
-    # Si el modo es "Por coordenadas", ingresamos las coordenadas
+    st.header("Búsqueda por Coordenadas")
+
+    # Entrada de coordenadas
     x = st.number_input("Coordenada X (ETRS89)", format="%.2f")
     y = st.number_input("Coordenada Y (ETRS89)", format="%.2f")
-    
-    if x == 0 or y == 0:
-        st.warning("Por favor, ingresa coordenadas válidas para X y Y. Los valores no pueden ser 0.")
-    else:
+
+    if x != 0 and y != 0:
+        st.success("Coordenadas ingresadas correctamente.")
         st.write(f"Coordenadas introducidas: X = {x}, Y = {y}")
+    else:
+        st.warning("Por favor, ingresa coordenadas válidas para X y Y (no pueden ser 0).")
     
 with st.form("formulario"):
     fecha_solicitud = st.date_input("Fecha de la solicitud")
