@@ -11,7 +11,7 @@ import os
 from shapely.geometry import Point
 import uuid
 from datetime import datetime
-from docxtpl import DocxTemplate
+from docx import Document
 from docx2pdf import convert
 from branca.element import Template, MacroElement
 
