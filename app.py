@@ -354,54 +354,49 @@ if submitted:
         with open(mapa_html, 'r') as f:
             html(f.read(), height=500)
 
-# Función para generar el PDF con los datos de la solicitud
-# 1. Descargar la plantilla desde GitHub
-import requests
+# Crear contexto para la plantilla desde tus variables ya calculadas
+mup_info = afeccion_mup.split("\n") if "Dentro de MUP" in afeccion_mup else []
+mup_id = mup_info[1].split(":")[1].strip() if len(mup_info) > 1 else ""
+mup_nombre = mup_info[2].split(":")[1].strip() if len(mup_info) > 2 else ""
+mup_municipio = mup_info[3].split(":")[1].strip() if len(mup_info) > 3 else ""
+mup_propiedad = mup_info[4].split(":")[1].strip() if len(mup_info) > 4 else ""
 
-url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/plantilla_informe_afecciones.docx"
-template_path = "plantilla.docx"
-
-response = requests.get(url)
-with open(template_path, "wb") as f:
-    f.write(response.content)
-
-# 2. Rellenar la plantilla con los datos usando docxtpl
-doc = DocxTemplate("plantilla.docx")
-
-# Diccionario con los datos de la solicitud
 contexto = {
-    'fecha_solicitud': fecha_solicitud,
-    'fecha_informe': fecha_informe,
-    'nombre': nombre,
-    'apellidos': apellidos,
-    'dni': dni,
-    'direccion': direccion,
-    'telefono': telefono,
-    'email': email,
-    'objeto': objeto,
-    'municipio': municipio,
-    'poligono': poligono,
-    'parcela': parcela,
-    'coordenadas_x': coordenadas_x,
-    'coordenadas_y': coordenadas_y,
+    'fecha_solicitud': datos['fecha_solicitud'],
+    'fecha_informe': datos['fecha_informe'],
+    'nombre': datos['nombre'],
+    'apellidos': datos['apellidos'],
+    'dni': datos['dni'],
+    'direccion': datos['dirección'],
+    'telefono': datos['teléfono'],
+    'email': datos['email'],
+    'objeto': datos['objeto de la solicitud'],
+    'municipio': datos['municipio'],
+    'poligono': datos['polígono'],
+    'parcela': datos['parcela'],
+    'coordenadas_x': datos['coordenadas_x'],
+    'coordenadas_y': datos['coordenadas_y'],
     'mup_id': mup_id,
     'mup_nombre': mup_nombre,
     'mup_municipio': mup_municipio,
     'mup_propiedad': mup_propiedad,
-    'tm': tm,
-    'vp': vp,
-    'enp': enp,
-    'zepa': zepa,
-    'lic': lic
+    'tm': afeccion_tm,
+    'vp': afeccion_vp,
+    'enp': afeccion_enp,
+    'zepa': afeccion_zepa,
+    'lic': afeccion_lic
 }
 
-# Rellenar la plantilla con los datos
+# Usar plantilla cargada desde archivo subido
+template_path = "/mnt/data/plantilla_informe_afecciones.docx"
+doc = DocxTemplate(template_path)
 doc.render(contexto)
 
-# Guardar el resultado como nuevo documento
-doc.save("informe_generado.docx")
+# Guardar documento temporalmente
+informe_docx = f"informe_afecciones_{uuid.uuid4().hex[:8]}.docx"
+doc.save(informe_docx)
 
-# 3. Convertir el .docx generado a PDF
+# Convertir a HTML y luego a PDF
 def docx_to_html(docx_path):
     document = Document(docx_path)
     html = "<html><body>"
@@ -410,7 +405,18 @@ def docx_to_html(docx_path):
     html += "</body></html>"
     return html
 
-html_content = docx_to_html("informe_generado.docx")
+html_content = docx_to_html(informe_docx)
+html_path = f"{informe_docx}.html"
+with open(html_path, "w", encoding="utf-8") as f:
+    f.write(html_content)
+
+pdf_path = f"{informe_docx}.pdf"
+pdfkit.from_file(html_path, pdf_path)
+
+# Guardar en el estado de la sesión
+st.session_state['pdf_file'] = pdf_path
+
+st.success("✅ Informe generado correctamente.")
 
 with open("temp.html", "w", encoding="utf-8") as f:
     f.write(html_content)
@@ -421,3 +427,6 @@ pdfkit.from_file("temp.html", "informe_generado.pdf")
 if st.session_state['mapa_html'] and st.session_state['pdf_file']:
     with open(st.session_state['pdf_file'], "rb") as f:
         st.download_button("📄 Descargar informe PDF", f, file_name="informe_afecciones.pdf")
+
+    with open(st.session_state['mapa_html'], "r") as f:
+        st.download_button("🌍 Descargar mapa HTML", f, file_name="mapa_busqueda.html")
