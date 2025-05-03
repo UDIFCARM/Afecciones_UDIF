@@ -259,9 +259,6 @@ st.title("\U0001F5FA️ Informe de Afecciones Ambientales")
 # Modo de búsqueda
 modo = st.radio("Selecciona el modo de búsqueda", ["Por coordenadas", "Por parcela"], key="modo_búsqueda")
 
-# Cargar el shapefile correspondiente al municipio seleccionado
-nombre_shapefile = st.selectbox('Selecciona el shapefile', ['municipios', 'poligonos', 'parcelas'])
-
 if modo == "Por parcela":
     municipio_sel = st.selectbox("Municipio", list(shp_urls.keys()))
     gdf = cargar_shapefile_desde_github(shp_urls[municipio_sel])
