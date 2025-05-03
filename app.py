@@ -67,14 +67,18 @@ shp_urls = {
 def cargar_shapefile_desde_github(nombre_base):
     base_url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/CATASTRO"
     extensiones = ["shp", "shx", "dbf", "prj"]
-    temp_dir = tempfile.mkdtemp()
+    temp_dir = tempfile.mkdtemp()  # Directorio temporal para guardar archivos
     archivos = {}
 
+    # Descargamos cada uno de los archivos
     for ext in extensiones:
         url = f"{base_url}/{nombre_base}.{ext}"
         st.write(f"Intentando descargar desde la URL: {url}")  # Verifica la URL aquí
         local_path = os.path.join(temp_dir, f"{nombre_base}.{ext}")
+        
+        # Hacemos la solicitud HTTP
         r = requests.get(url)
+        
         if r.status_code == 200:
             with open(local_path, "wb") as f:
                 f.write(r.content)
@@ -83,13 +87,18 @@ def cargar_shapefile_desde_github(nombre_base):
             st.error(f"No se pudo descargar el archivo {nombre_base}.{ext} desde: {url} (Código de estado: {r.status_code})")
             return None
 
-    try:
-        # Verificar si todos los archivos han sido descargados
-        st.write("Archivos descargados correctamente:", archivos)
-        gdf = gpd.read_file(archivos["shp"])
-        return gdf
-    except Exception as e:
-        st.error(f"Error al leer el shapefile: {e}")
+    # Verificamos si los archivos han sido descargados correctamente
+    if len(archivos) == 4:
+        try:
+            st.write(f"Archivos descargados correctamente: {archivos}")
+            # Intentamos cargar el shapefile
+            gdf = gpd.read_file(archivos["shp"])
+            return gdf
+        except Exception as e:
+            st.error(f"Error al leer el shapefile: {e}")
+            return None
+    else:
+        st.error("No se descargaron todos los archivos necesarios.")
         return None
 
 # Función para transformar coordenadas de ETRS89 a WGS84 (Long, Lat)
@@ -251,6 +260,8 @@ st.title("\U0001F5FA️ Informe de Afecciones Ambientales")
 modo = st.radio("Selecciona el modo de búsqueda", ["Por coordenadas", "Por parcela"], key="modo_búsqueda")
 
 # Cargar el shapefile correspondiente al municipio seleccionado
+nombre_shapefile = st.selectbox('Selecciona el shapefile', ['municipios', 'poligonos', 'parcelas'])
+
 if modo == "Por parcela":
     municipio_sel = st.selectbox("Municipio", list(shp_urls.keys()))
     gdf = cargar_shapefile_desde_github(shp_urls[municipio_sel])
