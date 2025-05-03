@@ -209,26 +209,21 @@ def crear_mapa(x, y, afecciones=[]):
 
     return mapa_html, afecciones
 
-# Función para generar PDF imitando la plantilla Word, con logo
-def generar_pdf(datos, x, y, filename, logo_path="logo_udif.png"):
+# Función mejorada para generar el PDF con estilo similar a la plantilla Word
+def generar_pdf(datos, x, y, filename):
     pdf = FPDF()
     pdf.add_page()
 
-    # Insertar logo (ajusta el path o usa URL)
-    pdf.image(logo_path, x=10, y=10, w=30)
-
-    # Título del informe
-    pdf.set_xy(50, 15)
+    # Cabecera
     pdf.set_font("Arial", "B", 16)
-    pdf.cell(0, 10, "INFORME DE AFECCIONES AMBIENTALES", ln=True, align="L")
-    pdf.ln(20)
+    pdf.cell(0, 10, "INFORME DE AFECCIONES AMBIENTALES", ln=True, align="C")
+    pdf.ln(5)
 
-    # Introducción
     pdf.set_font("Arial", "", 12)
     pdf.multi_cell(0, 8, "Informe técnico emitido en relación con la posible afección de una parcela a normativas ambientales vigentes en la Región de Murcia.")
     pdf.ln(5)
 
-    # Datos básicos
+    # Datos básicos del expediente
     pdf.set_font("Arial", "B", 14)
     pdf.cell(0, 10, "Datos de la solicitud", ln=True)
     pdf.set_font("Arial", "", 12)
@@ -249,18 +244,20 @@ def generar_pdf(datos, x, y, filename, logo_path="logo_udif.png"):
 
     for k, v in datos.items():
         if k not in claves:
-            pdf.set_font("Arial", "B", 12)
-            pdf.cell(0, 8, k + ":", ln=True)
-            pdf.set_font("Arial", "", 12)
-
             if k.lower() == "afección mup" and v.startswith("Dentro de MUP"):
+                pdf.set_font("Arial", "B", 12)
+                pdf.cell(0, 8, k + ":", ln=True)
+                pdf.set_font("Arial", "", 12)
                 for line in v.split("\n"):
                     pdf.multi_cell(0, 8, line)
             else:
+                pdf.set_font("Arial", "B", 12)
+                pdf.cell(0, 8, k + ":", ln=True)
+                pdf.set_font("Arial", "", 12)
                 pdf.multi_cell(0, 8, v)
             pdf.ln(2)
 
-    # Nota legal
+    # Pie
     pdf.ln(5)
     pdf.set_font("Arial", "I", 10)
     pdf.multi_cell(0, 8, "Este informe se ha generado automáticamente a partir de datos geográficos públicos y puede no tener validez jurídica. Consulte con la administración competente en caso de duda.")
