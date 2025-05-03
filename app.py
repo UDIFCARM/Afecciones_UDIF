@@ -429,18 +429,37 @@ def generar_word_desde_plantilla(datos, plantilla_url):
     return output_path
 
 # Botones de descarga
-if st.session_state['mapa_html'] and st.session_state['pdf_file']:
-    with open(st.session_state['pdf_file'], "rb") as f:
-        st.download_button("📄 Descargar informe PDF", f, file_name="informe_afecciones.pdf")
+# Mostrar y permitir descarga de los resultados
+st.success("✅ Informe generado correctamente. Puedes descargar los archivos:")
 
-    with open(st.session_state['mapa_html'], "r") as f:
-        st.download_button("🌍 Descargar mapa HTML", f, file_name="mapa_busqueda.html")
+col1, col2, col3 = st.columns(3)
 
-if docx_path:
-    with open(docx_path, "rb") as f:
-        st.download_button(
-            label="📄 Descargar informe Word",
-            data=f,
-            file_name="informe_ambiental.docx",
-            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-        )
+with col1:
+    if pdf_path:
+        with open(pdf_path, "rb") as f:
+            st.download_button(
+                label="📄 Descargar PDF",
+                data=f,
+                file_name="informe_ambiental.pdf",
+                mime="application/pdf"
+            )
+
+with col2:
+    if map_path:
+        with open(map_path, "rb") as f:
+            st.download_button(
+                label="🗺️ Descargar mapa",
+                data=f,
+                file_name="mapa_afecciones.html",
+                mime="text/html"
+            )
+
+with col3:
+    if docx_path:
+        with open(docx_path, "rb") as f:
+            st.download_button(
+                label="📄 Descargar Word",
+                data=f,
+                file_name="informe_ambiental.docx",
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            )
