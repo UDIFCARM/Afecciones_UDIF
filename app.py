@@ -63,6 +63,7 @@ shp_urls = {
 
 }
 
+# Función para cargar el shapefile desde GitHub
 def cargar_shapefile_desde_github(nombre_base):
     base_url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/CATASTRO"
     extensiones = ["shp", "shx", "dbf", "prj"]
