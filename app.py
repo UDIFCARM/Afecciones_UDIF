@@ -209,27 +209,62 @@ def crear_mapa(x, y, afecciones=[]):
 
     return mapa_html, afecciones
 
-# Función para generar el PDF con los datos de la solicitud
-def generar_pdf(datos, x, y, filename):
+# Función para generar PDF imitando la plantilla Word, con logo
+def generar_pdf(datos, x, y, filename, logo_path="logo_udif.png"):
     pdf = FPDF()
     pdf.add_page()
 
-    pdf.set_font("Arial", "B", size=14)
-    pdf.cell(200, 10, "Informe de Afecciones Ambientales", ln=True, align="C")
+    # Insertar logo (ajusta el path o usa URL)
+    pdf.image(logo_path, x=10, y=10, w=30)
 
-    pdf.set_font("Arial", size=12)
-    pdf.ln(10)
+    # Título del informe
+    pdf.set_xy(50, 15)
+    pdf.set_font("Arial", "B", 16)
+    pdf.cell(0, 10, "INFORME DE AFECCIONES AMBIENTALES", ln=True, align="L")
+    pdf.ln(20)
+
+    # Introducción
+    pdf.set_font("Arial", "", 12)
+    pdf.multi_cell(0, 8, "Informe técnico emitido en relación con la posible afección de una parcela a normativas ambientales vigentes en la Región de Murcia.")
+    pdf.ln(5)
+
+    # Datos básicos
+    pdf.set_font("Arial", "B", 14)
+    pdf.cell(0, 10, "Datos de la solicitud", ln=True)
+    pdf.set_font("Arial", "", 12)
+
+    claves = ["Municipio", "Polígono", "Parcela", "Referencia catastral"]
+    for k in claves:
+        valor = datos.get(k, "N/A")
+        pdf.cell(0, 8, f"{k}: {valor}", ln=True)
+
+    pdf.ln(3)
+    pdf.cell(0, 8, f"Coordenadas ETRS89: X = {x}, Y = {y}", ln=True)
+    pdf.ln(5)
+
+    # Afecciones
+    pdf.set_font("Arial", "B", 14)
+    pdf.cell(0, 10, "Resultado del análisis de afecciones", ln=True)
+    pdf.set_font("Arial", "", 12)
 
     for k, v in datos.items():
-        if k.lower() == "afección mup" and v.startswith("Dentro de MUP"): 
-            v_lines = v.split("\n")
-            for line in v_lines:
-                pdf.cell(200, 10, line, ln=True)
-        else:
-            pdf.multi_cell(0, 10, f"{k.capitalize()}: {v}")
+        if k not in claves:
+            pdf.set_font("Arial", "B", 12)
+            pdf.cell(0, 8, k + ":", ln=True)
+            pdf.set_font("Arial", "", 12)
 
+            if k.lower() == "afección mup" and v.startswith("Dentro de MUP"):
+                for line in v.split("\n"):
+                    pdf.multi_cell(0, 8, line)
+            else:
+                pdf.multi_cell(0, 8, v)
+            pdf.ln(2)
+
+    # Nota legal
     pdf.ln(5)
-    pdf.cell(200, 10, f"Coordenadas ETRS89: X = {x}, Y = {y}", ln=True)
+    pdf.set_font("Arial", "I", 10)
+    pdf.multi_cell(0, 8, "Este informe se ha generado automáticamente a partir de datos geográficos públicos y puede no tener validez jurídica. Consulte con la administración competente en caso de duda.")
+
     pdf.output(filename)
     return filename
 
