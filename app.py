@@ -1,18 +1,18 @@
 import streamlit as st
 import folium
 from streamlit.components.v1 import html
-from fpdf import FPDF
 from pyproj import Transformer
 import requests
-import xml.etree.ElementTree as ET
 import geopandas as gpd
 import tempfile
 import os
-from shapely.geometry import Point
 import uuid
 from datetime import datetime
-from docx import Document
+from shapely.geometry import Point
 from branca.element import Template, MacroElement
+from docx import Document
+import subprocess
+import platform
 
 # Diccionario con los nombres de municipios y sus nombres base de archivo
 shp_urls = {
@@ -210,28 +210,28 @@ def crear_mapa(x, y, afecciones=[]):
     return mapa_html, afecciones
 
 # Función para generar el PDF con los datos de la solicitud
-def generar_pdf(datos, x, y, filename):
-    pdf = FPDF()
-    pdf.add_page()
-
-    pdf.set_font("Arial", "B", size=14)
-    pdf.cell(200, 10, "Informe de Afecciones Ambientales", ln=True, align="C")
-
-    pdf.set_font("Arial", size=12)
-    pdf.ln(10)
-
-    for k, v in datos.items():
-        if k.lower() == "afección mup" and v.startswith("Dentro de MUP"): 
-            v_lines = v.split("\n")
-            for line in v_lines:
-                pdf.cell(200, 10, line, ln=True)
-        else:
-            pdf.multi_cell(0, 10, f"{k.capitalize()}: {v}")
-
-    pdf.ln(5)
-    pdf.cell(200, 10, f"Coordenadas ETRS89: X = {x}, Y = {y}", ln=True)
-    pdf.output(filename)
-    return filename
+def rellenar_y_convertir_docx_a_pdf(datos, plantilla_path, output_pdf_path):
+    doc = Document(plantilla_path)
+    for p in doc.paragraphs:
+        inline_text = p.text
+        for key, val in datos.items():
+            inline_text = inline_text.replace(f"{{{{{key}}}}}", str(val))
+        p.text = inline_text
+    temp_docx = output_pdf_path.replace(".pdf", ".docx")
+    doc.save(temp_docx)
+    if platform.system() in ["Linux", "Darwin"]:
+        subprocess.run(["libreoffice", "--headless", "--convert-to", "pdf", temp_docx, "--outdir", os.path.dirname(output_pdf_path)])
+    elif platform.system() == "Windows":
+        import comtypes.client
+        word = comtypes.client.CreateObject('Word.Application')
+        word.Visible = False
+        doc = word.Documents.Open(temp_docx)
+        doc.SaveAs(output_pdf_path, FileFormat=17)
+        doc.Close()
+        word.Quit()
+    else:
+        raise Exception("Conversión a PDF no compatible en este sistema")
+    return output_pdf_path
 
 # Interfaz de Streamlit
 st.title("\U0001F5FA️ Informe de Afecciones Ambientales")
@@ -336,51 +336,45 @@ if submitted:
         afeccion_tm = consultar_geojson(x, y, tm_url, "TM", campo_nombre="NAMEUNIT")
         afeccion_mup = consultar_mup(x, y, mup_url)
 
-        # Compilando datos para mostrar
-        afecciones = [afeccion_enp, afeccion_zepa, afeccion_lic, afeccion_vp, afeccion_tm, afeccion_mup]
-        
-        datos = {
-            "fecha_solicitud": fecha_solicitud.strftime('%d/%m/%Y'),
-            "fecha_informe": datetime.today().strftime('%d/%m/%Y'),
-            "nombre": nombre,
-            "apellidos": apellidos,
-            "dni": dni,
-            "dirección": direccion,
-            "teléfono": telefono,
-            "email": email,
-            "objeto de la solicitud": objeto,
-            "afección MUP": afeccion_mup,
-            "afección VP": afeccion_vp,
-            "afección ENP": afeccion_enp,
-            "afección ZEPA": afeccion_zepa,
-            "afección LIC": afeccion_lic,
-            "afección TM": afeccion_tm,
-            "coordenadas_x": x,
-            "coordenadas_y": y,
-            "municipio": municipio_sel if modo == "Por parcela" else "N/A",  # Solo en modo parcela
-            "polígono": masa_sel if modo == "Por parcela" else "N/A",  # Solo en modo parcela
-            "parcela": parcela_sel if modo == "Por parcela" else "N/A"  # Solo en modo parcela  
-        }
-        
-        # Crear mapa con afecciones
-        mapa_html, afecciones = crear_mapa(lon, lat, afecciones)
+# Recolectar todas las afecciones
+afecciones = [afeccion_enp, afeccion_zepa, afeccion_lic, afeccion_vp, afeccion_tm, afeccion_mup]
 
-        # Guardar estado 
-        st.session_state['mapa_html'] = mapa_html
-        st.session_state['afecciones'] = afecciones
+# Crear mapa
+mapa_html, _ = crear_mapa(lon, lat, afecciones)
+st.session_state['mapa_html'] = mapa_html
 
-        # Mostrar el mapa y el PDF
-        st.subheader("Resultado de las afecciones")
-        for afeccion in afecciones:
-            st.write(f"• {afeccion}")
+# Preparar los datos para la plantilla DOCX
+datos_template = {
+    "fecha_solicitud": fecha_solicitud.strftime('%d/%m/%Y'),
+    "fecha_informe": datetime.today().strftime('%d/%m/%Y'),
+    "nombre": nombre,
+    "apellidos": apellidos,
+    "dni": dni,
+    "direccion": direccion,
+    "telefono": telefono,
+    "email": email,
+    "objeto": objeto,
+    "mup_id": afeccion_mup.split("ID: ")[1].split("\\n")[0] if "ID:" in afeccion_mup else "",
+    "mup_nombre": afeccion_mup.split("Nombre: ")[1].split("\\n")[0] if "Nombre:" in afeccion_mup else "",
+    "mup_municipio": afeccion_mup.split("Municipio: ")[1].split("\\n")[0] if "Municipio:" in afeccion_mup else "",
+    "mup_propiedad": afeccion_mup.split("Propiedad: ")[1] if "Propiedad: " in afeccion_mup else "",
+    "tm": afeccion_tm.split(": ")[1] if ": " in afeccion_tm else "",
+    "vp": afeccion_vp.split(": ")[1] if ": " in afeccion_vp else "",
+    "enp": afeccion_enp.split(": ")[1] if ": " in afeccion_enp else "",
+    "zepa": afeccion_zepa.split(": ")[1] if ": " in afeccion_zepa else "",
+    "lic": afeccion_lic.split(": ")[1] if ": " in afeccion_lic else "",
+    "municipio": municipio_sel if modo == "Por parcela" else "N/A",
+    "poligono": masa_sel if modo == "Por parcela" else "N/A",
+    "parcela": parcela_sel if modo == "Por parcela" else "N/A",
+    "coordenadas_x": x,
+    "coordenadas_y": y
+}
 
-        with open(mapa_html, 'r') as f:
-            html(f.read(), height=500)
-
-        # PDF generado desde los datos
-        pdf_filename = f"informe_{uuid.uuid4().hex[:8]}.pdf"
-        generar_pdf(datos, x, y, pdf_filename)
-        st.session_state['pdf_file'] = pdf_filename
+# Generar PDF desde plantilla
+plantilla_path = "plantilla_informe_afecciones.docx"
+pdf_filename = f"/tmp/informe_{uuid.uuid4().hex[:8]}.pdf"
+output_pdf = rellenar_y_convertir_docx_a_pdf(datos_template, plantilla_path, pdf_filename)
+st.session_state['pdf_file'] = output_pdf
 
 # Botones de descarga
 if st.session_state['mapa_html'] and st.session_state['pdf_file']:
