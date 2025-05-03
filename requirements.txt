@@ -1,0 +1,13 @@
+streamlit
+folium
+requests
+pyproj
+fpdf
+geopandas
+lxml
+selenium
+chromedriver
+python-docx
+docxtpl
+xmltodict
+fiona
