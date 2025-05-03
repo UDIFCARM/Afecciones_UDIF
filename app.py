@@ -382,6 +382,36 @@ if submitted:
         generar_pdf(datos, x, y, pdf_filename)
         st.session_state['pdf_file'] = pdf_filename
 
+# Función para generar el informe en Word con las afecciones
+def generar_informe_word(datos, afecciones, x, y):
+    doc = Document()
+    
+    doc.add_heading('Informe de Afecciones Ambientales', 0)
+
+    # Datos de la solicitud
+    doc.add_paragraph(f"Fecha de la solicitud: {datos['fecha_solicitud']}")
+    doc.add_paragraph(f"Fecha del informe: {datos['fecha_informe']}")
+    doc.add_paragraph(f"Nombre: {datos['nombre']}")
+    doc.add_paragraph(f"Apellidos: {datos['apellidos']}")
+    doc.add_paragraph(f"DNI: {datos['dni']}")
+    doc.add_paragraph(f"Dirección: {datos['direccion']}")
+    doc.add_paragraph(f"Teléfono: {datos['telefono']}")
+    doc.add_paragraph(f"Correo electrónico: {datos['email']}")
+    doc.add_paragraph(f"Objeto de la solicitud: {datos['objeto']}")
+    
+    # Afecciones encontradas
+    doc.add_heading('Afecciones encontradas', level=2)
+    for afeccion in afecciones:
+        doc.add_paragraph(afeccion)
+    
+    # Coordenadas
+    doc.add_paragraph(f"Coordenadas ETRS89: X = {x}, Y = {y}")
+    
+    # Guardar el documento
+    filename = f"Informe_{uuid.uuid4().hex[:8]}.docx"
+    doc.save(filename)
+    return filename
+
 # Botones de descarga
 if st.session_state['mapa_html'] and st.session_state['pdf_file']:
     with open(st.session_state['pdf_file'], "rb") as f:
@@ -389,3 +419,11 @@ if st.session_state['mapa_html'] and st.session_state['pdf_file']:
 
     with open(st.session_state['mapa_html'], "r") as f:
         st.download_button("🌍 Descargar mapa HTML", f, file_name="mapa_busqueda.html")
+
+# Botón de descarga del informe en Word
+st.download_button(
+    label="Descargar informe en Word",
+    data=doc_word,
+    file_name=filename_word,
+    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+)
