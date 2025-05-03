@@ -79,6 +79,7 @@ def cargar_shapefile_desde_github(nombre_base):
             archivos[ext] = local_path
         else:
             st.error(f"No se pudo descargar: {url}")
+            os.rmdir(temp_dir)
             return None
 
     try:
@@ -86,6 +87,7 @@ def cargar_shapefile_desde_github(nombre_base):
         return gdf
     except Exception as e:
         st.error(f"Error al leer el shapefile: {e}")
+        os.rmdir(temp_dir)
         return None
 
 # Función para transformar coordenadas de ETRS89 a WGS84 (Long, Lat)
