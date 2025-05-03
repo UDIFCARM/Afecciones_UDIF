@@ -68,7 +68,7 @@ shp_urls = {
 @st.cache_data
 def cargar_shapefile_desde_github(nombre_base):
     base_url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/CATASTRO"
-    extensiones = [".shp", ".shx", ".dbf", ".prj"]  # Añadir ".cpg" si lo necesitas
+    extensiones = [".shp", ".shx", ".dbf", ".prj"]
 
     with tempfile.TemporaryDirectory() as tmpdir:
         rutas = {}
@@ -83,7 +83,6 @@ def cargar_shapefile_desde_github(nombre_base):
             else:
                 st.warning(f"No se pudo descargar: {url}")
 
-        # Verifica que tenemos los archivos clave
         if all(ext in rutas for ext in [".shp", ".shx", ".dbf"]):
             try:
                 gdf = gpd.read_file(rutas[".shp"])
@@ -94,6 +93,7 @@ def cargar_shapefile_desde_github(nombre_base):
         else:
             st.error("Faltan archivos esenciales del shapefile.")
             return None
+            
 # Función para transformar coordenadas de ETRS89 a WGS84 (Long, Lat)
 def transformar_coordenadas(x, y):
     transformer = Transformer.from_crs("EPSG:25830", "EPSG:4326", always_xy=True)
