@@ -16,17 +16,52 @@ from branca.element import Template, MacroElement
 
 # Diccionario con los nombres de municipios y sus nombres base de archivo
 shp_urls = {
-    "ABANILLA": "ABANILLA",
-    "ABARAN": "ABARAN",
-    "AGUILAS": "AGUILAS",
-    "ALBUDEITE": "ALBUDEITE",
-    "ALCANTARILLA": "ALCANTARILLA",
-    "ALEDO": "ALEDO",
-    "ALGUAZAS": "ALGUAZAS",
-    "ALHAMA_DE_MURCIA": "ALHAMA_DE_MURCIA",
-    "ARCHENA": "ARCHENA",
-    "TOTANA": "TOTANA",
-    # Agrega aquí más municipios si tienes los archivos en GitHub
+"ABANILLA": "ABANILLA",
+"ABARAN": "ABARAN",
+"AGUILAS": "AGUILAS",
+"ALBUDEITE": "ALBUDEITE",
+"ALCANTARILLA": "ALCANTARILLA",
+"ALEDO": "ALEDO",
+"ALGUAZAS": "ALGUAZAS",
+"ALHAMA_DE_MURCIA": "ALHAMA_DE_MURCIA",
+"ARCHENA": "ARCHENA",
+"BENIEL": "BENIEL",
+"BLANCA": "BLANCA",
+"BULLAS": "BULLAS",
+"CALASPARRA": "CALASPARRA",
+"CAMPOS_DEL_RIO": "CAMPOS_DEL_RIO",
+"CARAVACA_DE_LA_CRUZ": "CARAVACA_DE_LA_CRUZ",
+"CARTAGENA": "CARTAGENA",
+"CEHEGIN": "CEHEGIN",
+"CEUTI": "CEUTI",
+"CIEZA": "CIEZA",
+"FORTUNA": "FORTUNA",
+"FUENTE_ALAMO_DE_MURCIA": "FUENTE_ALAMO_DE_MURCIA",
+"JUMILLA": "JUMILLA",
+"LAS_TORRES_DE_COTILLAS": "LAS_TORRES_DE_COTILLAS",
+"LA_UNION": "LA_UNION",
+"LIBRILLA": "LIBRILLA",
+"LORCA": "LORCA",
+"LORQUI": "LORQUI",
+"LOS_ALCAZARES": "LOS_ALCAZARES",
+"MAZARRON": "MAZARRON",
+"MOLINA_DE_SEGURA": "MOLINA_DE_SEGURA",
+"MORATALLA": "MORATALLA",
+"MULA": "MULA",
+"MURCIA": "MURCIA",
+"OJOS": "OJOS",
+"PLIEGO": "PLIEGO",
+"PUERTO_LUMBRERAS": "PUERTO_LUMBRERAS",
+"RICOTE": "RICOTE",
+"SANTOMERA": "SANTOMERA",
+"SAN_JAVIER": "SAN_JAVIER",
+"SAN_PEDRO_DEL_PINATAR": "SAN_PEDRO_DEL_PINATAR",
+"TORRE_PACHECO": "TORRE_PACHECO",
+"TOTANA": "TOTANA",
+"ULEA": "ULEA",
+"VILLANUEVA_DEL_RIO_SEGURA": "VILLANUEVA_DEL_RIO_SEGURA",
+"YECLA": "YECLA",
+
 }
 
 def cargar_shapefile_desde_github(nombre_base):
@@ -204,7 +239,7 @@ modo = st.radio("Selecciona el modo de búsqueda", ["Por coordenadas", "Por parc
 
 # Cargar el shapefile correspondiente al municipio seleccionado
 if modo == "Por parcela":
-    municipio_sel = st.selectbox("Municipio", list(shp_urls.keys()))
+    municipio_sel = st.selectbox("Municipio", sorted(gdf["TM"].unique()))
     gdf = cargar_shapefile_desde_github(shp_urls[municipio_sel])
     
     if gdf is not None:
