@@ -369,18 +369,26 @@ if submitted:
         st.session_state['mapa_html'] = mapa_html
         st.session_state['afecciones'] = afecciones
 
-        # Mostrar el mapa y el PDF
-        st.subheader("Resultado de las afecciones")
-        for afeccion in afecciones:
-            st.write(f"• {afeccion}")
+# --- Cargar plantilla
+plantilla_path = "plantilla_informe_afecciones.docx"
+doc = DocxTemplate(plantilla_path)
 
-        with open(mapa_html, 'r') as f:
-            html(f.read(), height=500)
+# --- Rellenar plantilla
+doc.render(datos)
 
-        # PDF generado desde los datos
-        pdf_filename = f"informe_{uuid.uuid4().hex[:8]}.pdf"
-        generar_pdf(datos, x, y, pdf_filename)
-        st.session_state['pdf_file'] = pdf_filename
+# --- Guardar resultado
+nombre_archivo = f"informe_afecciones_{datos['municipio'].lower()}_{datos['poligono']}_{datos['parcela']}.docx"
+doc.save(nombre_archivo)
+
+print(f"Informe generado: {nombre_archivo}")
+
+with open(nombre_archivo, "rb") as file:
+    st.download_button(
+        label="Descargar informe",
+        data=file,
+        file_name=nombre_archivo,
+        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    )
 
 # Botones de descarga
 if st.session_state['mapa_html'] and st.session_state['pdf_file']:
