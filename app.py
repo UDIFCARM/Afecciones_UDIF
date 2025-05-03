@@ -278,6 +278,17 @@ if modo == "Por parcela":
     else:
         st.error(f"No se pudo cargar el shapefile para el municipio: {municipio_sel}")
 
+if st.button("Generar informe"):
+    plantilla_path = "plantilla_informe_afecciones.docx"  # o usar file_uploader si lo cargas dinámicamente
+    docx_out = f"informe_{uuid.uuid4().hex[:8]}.docx"
+    pdf_out = f"informe_{uuid.uuid4().hex[:8]}.pdf"
+
+    pdf_generado = generar_pdf_desde_docx(datos, plantilla_path, docx_out, pdf_out)
+
+    if pdf_generado:
+        st.session_state['pdf_file'] = pdf_generado
+        st.success("✅ Informe generado correctamente. Puedes descargarlo a continuación.")
+
 # Si el modo es "Por coordenadas" NO se solicita la entrada previa
 # Se incluirán los inputs de coordenadas en el formulario
 
@@ -381,6 +392,61 @@ if submitted:
         pdf_filename = f"informe_{uuid.uuid4().hex[:8]}.pdf"
         generar_pdf(datos, x, y, pdf_filename)
         st.session_state['pdf_file'] = pdf_filename
+
+# Generar pdf desde plantilla
+def generar_pdf_desde_docx(datos, plantilla_path, output_docx, output_pdf):
+    try:
+        if not os.path.exists(plantilla_path):
+            raise FileNotFoundError(f"Plantilla no encontrada: {plantilla_path}")
+
+        doc = DocxTemplate(plantilla_path)
+
+        # Extraer información de MUP
+        if datos.get("afección MUP", "").startswith("Dentro de MUP"):
+            for linea in datos["afección MUP"].split("\n"):
+                if linea.startswith("ID:"): datos["mup_id"] = linea.replace("ID:", "").strip()
+                if linea.startswith("Nombre:"): datos["mup_nombre"] = linea.replace("Nombre:", "").strip()
+                if linea.startswith("Municipio:"): datos["mup_municipio"] = linea.replace("Municipio:", "").strip()
+                if linea.startswith("Propiedad:"): datos["mup_propiedad"] = linea.replace("Propiedad:", "").strip()
+        else:
+            datos["mup_id"] = datos["mup_nombre"] = datos["mup_municipio"] = datos["mup_propiedad"] = "No aplica"
+
+        contexto = {
+            "fecha_solicitud": datos["fecha_solicitud"],
+            "fecha_informe": datos["fecha_informe"],
+            "nombre": datos["nombre"],
+            "apellidos": datos["apellidos"],
+            "dni": datos["dni"],
+            "direccion": datos["dirección"],
+            "telefono": datos["teléfono"],
+            "email": datos["email"],
+            "objeto": datos["objeto de la solicitud"],
+            "municipio": datos["municipio"],
+            "poligono": datos["polígono"],
+            "parcela": datos["parcela"],
+            "coordenadas_x": datos["coordenadas_x"],
+            "coordenadas_y": datos["coordenadas_y"],
+            "mup_id": datos["mup_id"],
+            "mup_nombre": datos["mup_nombre"],
+            "mup_municipio": datos["mup_municipio"],
+            "mup_propiedad": datos["mup_propiedad"],
+            "tm": datos["afección TM"],
+            "vp": datos["afección VP"],
+            "enp": datos["afección ENP"],
+            "zepa": datos["afección ZEPA"],
+            "lic": datos["afección LIC"],
+        }
+
+        doc.render(contexto)
+        doc.save(output_docx)
+
+        convert(output_docx, output_pdf)
+
+        return output_pdf
+
+    except Exception as e:
+        st.error(f"❌ Error al generar el PDF: {e}")
+        return None
 
 # Botones de descarga
 if st.session_state['mapa_html'] and st.session_state['pdf_file']:
