@@ -424,10 +424,9 @@ if submitted:
         with open(mapa_html, 'r') as f:
             html(f.read(), height=500)
 
-        # PDF generado desde los datos
-        pdf_filename = f"informe_{uuid.uuid4().hex[:8]}.pdf"
-        generar_pdf(datos, x, y, pdf_filename)
-        st.session_state['pdf_file'] = pdf_filename
+    informe_path = generar_informe(datos)
+    with open(informe_path, "rb") as file:
+        st.download_button("Descargar informe", file, file_name="informe_afecciones.docx")
 
 # Botones de descarga
 if st.session_state['mapa_html'] and st.session_state['pdf_file']:
