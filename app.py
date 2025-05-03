@@ -339,9 +339,9 @@ if submitted:
             "afección TM": afeccion_tm,
             "coordenadas_x": x,
             "coordenadas_y": y,
-            "municipio": municipio_sel,  
-            "polígono": masa_sel,       
-            "parcela": parcela_sel    
+            "municipio": municipio_sel if modo == "Por parcela" else "N/A",  # Solo en modo parcela
+            "polígono": masa_sel if modo == "Por parcela" else "N/A",  # Solo en modo parcela
+            "parcela": parcela_sel if modo == "Por parcela" else "N/A"  # Solo en modo parcela  
         }
         
         # Crear mapa con afecciones
