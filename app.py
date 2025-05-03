@@ -313,13 +313,13 @@ if submitted:
     else:
         lon, lat = transformar_coordenadas(x, y)
 
-        # Mostrar los datos seleccionados (municipio, polígono, parcela) solo si municipio_sel está definido
+        # Mostrar los datos seleccionados (solo si estamos en modo parcela)
         if modo == "Por parcela":
             st.write(f"Municipio seleccionado: {municipio_sel}")
             st.write(f"Polígono seleccionado: {masa_sel}")
             st.write(f"Parcela seleccionada: {parcela_sel}")
         else:
-            st.write(f"Modo por coordenadas seleccionado. Municipio no disponible.")
+            st.write("Modo por coordenadas seleccionado. Municipio no disponible.")
 
         # URLs GeoJSON
         enp_url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/GeoJSON/ENP.json"
