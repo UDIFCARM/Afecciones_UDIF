@@ -275,29 +275,6 @@ else:
     x = st.number_input("Coordenada X (ETRS89)", format="%.2f")
     y = st.number_input("Coordenada Y (ETRS89)", format="%.2f")
 
-    municipio_sel = "Coordenadas no asociadas a municipio"
-
-    if x != 0.0 and y != 0.0:
-        punto = Point(x, y)
-        encontrado = False
-
-        for municipio, archivo_base in shp_urls.items():
-            gdf_municipio = cargar_shapefile_desde_github(archivo_base)
-            
-            if gdf_municipio is not None and not gdf_municipio.empty:
-                gdf_municipio = gdf_municipio.to_crs("EPSG:25830")
-                if gdf_municipio.geometry.contains(punto).any():
-                    municipio_sel = municipio
-                    encontrado = True
-                    break
-
-        if encontrado:
-            st.success(f"Las coordenadas corresponden al municipio: **{municipio_sel}**")
-        else:
-            st.error("❌ Las coordenadas no corresponden a ningún municipio.")
-    else:
-        st.warning("⚠️ Introduce ambas coordenadas para continuar.")
-    
 with st.form("formulario"):
     fecha_solicitud = st.date_input("Fecha de la solicitud")
     nombre = st.text_input("Nombre")
@@ -307,6 +284,8 @@ with st.form("formulario"):
     telefono = st.text_input("Teléfono")
     email = st.text_input("Correo electrónico")
     objeto = st.text_area("Objeto de la solicitud", max_chars=255)
+    x = st.number_input("Coordenada X (ETRS89)", format="%.2f", help="Introduce coordenadas en metros, sistema ETRS89 / UTM zona 30")
+    y = st.number_input("Coordenada Y (ETRS89)", format="%.2f")
     submitted = st.form_submit_button("Generar informe")
 
 if 'mapa_html' not in st.session_state:
