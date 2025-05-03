@@ -382,51 +382,60 @@ if submitted:
         generar_pdf(datos, x, y, pdf_filename)
         st.session_state['pdf_file'] = pdf_filename
 
-def generar_word_desde_plantilla(datos, plantilla_url):
-    # Descargar la plantilla desde la URL proporcionada
-    response = requests.get(plantilla_url)
-    if response.status_code != 200:
-        st.error("No se pudo descargar la plantilla DOCX.")
-        return None
+def generar_word_desde_plantilla(datos: dict, plantilla_path: str = "plantilla.docx") -> str:
+    """
+    Rellena una plantilla DOCX con los datos proporcionados y guarda el informe generado.
 
-    # Guardar la plantilla como archivo temporal
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".docx") as tmp:
-        tmp.write(response.content)
-        plantilla_path = tmp.name
+    Parámetros:
+    - datos (dict): Diccionario con claves como 'nombre', 'dni', 'municipio', etc.
+    - plantilla_path (str): Ruta al archivo plantilla DOCX.
 
-    # Cargar la plantilla y renderizar con los datos
+    Retorna:
+    - str: Ruta al archivo Word generado.
+    """
+    if not os.path.exists(plantilla_path):
+        raise FileNotFoundError(f"No se encontró la plantilla en {plantilla_path}")
+
+    # Carga la plantilla
     doc = DocxTemplate(plantilla_path)
-    doc.render({
-        "fecha_solicitud": datos.get("fecha_solicitud", ""),
-        "fecha_informe": datos.get("fecha_informe", ""),
-        "nombre": datos.get("nombre", ""),
-        "apellidos": datos.get("apellidos", ""),
-        "dni": datos.get("dni", ""),
-        "direccion": datos.get("direccion", ""),
-        "telefono": datos.get("telefono", ""),
-        "email": datos.get("email", ""),
-        "objeto": datos.get("objeto", ""),
-        "municipio": datos.get("municipio", ""),
-        "poligono": datos.get("poligono", ""),
-        "parcela": datos.get("parcela", ""),
-        "coordenadas_x": datos.get("coordenadas_x", ""),
-        "coordenadas_y": datos.get("coordenadas_y", ""),
-        "mup_id": datos.get("mup_id", ""),
-        "mup_nombre": datos.get("mup_nombre", ""),
-        "mup_municipio": datos.get("mup_municipio", ""),
-        "mup_propiedad": datos.get("mup_propiedad", ""),
-        "tm": datos.get("tm", ""),
-        "vp": datos.get("vp", ""),
-        "enp": datos.get("enp", ""),
-        "zepa": datos.get("zepa", ""),
-        "lic": datos.get("lic", "")
-    })
 
-    # Guardar documento completado
-    output_path = os.path.join(tempfile.gettempdir(), f"informe_{uuid.uuid4().hex[:8]}.docx")
+    # Agrega las fechas automáticamente si no están
+    datos.setdefault("fecha_solicitud", date.today().strftime("%d/%m/%Y"))
+    datos.setdefault("fecha_informe", date.today().strftime("%d/%m/%Y"))
+
+    # Rellena y guarda el documento
+    doc.render(datos)
+    output_path = "informe_ambiental.docx"
     doc.save(output_path)
 
     return output_path
+
+    # Cargar la plantilla y renderizar con los datos
+datos_para_word = {
+    "nombre": nombre,
+    "apellidos": apellidos,
+    "dni": dni,
+    "direccion": direccion,
+    "telefono": telefono,
+    "email": email,
+    "objeto": objeto,
+    "municipio": municipio,
+    "poligono": poligono,
+    "parcela": parcela,
+    "coordenadas_x": coordenadas_x,
+    "coordenadas_y": coordenadas_y,
+    "mup_id": mup_id,
+    "mup_nombre": mup_nombre,
+    "mup_municipio": mup_municipio,
+    "mup_propiedad": mup_propiedad,
+    "tm": tm,
+    "vp": vp,
+    "enp": enp,
+    "zepa": zepa,
+    "lic": lic
+}
+
+docx_path = generar_word_desde_plantilla(datos_para_word)
 
 # Botones de descarga
 # Mostrar y permitir descarga de los resultados
