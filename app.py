@@ -240,7 +240,8 @@ modo = st.radio("Selecciona el modo de búsqueda", ["Por coordenadas", "Por parc
 # Cargar el shapefile correspondiente al municipio seleccionado
 if modo == "Por parcela":
     municipio_sel = st.selectbox("Municipio", list(shp_urls.keys()))
-    gdf = cargar_shapefile_desde_github(shp_urls["TM"]== municipio_sel
+    gdf = cargar_shapefile_desde_github(shp_urls[municipio_sel])  # Corregido aquí
+    gdf_filtrado = gdf[gdf["MUNICIPIO"] == municipio_sel]  # Filtrado por municipio
     masa_sel = st.selectbox("Polígono", sorted(gdf_filtrado["MASA"].unique()))
     gdf_filtrado = gdf_filtrado[gdf_filtrado["MASA"] == masa_sel]
     parcela_sel = st.selectbox("Parcela", sorted(gdf_filtrado["PARCELA"].unique()))
