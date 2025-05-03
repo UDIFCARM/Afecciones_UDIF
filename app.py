@@ -242,8 +242,8 @@ if modo == "Por parcela":
     gdf = cargar_shapefile_desde_github(shp_urls[municipio_sel])
     
     # Asegúrate de que las columnas y valores sean correctos
+    gdf["MUNICIPIO"] = gdf["MUNICIPIO"].fillna("").astype(str)
     gdf["MUNICIPIO"] = gdf["MUNICIPIO"].str.strip().str.upper()
-    municipio_sel = municipio_sel.strip().upper()
     
     if gdf.empty:
         st.error(f"No se encontraron datos para el municipio {municipio_sel}.")
