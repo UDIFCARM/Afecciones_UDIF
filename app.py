@@ -6,14 +6,53 @@ from pyproj import Transformer
 import requests
 import xml.etree.ElementTree as ET
 import geopandas as gpd
+import tempfile
+import os
 from shapely.geometry import Point
 import uuid
 from datetime import datetime
 from docx import Document
 from branca.element import Template, MacroElement
 
-# --- URL DEL GEOJSON DE PARCELAS ---
-geojson_parcelas_url = "https://raw.githubusercontent.com/UDIFCARM/Informe-basico/main/TOTANA.json"
+# Diccionario con los nombres de municipios y sus nombres base de archivo
+shp_urls = {
+    "ABANILLA": "ABANILLA",
+    "ABARAN": "ABARAN",
+    "AGUILAS": "AGUILAS",
+    "ALBUDEITE": "ALBUDEITE",
+    "ALCANTARILLA": "ALCANTARILLA",
+    "ALEDO": "ALEDO",
+    "ALGUAZAS": "ALGUAZAS",
+    "ALHAMA_DE_MURCIA": "ALHAMA_DE_MURCIA",
+    "ARCHENA": "ARCHENA",
+    "TOTANA": "TOTANA",
+    # Agrega aquí más municipios si tienes los archivos en GitHub
+}
+
+def cargar_shapefile_desde_github(nombre_base):
+    base_url = "https://raw.githubusercontent.com/UDIFCARM/Afecicones_UDIF/main/CATASTRO"
+    extensiones = ["shp", "shx", "dbf", "prj"]
+    temp_dir = tempfile.mkdtemp()
+    archivos = {}
+
+    for ext in extensiones:
+        url = f"{base_url}/{nombre_base}.{ext}"
+        local_path = os.path.join(temp_dir, f"{nombre_base}.{ext}")
+        r = requests.get(url)
+        if r.status_code == 200:
+            with open(local_path, "wb") as f:
+                f.write(r.content)
+            archivos[ext] = local_path
+        else:
+            st.error(f"No se pudo descargar: {url}")
+            return None
+
+    try:
+        gdf = gpd.read_file(archivos["shp"])
+        return gdf
+    except Exception as e:
+        st.error(f"Error al leer el shapefile: {e}")
+        return None
 
 # Función para transformar coordenadas de ETRS89 a WGS84 (Long, Lat)
 def transformar_coordenadas(x, y):
@@ -146,7 +185,7 @@ def generar_pdf(datos, x, y, filename):
     pdf.ln(10)
 
     for k, v in datos.items():
-        if k.lower() == "afección mup" and v.startswith("Dentro de MUP"):
+        if k.lower() == "afección mup" and v.startswith("Dentro de MUP"): 
             v_lines = v.split("\n")
             for line in v_lines:
                 pdf.cell(200, 10, line, ln=True)
@@ -163,22 +202,43 @@ st.title("\U0001F5FA️ Informe de Afecciones Ambientales")
 
 modo = st.radio("Selecciona el modo de búsqueda", ["Por coordenadas", "Por parcela"])
 
-gdf_parcelas = gpd.read_file(geojson_parcelas_url)
-
+# Cargar el shapefile correspondiente al municipio seleccionado
 if modo == "Por parcela":
-    municipio_sel = st.selectbox("Municipio", sorted(gdf_parcelas["MUNICIPIO"].unique()))
-    gdf_filtrado = gdf_parcelas[gdf_parcelas["MUNICIPIO"] == municipio_sel]
-    masa_sel = st.selectbox("Polígono", sorted(gdf_filtrado["MASA"].unique()))
-    gdf_filtrado = gdf_filtrado[gdf_filtrado["MASA"] == masa_sel]
-    parcela_sel = st.selectbox("Parcela", sorted(gdf_filtrado["PARCELA"].unique()))
-    parcela = gdf_filtrado[gdf_filtrado["PARCELA"] == parcela_sel].iloc[0]
-    punto_centro = parcela.geometry.centroid
-    x = punto_centro.x
-    y = punto_centro.y
+    municipio_sel = st.selectbox("Municipio", list(shp_urls.keys()))
+    gdf = cargar_shapefile_desde_github(shp_urls[municipio_sel])
+    
+    if gdf is not None:
+        masa_sel = st.selectbox("Polígono", sorted(gdf["MASA"].unique()))
+        parcela_sel = st.selectbox("Parcela", sorted(gdf[gdf["MASA"] == masa_sel]["PARCELA"].unique()))
+        parcela = gdf[(gdf["MASA"] == masa_sel) & (gdf["PARCELA"] == parcela_sel)]
+
+        # Asegurarse de que la geometría es un polígono
+        if parcela.geometry.geom_type.isin(['Polygon', 'MultiPolygon']).all():
+            # Calcular el centroide del polígono
+            puntos = parcela.copy()
+            puntos["geometry"] = puntos.geometry.centroid
+            puntos["longitude"] = puntos.geometry.x
+            puntos["latitude"] = puntos.geometry.y
+            parcela = puntos  # Sobrescribir con los centroides
+          
+            # Obtener coordenadas del centroide
+            punto_centro = parcela.geometry.centroid.iloc[0]
+            x = punto_centro.x
+            y = punto_centro.y         
+                    
+            st.success("Parcela cargada correctamente.")
+
+            # Mostrar el municipio, polígono y parcela seleccionados
+            st.write(f"Municipio: {municipio_sel}")
+            st.write(f"Polígono: {masa_sel}")
+            st.write(f"Parcela: {parcela_sel}")
+        else:
+            st.error("La geometría seleccionada no es un polígono válido.")
+
 else:
     x = st.number_input("Coordenada X (ETRS89)", format="%.2f")
     y = st.number_input("Coordenada Y (ETRS89)", format="%.2f")
-
+    
 with st.form("formulario"):
     fecha_solicitud = st.date_input("Fecha de la solicitud")
     nombre = st.text_input("Nombre")
@@ -202,13 +262,18 @@ if submitted:
     else:
         lon, lat = transformar_coordenadas(x, y)
 
+        # Mostrar los datos seleccionados (municipio, polígono, parcela)
+        st.write(f"Municipio seleccionado: {municipio_sel}")
+        st.write(f"Polígono seleccionado: {masa_sel}")
+        st.write(f"Parcela seleccionada: {parcela_sel}")
+
         # URLs GeoJSON
-        enp_url = "https://raw.githubusercontent.com/UDIFCARM/Informe-basico/main/ENP.json"
-        zepa_url = "https://raw.githubusercontent.com/UDIFCARM/Informe-basico/main/ZEPA.json"
-        lic_url = "https://raw.githubusercontent.com/UDIFCARM/Informe-basico/main/LIC.json"
-        vp_url = "https://raw.githubusercontent.com/UDIFCARM/Informe-basico/main/VP.json"
-        tm_url = "https://raw.githubusercontent.com/UDIFCARM/Informe-basico/main/TM.json"
-        mup_url = "https://raw.githubusercontent.com/UDIFCARM/Informe-basico/main/MUP.json"
+        enp_url = "https://raw.githubusercontent.com/UDIFCARM/Afecicones_UDIF/main/GeoJSON/ENP.json"
+        zepa_url = "https://raw.githubusercontent.com/UDIFCARM/Afecicones_UDIF/main/GeoJSON/ZEPA.json"
+        lic_url = "https://raw.githubusercontent.com/UDIFCARM/Afecicones_UDIF/main/GeoJSON/LIC.json"
+        vp_url = "https://raw.githubusercontent.com/UDIFCARM/Afecicones_UDIF/main/GeoJSON/VP.json"
+        tm_url = "https://raw.githubusercontent.com/UDIFCARM/Afecicones_UDIF/main/GeoJSON/TM.json"
+        mup_url = "https://raw.githubusercontent.com/UDIFCARM/Afecicones_UDIF/main/GeoJSON/MUP.json"
 
         # Consultas de afecciones
         afeccion_enp = consultar_geojson(x, y, enp_url, "ENP", campo_nombre="nombre")
@@ -239,12 +304,15 @@ if submitted:
             "afección TM": afeccion_tm,
             "coordenadas_x": x,
             "coordenadas_y": y,
+            "municipio": municipio_sel,  
+            "polígono": masa_sel,       
+            "parcela": parcela_sel    
         }
         
         # Crear mapa con afecciones
         mapa_html, afecciones = crear_mapa(lon, lat, afecciones)
 
-        # Guardar estado
+        # Guardar estado 
         st.session_state['mapa_html'] = mapa_html
         st.session_state['afecciones'] = afecciones
 
