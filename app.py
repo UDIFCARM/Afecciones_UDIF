@@ -84,6 +84,8 @@ def cargar_shapefile_desde_github(nombre_base):
             return None
 
     try:
+        # Verificar si todos los archivos han sido descargados
+        st.write("Archivos descargados correctamente:", archivos)
         gdf = gpd.read_file(archivos["shp"])
         return gdf
     except Exception as e:
