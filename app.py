@@ -276,35 +276,32 @@ if modo == "Por parcela":
     else:
         st.error("No se pudo cargar el shapefile del municipio seleccionado.")
 else:
-    # Coordenadas
+  # Coordenadas
     x = st.number_input("Coordenada X (ETRS89)", format="%.2f")
     y = st.number_input("Coordenada Y (ETRS89)", format="%.2f")
 
-    municipio_sel = "Coordenadas no asociadas a municipio"  # Valor por defecto
+    municipio_sel = "Coordenadas no asociadas a municipio"  # Valor predeterminado para el modo "Por coordenadas"
 
-    if x != 0.0 and y != 0.0:
-        punto = Point(x, y)
-        punto_gdf = gpd.GeoDataFrame(geometry=[punto], crs="EPSG:25830")
+    # Crear un punto a partir de las coordenadas
+    punto = Point(x, y)
+
+    # Buscar el municipio asociado al punto
+    encontrado = False
+    for municipio, archivo_url in shp_urls.items():
+        # Cargar el shapefile del municipio correspondiente
+        gdf_municipio = cargar_shapefile_desde_github(f"https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/CATASTRO/{archivo_url}")
         
-        encontrado = False
-        for municipio, archivo_base in shp_urls.items():
-            url_base = f"https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/CATASTRO/{archivo_base}"
-            
-            gdf_municipio = cargar_shapefile_desde_github(url_base)
-            
-            if gdf_municipio is not None and not gdf_municipio.empty:
-                gdf_municipio = gdf_municipio.to_crs("EPSG:25830")
-                if gdf_municipio.geometry.contains(punto).any():
-                    municipio_sel = municipio
-                    encontrado = True
-                    break
-
-        if encontrado:
-            st.success(f"Las coordenadas corresponden al municipio: **{municipio_sel}**")
-        else:
-            st.error("❌ Las coordenadas no corresponden a ningún municipio.")
+        if gdf_municipio is not None:
+            # Verificar si el punto está dentro del municipio
+            if gdf_municipio.geometry.contains(punto).any():
+                municipio_sel = municipio
+                encontrado = True
+                break
+    
+    if encontrado:
+        st.success(f"Las coordenadas corresponden al municipio: {municipio_sel}")
     else:
-        st.warning("⚠️ Introduce ambas coordenadas para continuar.")
+        st.error("Las coordenadas no corresponden a ningún municipio.")
     
 with st.form("formulario"):
     fecha_solicitud = st.date_input("Fecha de la solicitud")
