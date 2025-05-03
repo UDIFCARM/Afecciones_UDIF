@@ -462,7 +462,7 @@ def generar_pdf_desde_docx(datos, plantilla_url, output_docx, output_pdf):
         st.error(f"❌ Error al generar el informe: {e}")
         return None
 
-# Ruta directa a la plantilla en GitHub (raw)
+# ✅ Definir URL de la plantilla DOCX (en formato RAW de GitHub)
 plantilla_url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/plantilla_informe_afecciones.docx"
 
 # Crear nombres únicos para los archivos generados
