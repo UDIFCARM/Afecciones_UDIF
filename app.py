@@ -459,13 +459,20 @@ if st.button("Generar informe"):
         output_path = "informe_ambiental.docx"
         doc.write(output_path)
 
-# Botones de descarga
-if st.session_state['mapa_html'] and st.session_state['pdf_file']:
-    with open(st.session_state['pdf_file'], "rb") as f:
-        st.download_button("📄 Descargar informe PDF", f, file_name="informe_afecciones.pdf")
+    # Actualizar la sesión de Streamlit para el archivo DOCX generado
+    st.session_state['output_docx'] = output_path
 
-    with open(st.session_state['mapa_html'], "r") as f:
-        st.download_button("🌍 Descargar mapa HTML", f, file_name="mapa_busqueda.html")
+    # Mostrar botones de descarga
+    if 'mapa_html' in st.session_state and 'pdf_file' in st.session_state:
+        # Botón para descargar el informe PDF
+        with open(st.session_state['pdf_file'], "rb") as f:
+            st.download_button("📄 Descargar informe PDF", f, file_name="informe_afecciones.pdf")
 
-  with open(output_path, "rb") as f:
-        st.download_button("📄 Descargar informe ambiental", f, file_name="informe_ambiental.docx")
+        # Botón para descargar el mapa HTML
+        with open(st.session_state['mapa_html'], "r") as f:
+            st.download_button("🌍 Descargar mapa HTML", f, file_name="mapa_busqueda.html")
+
+    # Botón para descargar el informe DOCX generado
+    if 'output_docx' in st.session_state:
+        with open(st.session_state['output_docx'], "rb") as f:
+            st.download_button("📄 Descargar informe ambiental", f, file_name="informe_ambiental.docx")
