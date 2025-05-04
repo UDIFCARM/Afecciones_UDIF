@@ -14,6 +14,7 @@ from datetime import datetime
 from docx import Document
 from branca.element import Template, MacroElement
 from io import BytesIO
+from html2image import Html2Image
 
 # Diccionario con los nombres de municipios y sus nombres base de archivo
 shp_urls = {
