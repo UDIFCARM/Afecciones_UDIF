@@ -224,6 +224,15 @@ def generar_pdf(datos, x, y, filename):
     pdf = FPDF()
     pdf.add_page()
 
+    # Descargar e insertar el logo
+    logo_url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/logos.jpg"
+    response = requests.get(logo_url)
+    if response.status_code == 200:
+        logo_image = BytesIO(response.content)
+        pdf.image(logo_image, x=10, y=8, w=40)
+    pdf.set_y(25)  # Posicionar debajo del logo
+
+    # Título principal
     pdf.set_font("Arial", "B", size=16)
     pdf.cell(0, 10, "Informe de Afecciones Ambientales", ln=True, align="C")
     pdf.ln(10)
@@ -239,7 +248,7 @@ def generar_pdf(datos, x, y, filename):
 
     def campo_orden(titulo, valor):
         pdf.set_font("Arial", "B", 12)
-        pdf.cell(50, 8, f"{titulo}:", ln=0)
+        pdf.cell(40, 8, f"{titulo}:", ln=0)
         pdf.set_font("Arial", "", 12)
         pdf.multi_cell(0, 8, valor if valor else "No especificado")
 
@@ -263,20 +272,19 @@ def generar_pdf(datos, x, y, filename):
 
     # 2. Afecciones detectadas
     seccion_titulo("2. Afecciones detectadas")
-    afecciones_keys = [k for k in datos if k.lower().startswith("afección")]
-
+    afecciones_keys = [k for k in datos if k.lower().startswith("afección") and "tm" not in k.lower()]
     if afecciones_keys:
         for key in afecciones_keys:
             valor = datos[key].strip()
-            pdf.set_font("Arial", "B", 12)
-            pdf.cell(0, 8, f"{key.capitalize()}:", ln=True)
-            pdf.set_font("Arial", "", 12)
-
             if key.lower() == "afección mup" and valor.lower().startswith("dentro de mup"):
+                pdf.set_font("Arial", "B", 12)
+                pdf.cell(0, 8, f"{key.capitalize()}:", ln=True)
+                pdf.set_font("Arial", "", 12)
+                
                 lines = valor.split("\n")
                 resumen = lines[0]
                 pdf.multi_cell(0, 8, resumen)
-                if len(lines) > 4:
+                if len(lines) > 1:
                     # Cabecera tabla
                     pdf.set_fill_color(200, 200, 200)
                     pdf.set_font("Arial", "B", 11)
@@ -285,46 +293,45 @@ def generar_pdf(datos, x, y, filename):
                     pdf.cell(40, 8, "Municipio", border=1, fill=True)
                     pdf.cell(40, 8, "Propiedad", border=1, ln=True, fill=True)
 
-                    # Obtener los campos por líneas (se asume estructura tipo 'ID: valor')
-                    datos_mup = {}
-                    for line in lines[1:]:
-                        if ":" in line:
-                            clave, valor_linea = line.split(":", 1)
-                            datos_mup[clave.strip().lower()] = valor_linea.strip()
-
+                    # Filas
                     pdf.set_font("Arial", "", 11)
-                    pdf.cell(30, 8, datos_mup.get("id", ""), border=1)
-                    pdf.cell(80, 8, datos_mup.get("nombre", ""), border=1)
-                    pdf.cell(40, 8, datos_mup.get("municipio", ""), border=1)
-                    pdf.cell(40, 8, datos_mup.get("propiedad", ""), border=1, ln=True)
-                else:
-                    pdf.multi_cell(0, 8, "\n".join(lines[1:]))
-            elif key.lower() == "afección tm":
-                # Se mueve a la sección de localización
-                continue
+                    for line in lines[1:]:
+                        partes = [p.strip() for p in line.split(";")]
+                        if len(partes) == 4:
+                            pdf.cell(30, 8, partes[0], border=1)
+                            pdf.cell(80, 8, partes[1], border=1)
+                            pdf.cell(40, 8, partes[2], border=1)
+                            pdf.cell(40, 8, partes[3], border=1, ln=True)
+                        else:
+                            pdf.multi_cell(0, 8, line)
             else:
+                pdf.set_font("Arial", "B", 12)
+                pdf.cell(0, 8, f"{key.capitalize()}:", ln=True)
+                pdf.set_font("Arial", "", 12)
                 pdf.multi_cell(0, 8, valor)
     else:
         pdf.set_font("Arial", "", 12)
         pdf.cell(0, 8, "No se han detectado afecciones.", ln=True)
 
     # 3. Localización
-   seccion_titulo("3. Localización")
-
-    # Detectar municipio por defecto
-    municipio_val = datos.get("municipio", "").strip()
-    afeccion_tm_val = datos.get("afección tm", "").strip()
-
-    if not municipio_val or municipio_val.upper() == "N/A":
-        if "dentro de tm:" in afeccion_tm_val.lower():
-            municipio_val = afeccion_tm_val.split(":")[-1].strip()
-
-    campo_orden("Municipio", municipio_val if municipio_val else "No disponible")
+    seccion_titulo("3. Localización")
+    municipio = datos.get("municipio", "").strip()
+    campo_orden("Municipio", municipio if municipio and municipio.upper() != "N/A" else "No disponible")
     for campo in ["polígono", "parcela"]:
         valor = datos.get(campo, "").strip()
         campo_orden(campo.capitalize(), valor if valor else "No disponible")
 
+    # Añadir Afección tm solo si Municipio es "N/A"
+    if municipio.upper() == "N/A":
+        afeccion_tm = datos.get("afección tm", "").strip()
+        if afeccion_tm:
+            pdf.set_font("Arial", "B", 12)
+            pdf.cell(0, 8, "Afección TM:", ln=True)
+            pdf.set_font("Arial", "", 12)
+            pdf.multi_cell(0, 8, afeccion_tm)
+
     # Coordenadas
+    pdf.ln(2)
     pdf.set_font("Arial", "B", 12)
     pdf.cell(0, 10, f"Coordenadas ETRS89: X = {x}, Y = {y}", ln=True)
 
