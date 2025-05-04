@@ -2,6 +2,7 @@ import streamlit as st
 import folium
 from folium.plugins import MarkerCluster
 from streamlit.components.v1 import html
+from streamlit_folium import folium_static
 import geopandas as gpd
 import pandas as pd
 import requests
@@ -73,26 +74,20 @@ shp_urls = {
 def cargar_shapefile_desde_github(base_name):
     base_url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/CATASTRO/"
     exts = [".shp", ".shx", ".dbf", ".prj", ".cpg"]
-    
     with tempfile.TemporaryDirectory() as tmpdir:
         local_paths = {}
         for ext in exts:
             filename = base_name + ext
             url = base_url + filename
             local_path = os.path.join(tmpdir, filename)
-            
             response = requests.get(url)
             if response.status_code != 200:
                 st.error(f"Error al descargar {url}")
-                return None  # Si falta algún archivo esencial, falla todo
-            
+                return None
             with open(local_path, "wb") as f:
                 f.write(response.content)
             local_paths[ext] = local_path
-        
-        shp_path = local_paths[".shp"]
-        gdf = gpd.read_file(shp_path)
-        return gdf
+        return gpd.read_file(local_paths[".shp"])
             
 # Función para transformar coordenadas de ETRS89 a WGS84 (Long, Lat)
 def transformar_coordenadas(x, y):
@@ -124,11 +119,10 @@ def consultar_mup(x, y, geojson_url):
         seleccion = gdf[gdf.contains(punto)]
         if not seleccion.empty:
             props = seleccion.iloc[0]
-            id_monte = props.get("ID_MONTE", "Desconocido")
-            nombre_monte = props.get("NOMBREMONT", "Desconocido")
-            municipio = props.get("MUNICIPIO", "Desconocido")
-            propiedad = props.get("PROPIEDAD", "Desconocido")
-            return (f"Dentro de MUP:\nID: {id_monte}\nNombre: {nombre_monte}\nMunicipio: {municipio}\nPropiedad: {propiedad}")
+            return (f"Dentro de MUP:\nID: {props.get('ID_MONTE', 'Desconocido')}"
+                    f"\nNombre: {props.get('NOMBREMONT', 'Desconocido')}"
+                    f"\nMunicipio: {props.get('MUNICIPIO', 'Desconocido')}"
+                    f"\nPropiedad: {props.get('PROPIEDAD', 'Desconocido')}")
         else:
             return "No se encuentra en ningún MUP"
     except Exception as e:
@@ -138,9 +132,8 @@ def consultar_mup(x, y, geojson_url):
 # Función para crear el mapa con afecciones específicas
 def crear_mapa(x, y, afecciones=[]):
     m = folium.Map(location=[y, x], zoom_start=16)
-    folium.Marker([y, x], popup=f"Coordenadas transformadas: {x}, {y}").add_to(m)
+    folium.Marker([y, x], popup=f"Coordenadas: {x}, {y}").add_to(m)
 
-    # Agregar capas WMS
     folium.raster_layers.WmsTileLayer(
         url="https://ovc.catastro.meh.es/Cartografia/WMS/ServidorWMS.aspx",
         layers="Catastro",
@@ -162,7 +155,7 @@ def crear_mapa(x, y, afecciones=[]):
 
     folium.raster_layers.WmsTileLayer(
         url="https://wms.mapama.gob.es/sig/Biodiversidad/PropiedadMontes_UP/wms.aspx?",
-        name="Catálogo de Montes de Utilidad Pública",
+        name="Montes de Utilidad Pública",
         fmt="image/png",
         layers="Catálogo de Montes de Utilidad Pública",
         transparent=True,
@@ -175,43 +168,23 @@ def crear_mapa(x, y, afecciones=[]):
     # Añadir leyenda personalizada
     legend_html = """
     {% macro html(this, kwargs) %}
-<div style="
-    position: fixed;
-    bottom: 20px;
-    left: 20px;
-    background-color: white;
-    border: 1px solid grey;
-    z-index: 9999;
-    font-size: 10px;
-    padding: 5px;
-    box-shadow: 2px 2px 6px rgba(0,0,0,0.2);
-    line-height: 1.1em;
-    width: auto;
-    transform: scale(0.75); /* Escala todo el contenedor */
-    transform-origin: top left;
-">
-    <b>Leyenda</b><br>
-    <div>
-        <img src="https://wms.mapama.gob.es/sig/Biodiversidad/RedNatura/wms.aspx?REQUEST=GetLegendGraphic&VERSION=1.1.1&FORMAT=image/png&LAYER=Red Natura 2000" alt="Red Natura"><br>
-        <img src="https://wms.mapama.gob.es/sig/Biodiversidad/PropiedadMontes_UP/wms.aspx?REQUEST=GetLegendGraphic&VERSION=1.1.1&FORMAT=image/png&LAYER=Catálogo de Montes de Utilidad Pública" alt="MUP"><br>
+    <div style='position: fixed; bottom: 20px; left: 20px; background-color: white; border: 1px solid grey; 
+    z-index: 9999; font-size: 10px; padding: 5px; box-shadow: 2px 2px 6px rgba(0,0,0,0.2); 
+    transform: scale(0.75); transform-origin: top left;'>
+        <b>Leyenda</b><br>
+        <img src="https://wms.mapama.gob.es/sig/Biodiversidad/RedNatura/wms.aspx?REQUEST=GetLegendGraphic&VERSION=1.1.1&FORMAT=image/png&LAYER=Red Natura 2000"><br>
+        <img src="https://wms.mapama.gob.es/sig/Biodiversidad/PropiedadMontes_UP/wms.aspx?REQUEST=GetLegendGraphic&VERSION=1.1.1&FORMAT=image/png&LAYER=Catálogo de Montes de Utilidad Pública"><br>
     </div>
-</div>
-{% endmacro %}
-"""
-
+    {% endmacro %}
+    """
     legend = MacroElement()
     legend._template = Template(legend_html)
     m.get_root().add_child(legend)
 
-    # Agregar afecciones como marcadores en el mapa
     for afeccion in afecciones:
         folium.Marker([y, x], popup=afeccion).add_to(m)
 
-    uid = uuid.uuid4().hex[:8]
-    mapa_html = f"mapa_{uid}.html"
-    m.save(mapa_html)
-
-    return mapa_html, afecciones
+    return m
 
 # Interfaz de Streamlit
 st.set_page_config(page_title="Informe de Afecciones Ambientales", layout="centered")
@@ -223,29 +196,22 @@ if modo == "Por parcela":
     municipio_sel = st.text_input("Municipio:")
     masa_sel = st.text_input("Polígono:")
     parcela_sel = st.text_input("Parcela:")
-    x_coord = st.text_input("Coordenada X (UTM ETRS89 Zona 30N):")
-    y_coord = st.text_input("Coordenada Y (UTM ETRS89 Zona 30N):")
-else:
-    x_coord = st.text_input("Coordenada X (UTM ETRS89 Zona 30N):")
-    y_coord = st.text_input("Coordenada Y (UTM ETRS89 Zona 30N):")
 
-submitted = st.button("Generar informe")
+x_coord = st.text_input("Coordenada X (ETRS89 UTM Zona 30N):")
+y_coord = st.text_input("Coordenada Y (ETRS89 UTM Zona 30N):")
 
+if st.button("Generar informe"):
 if submitted:
     with st.spinner("Procesando..."):
-
-        # Coordenadas
         x = float(x_coord)
         y = float(y_coord)
         lon, lat = transformar_coordenadas(x, y)
 
-        # Definir variables según modo
         municipio = municipio_sel if modo == "Por parcela" else ""
         poligono = masa_sel if modo == "Por parcela" else ""
         parcela = parcela_sel if modo == "Por parcela" else ""
         coordenadas = (x, y)
 
-        # URLs GeoJSON
         enp_url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/GeoJSON/ENP.json"
         zepa_url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/GeoJSON/ZEPA.json"
         lic_url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/GeoJSON/LIC.json"
@@ -253,7 +219,6 @@ if submitted:
         tm_url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/GeoJSON/TM.json"
         mup_url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/GeoJSON/MUP.json"
 
-        # Consultar afecciones
         afecciones = {
             "ENP": [consultar_geojson(lon, lat, enp_url, "ENP")],
             "ZEPA": [consultar_geojson(lon, lat, zepa_url, "ZEPA")],
@@ -262,7 +227,6 @@ if submitted:
             "TM": [consultar_geojson(lon, lat, tm_url, "Término Municipal")],
         }
 
-        # Consultar MUP
         datos_mup = {}
         mup_resultado = consultar_mup(lon, lat, mup_url)
         if "Dentro de MUP" in mup_resultado:
@@ -274,16 +238,17 @@ if submitted:
                 "PROPIEDAD": partes[4].split(":")[1].strip(),
             }
 
-        # Generar mapa
-    afecciones_lista = list(afecciones["ENP"] + afecciones["ZEPA"] + afecciones["LIC"] + afecciones["VP"] + afecciones["TM"])
-    if "Dentro de MUP" in mup_resultado:
-    afecciones_lista.append(mup_resultado)
+        afecciones_lista = afecciones["ENP"] + afecciones["ZEPA"] + afecciones["LIC"] + afecciones["VP"] + afecciones["TM"]
+        if "Dentro de MUP" in mup_resultado:
+            afecciones_lista.append(mup_resultado)
 
-    mapa_html, _ = crear_mapa(lon, lat, afecciones_lista)
-    m = folium.Map(location=[lat, lon], zoom_start=16)  # reconstruyes `m` solo para folium_static
-    folium_static(m)
+        mapa_html, _ = crear_mapa(lon, lat, afecciones_lista)
+        st.session_state["mapa_html"] = mapa_html
 
-        # Crear contexto para el informe
+        with open(mapa_html, "r", encoding="utf-8") as f:
+            html_content = f.read()
+            st.components.v1.html(html_content, height=600, scrolling=True)
+
         contexto = {
             "fecha": datetime.now().strftime("%d/%m/%Y"),
             "modo": modo,
@@ -303,14 +268,12 @@ if submitted:
             "tm": afecciones["TM"][0],
         }
 
-        # Generar informe
         doc = DocxTemplate("plantilla_informe.docx")
         doc.render(contexto)
         docx_output = BytesIO()
         doc.save(docx_output)
         docx_output.seek(0)
 
-        # Convertir a PDF
         with tempfile.NamedTemporaryFile(delete=False, suffix=".docx") as tmp_docx:
             tmp_docx.write(docx_output.read())
             tmp_docx_path = tmp_docx.name
@@ -320,7 +283,6 @@ if submitted:
 
         convert(tmp_docx_path, tmp_pdf_path)
 
-        # Descargar informe
         with open(tmp_pdf_path, "rb") as f:
             st.download_button(
                 label="📄 Descargar informe en PDF",
@@ -328,7 +290,6 @@ if submitted:
                 file_name="informe_afecciones.pdf",
                 mime="application/pdf"
             )
-
 # Botones de descarga
 if "mapa_html" in st.session_state:
     with open(st.session_state["mapa_html"], "r") as f:
