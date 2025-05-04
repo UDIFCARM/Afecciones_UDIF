@@ -479,10 +479,10 @@ if submitted:
                         break
 
             if municipio_sel and masa_sel and parcela_sel:
-            st.success("Se ha localizado la parcela correspondiente a las coordenadas.")
-            st.write(f"Municipio: {municipio_sel}")
-            st.write(f"Polígono: {masa_sel}")
-            st.write(f"Parcela: {parcela_sel}")
+                st.success("Se ha localizado la parcela correspondiente a las coordenadas.")
+                st.write(f"Municipio: {municipio_sel}")
+                st.write(f"Polígono: {masa_sel}")
+                st.write(f"Parcela: {parcela_sel}")
             else:
                 st.warning("No se encontró ninguna parcela que contenga las coordenadas proporcionadas.")
 
