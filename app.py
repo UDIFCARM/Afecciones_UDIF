@@ -247,9 +247,14 @@ if st.button("Generar informe"):
             afecciones_lista.append(mup_resultado)
 
         mapa = crear_mapa(lon, lat, afecciones_lista)
-        folium_static(mapa)  # Visualiza el mapa
 
-        with open(mapa_html, "r", encoding="utf-8") as f:
+        # Guardar HTML temporalmente
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".html") as tmp_html:
+          mapa.save(tmp_html.name)
+          mapa_html_path = tmp_html.name
+        st.session_state["mapa_html"] = mapa_html_path
+
+        with open(mapa_html_path, "r", encoding="utf-8") as f:
             html_content = f.read()
             st.components.v1.html(html_content, height=600, scrolling=True)
 
