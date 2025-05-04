@@ -209,76 +209,74 @@ def crear_mapa(x, y, afecciones=[]):
 
     return mapa_html, afecciones
 
+# Función para generar el PDF con diseño estructurado
 def generar_pdf(datos, x, y, filename):
     pdf = FPDF()
     pdf.add_page()
 
     # Título
-    pdf.set_font("Arial", "B", 16)
-    pdf.set_text_color(0, 51, 102)
+    pdf.set_font("Arial", "B", size=16)
     pdf.cell(0, 10, "Informe de Afecciones Ambientales", ln=True, align="C")
     pdf.ln(10)
 
-    # Datos del solicitante
+    # Datos personales y solicitud
     pdf.set_font("Arial", "B", 12)
-    pdf.set_text_color(0)
     pdf.cell(0, 10, "1. Datos del solicitante", ln=True)
     pdf.set_font("Arial", "", 11)
-    campos_principales = ["nombre", "apellidos", "dni", "direccion", "objeto"]
-    for campo in campos_principales:
+    for campo in ["nombre", "apellidos", "dni", "direccion"]:
         if campo in datos:
-            pdf.multi_cell(0, 8, f"{campo.capitalize()}: {datos[campo]}")
-    pdf.ln(4)
+            pdf.cell(0, 8, f"{campo.capitalize()}: {datos[campo]}", ln=True)
+    pdf.ln(5)
 
-    # Ubicación
     pdf.set_font("Arial", "B", 12)
-    pdf.cell(0, 10, "2. Ubicación", ln=True)
+    pdf.cell(0, 10, "2. Objeto de la solicitud", ln=True)
     pdf.set_font("Arial", "", 11)
-    pdf.cell(0, 8, f"Coordenadas ETRS89 (Huso 30N): X = {x}, Y = {y}", ln=True)
-    pdf.ln(4)
+    pdf.multi_cell(0, 8, datos.get("objeto", "Sin especificar."))
+    pdf.ln(5)
 
     # Afecciones detectadas
     pdf.set_font("Arial", "B", 12)
     pdf.cell(0, 10, "3. Afecciones detectadas", ln=True)
     pdf.set_font("Arial", "", 11)
     afecciones = datos.get("afecciones", "")
-
     if isinstance(afecciones, str):
         afecciones_list = [line.strip() for line in afecciones.split("\n") if line.strip()]
+    elif isinstance(afecciones, list):
+        afecciones_list = afecciones
     else:
-        afecciones_list = afecciones if isinstance(afecciones, list) else []
+        afecciones_list = []
 
     if afecciones_list:
         for afeccion in afecciones_list:
             pdf.multi_cell(0, 8, f"- {afeccion}")
     else:
         pdf.cell(0, 8, "No se han detectado afecciones.", ln=True)
-    pdf.ln(4)
+    pdf.ln(5)
 
     # Detalles ambientales
     pdf.set_font("Arial", "B", 12)
     pdf.cell(0, 10, "4. Detalles ambientales", ln=True)
     pdf.set_font("Arial", "", 11)
-    detalles = datos.get("detalles_afecciones", [])
-    if detalles:
-        for detalle in detalles:
-            pdf.multi_cell(0, 8, f"• {detalle}")
+    detalles = datos.get("detalles_afecciones", "")
+    if isinstance(detalles, str):
+        detalles_list = [line.strip() for line in detalles.split("\n") if line.strip()]
+    elif isinstance(detalles, list):
+        detalles_list = detalles
+    else:
+        detalles_list = []
+
+    if detalles_list:
+        for linea in detalles_list:
+            pdf.multi_cell(0, 8, f"- {linea}")
     else:
         pdf.cell(0, 8, "Sin información adicional.", ln=True)
-    pdf.ln(6)
+    pdf.ln(5)
 
-    # Imagen del mapa (opcional)
-    if "mapa_path" in datos and os.path.exists(datos["mapa_path"]):
-        pdf.set_font("Arial", "B", 12)
-        pdf.cell(0, 10, "5. Mapa de localización", ln=True)
-        pdf.image(datos["mapa_path"], w=160)
-        pdf.ln(10)
+    # Coordenadas
+    pdf.set_font("Arial", "I", 11)
+    pdf.cell(0, 8, f"Coordenadas ETRS89: X = {x}, Y = {y}", ln=True)
 
-    # Pie del informe
-    pdf.set_font("Arial", "I", 10)
-    pdf.set_text_color(100)
-    pdf.multi_cell(0, 8, "Este informe ha sido generado automáticamente por la aplicación de afecciones ambientales.")
-    
+    # Guardar PDF
     pdf.output(filename)
     return filename
 
