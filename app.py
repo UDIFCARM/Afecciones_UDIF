@@ -462,6 +462,30 @@ if submitted:
             st.write(f"Parcela seleccionada: {parcela_sel}")
     else:
     st.write("Modo por coordenadas seleccionado")
+    def cargar_shapefile_desde_github(base_name):
+        base_url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/CATASTRO/"
+        exts = [".shp", ".shx", ".dbf", ".prj", ".cpg"]
+    
+        with tempfile.TemporaryDirectory() as tmpdir:
+            local_paths = {}
+            for ext in exts:
+                filename = base_name + ext
+                url = base_url + filename
+                local_path = os.path.join(tmpdir, filename)
+            
+                response = requests.get(url)
+                if response.status_code != 200:
+                    st.warning(f"Error al descargar {url}")
+                    return None
+            
+                with open(local_path, "wb") as f:
+                    f.write(response.content)
+                local_paths[ext] = local_path
+        
+            shp_path = local_paths[".shp"]
+            gdf = gpd.read_file(shp_path)
+            return gdf
+            
     print(f"Coordenadas: ({x}, {y})")
     punto = Point(x, y)
     municipio_sel = None
