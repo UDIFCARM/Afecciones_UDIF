@@ -363,13 +363,14 @@ def generar_pdf(datos, x, y, filename):
 
     # Insertar imagen del mapa si existe
     imagen_mapa_path = generar_imagen_estatica_mapa(x, y)
+
     if os.path.exists(imagen_mapa_path):
-        pdf.image(imagen_mapa_path, x=pdf.l_margin, w=pdf.epw)
-        if os.path.exists(imagen_mapa_path):
-            pdf.ln(5)
-            pdf.set_font("Arial", "B", 12)
-            pdf.cell(0, 8, "Mapa de localización:", ln=True)
-            pdf.image(imagen_mapa_path, x=10, w=pdf.w - 20)
+        epw = pdf.w - 2 * pdf.l_margin  # Calcular el ancho útil de la página
+
+        pdf.ln(5)
+        pdf.set_font("Arial", "B", 12)
+        pdf.cell(0, 8, "Mapa de localización:", ln=True)
+        pdf.image(imagen_mapa_path, x=pdf.l_margin, w=epw)
 
     pdf.output(filename)
     return filename
