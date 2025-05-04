@@ -220,22 +220,27 @@ campos_orden = [
 # Campos de localización
 campos_localizacion = ["Municipio", "Polígono", "Parcela"]
 
-def generar_pdf(datos, x, y, filename):
+def generar_pdf(datos, x, y, filename, mapa_img_path=None):
     pdf = FPDF()
     pdf.add_page()
 
-    # Descargar e insertar el logo
-    logo_url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/logos.jpg"
-    response = requests.get(logo_url)
-    if response.status_code == 200:
-        logo_image = BytesIO(response.content)
-        pdf.image(logo_image, x=10, y=8, w=40)
-    pdf.set_y(25)  # Posicionar debajo del logo
+    # Insertar logo desde GitHub
+    def insertar_logo():
+        url_logo = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/logos.jpg"
+        try:
+            response = requests.get(url_logo)
+            if response.status_code == 200:
+                logo_path = "/tmp/logo.jpg"
+                with open(logo_path, "wb") as f:
+                    f.write(response.content)
+                pdf.image(logo_path, x=10, y=8, w=40)
+        except Exception:
+            pass  # Si falla, no rompe el informe
 
-    # Título principal
-    pdf.set_font("Arial", "B", size=16)
+    insertar_logo()
+    pdf.set_font("Arial", "B", 16)
     pdf.cell(0, 10, "Informe de Afecciones Ambientales", ln=True, align="C")
-    pdf.ln(10)
+    pdf.ln(20)
 
     azul_rgb = (141, 179, 226)
 
@@ -272,7 +277,7 @@ def generar_pdf(datos, x, y, filename):
 
     # 2. Afecciones detectadas
     seccion_titulo("2. Afecciones detectadas")
-    afecciones_keys = [k for k in datos if k.lower().startswith("afección") and "tm" not in k.lower()]
+    afecciones_keys = [k for k in datos if k.lower().startswith("afección") and not k.lower().startswith("afección tm")]
     if afecciones_keys:
         for key in afecciones_keys:
             valor = datos[key].strip()
@@ -292,7 +297,7 @@ def generar_pdf(datos, x, y, filename):
                     pdf.cell(80, 8, "Nombre", border=1, fill=True)
                     pdf.cell(40, 8, "Municipio", border=1, fill=True)
                     pdf.cell(40, 8, "Propiedad", border=1, ln=True, fill=True)
-
+                    
                     # Filas
                     pdf.set_font("Arial", "", 11)
                     for line in lines[1:]:
@@ -315,25 +320,32 @@ def generar_pdf(datos, x, y, filename):
 
     # 3. Localización
     seccion_titulo("3. Localización")
+
     municipio = datos.get("municipio", "").strip()
-    campo_orden("Municipio", municipio if municipio and municipio.upper() != "N/A" else "No disponible")
+    tm = datos.get("afección tm", "").strip()
+
+    if municipio.lower() == "n/a" and tm:
+        pdf.set_font("Arial", "B", 12)
+        pdf.cell(0, 8, "Municipio:", ln=True)
+        pdf.set_font("Arial", "", 12)
+        pdf.multi_cell(0, 8, tm)
+    else:
+        campo_orden("Municipio", municipio)
+
     for campo in ["polígono", "parcela"]:
         valor = datos.get(campo, "").strip()
         campo_orden(campo.capitalize(), valor if valor else "No disponible")
 
-    # Añadir Afección tm solo si Municipio es "N/A"
-    if municipio.upper() == "N/A":
-        afeccion_tm = datos.get("afección tm", "").strip()
-        if afeccion_tm:
-            pdf.set_font("Arial", "B", 12)
-            pdf.cell(0, 8, "Afección TM:", ln=True)
-            pdf.set_font("Arial", "", 12)
-            pdf.multi_cell(0, 8, afeccion_tm)
-
-    # Coordenadas
-    pdf.ln(2)
     pdf.set_font("Arial", "B", 12)
     pdf.cell(0, 10, f"Coordenadas ETRS89: X = {x}, Y = {y}", ln=True)
+
+    # Incrustar mapa si se ha generado imagen
+    if mapa_img_path and os.path.exists(mapa_img_path):
+        pdf.add_page()
+        pdf.set_font("Arial", "B", 13)
+        pdf.cell(0, 10, "Mapa de localización", ln=True)
+        pdf.ln(5)
+        pdf.image(mapa_img_path, x=15, w=180)  # Ajuste de ancho
 
     pdf.output(filename)
     return filename
