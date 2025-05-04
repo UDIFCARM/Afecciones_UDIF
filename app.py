@@ -216,16 +216,20 @@ def generar_pdf(datos, x, y, filename):
     pdf = FPDF()
     pdf.add_page()
 
-    # Descargar e insertar el logo
-    logo_url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/logos.jpg"
-    response = requests.get(logo_url)
-    if response.status_code == 200:
-        logo_image = BytesIO(response.content)
-        page_width = pdf.w - 2 * pdf.l_margin
-        logo_width = page_width
-        pdf.image(logo_image, x=pdf.l_margin, y=10, w=logo_width)
-        logo_height = logo_width * 0.2
-        pdf.set_y(10 + logo_height + 5)
+# Descargar e insertar el logo
+logo_url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/logos.jpg"
+response = requests.get(logo_url)
+if response.status_code == 200:
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp_img:
+        tmp_img.write(response.content)
+        tmp_img_path = tmp_img.name
+
+    page_width = pdf.w - 2 * pdf.l_margin
+    logo_width = page_width
+    pdf.image(tmp_img_path, x=pdf.l_margin, y=10, w=logo_width)
+
+    logo_height = logo_width * 0.2
+    pdf.set_y(10 + logo_height + 5)
 
     # Título principal
     pdf.set_font("Arial", "B", size=16)
