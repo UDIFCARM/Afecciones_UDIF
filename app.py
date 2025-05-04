@@ -242,18 +242,12 @@ def generar_pdf(datos, x, y, filename):
         pdf.cell(50, 8, f"{titulo}:", ln=0)
         pdf.set_font("Arial", "", 12)
         pdf.multi_cell(0, 8, valor if valor else "No especificado")
-
-    def formatear_fecha(fecha_str):
-        try:
-            return datetime.strptime(fecha_str, "%Y-%m-%d").strftime("%d/%m/%Y")
-        except:
-            return "No especificado"
-    
+ 
     # 1. Datos del solicitante
     seccion_titulo("1. Datos del solicitante")
     campos_orden = [
-        ("Fecha solicitud", formatear_fecha(datos.get("fecha_solicitud", ""))),
-        ("Fecha informe", formatear_fecha(datos.get("fecha_informe", ""))),
+        ("Fecha solicitud", datos.get("fecha_solicitud", "").strip()),
+        ("Fecha informe", datos.get("fecha_informe", "".strip()),
         ("Nombre", datos.get("nombre", "").strip()),
         ("Apellidos", datos.get("apellidos", "").strip()),
         ("DNI", datos.get("dni", "").strip()),
@@ -310,8 +304,6 @@ def generar_pdf(datos, x, y, filename):
                     pdf.cell(40, 8, datos_mup.get("propiedad", ""), border=1, ln=True)
                 else:
                     pdf.multi_cell(0, 8, "\n".join(lines[1:]))
-            elif key.lower() == "afección tm":
-                continue  # se mostrará en la sección 3
             else:
                 pdf.multi_cell(0, 8, valor)
     else:
