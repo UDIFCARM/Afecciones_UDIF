@@ -246,12 +246,17 @@ def generar_pdf(datos, x, y, filename):
     # 1. Datos del solicitante
     seccion_titulo("1. Datos del solicitante")
     campos_orden = [
-        "fecha solicitud", "fecha informe", "nombre", "apellidos", 
-        "dni", "dirección", "teléfono", "email"
+        ("Fecha solicitud", formatear_fecha(datos.get("fecha solicitud", ""))),
+        ("Fecha informe", formatear_fecha(datos.get("fecha informe", ""))),
+        ("Nombre", datos.get("nombre", "").strip()),
+        ("Apellidos", datos.get("apellidos", "").strip()),
+        ("DNI", datos.get("dni", "").strip()),
+        ("Dirección", datos.get("dirección", "").strip()),
+        ("Teléfono", datos.get("teléfono", "").strip()),
+        ("Email", datos.get("email", "").strip()),
     ]
-    for campo in campos_orden:
-        valor = datos.get(campo, "").strip()
-        campo_orden(campo.capitalize(), valor)
+    for titulo, valor in campos_orden:
+        campo_orden(titulo, valor)
 
     # Objeto de la solicitud
     objeto = datos.get("objeto de la solicitud", "").strip()
@@ -300,8 +305,7 @@ def generar_pdf(datos, x, y, filename):
                 else:
                     pdf.multi_cell(0, 8, "\n".join(lines[1:]))
             elif key.lower() == "afección tm":
-                # Se mueve a la sección de localización
-                continue
+                continue  # se mostrará en la sección 3
             else:
                 pdf.multi_cell(0, 8, valor)
     else:
@@ -315,7 +319,7 @@ def generar_pdf(datos, x, y, filename):
         campo_orden(campo.capitalize(), valor if valor else "No disponible")
 
     # Afección TM si existe
-    afeccion_tm = datos.get("afección tm", "")
+    afeccion_tm = datos.get("afección tm", "").strip()
     if afeccion_tm:
         pdf.set_font("Arial", "B", 12)
         pdf.cell(0, 8, "Afección TM:", ln=True)
