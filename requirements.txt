@@ -19,3 +19,4 @@ openpyxl
 pypandoc
 reportlab
 html2image
+staticmap
