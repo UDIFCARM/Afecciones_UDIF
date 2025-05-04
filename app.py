@@ -210,28 +210,84 @@ def crear_mapa(x, y, afecciones=[]):
     return mapa_html, afecciones
 
 # Función para generar el PDF con los datos de la solicitud
-def generar_pdf(datos, x, y, filename):
-    pdf = FPDF()
-    pdf.add_page()
+from reportlab.lib.pagesizes import A4
+from reportlab.lib import colors
+from reportlab.lib.units import cm
+from reportlab.pdfgen import canvas
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.platypus import Paragraph, Frame, Image as RLImage
 
-    pdf.set_font("Arial", "B", size=14)
-    pdf.cell(200, 10, "Informe de Afecciones Ambientales", ln=True, align="C")
+def generar_pdf(nombre, tipo_busqueda, datos_busqueda, afecciones_texto, mapa_path):
+    buffer = BytesIO()
+    pdf = canvas.Canvas(buffer, pagesize=A4)
+    width, height = A4
+    styles = getSampleStyleSheet()
 
-    pdf.set_font("Arial", size=12)
-    pdf.ln(10)
+    # Márgenes
+    margin = 2 * cm
+    cursor_y = height - margin
 
-    for k, v in datos.items():
-        if k.lower() == "afección mup" and v.startswith("Dentro de MUP"): 
-            v_lines = v.split("\n")
-            for line in v_lines:
-                pdf.cell(200, 10, line, ln=True)
-        else:
-            pdf.multi_cell(0, 10, f"{k.capitalize()}: {v}")
+    # Título principal
+    pdf.setFont("Helvetica-Bold", 18)
+    pdf.drawCentredString(width / 2, cursor_y, "Informe de Afecciones Ambientales")
+    cursor_y -= 1.2 * cm
 
-    pdf.ln(5)
-    pdf.cell(200, 10, f"Coordenadas ETRS89: X = {x}, Y = {y}", ln=True)
-    pdf.output(filename)
-    return filename
+    # Línea separadora
+    pdf.setStrokeColor(colors.grey)
+    pdf.setLineWidth(1)
+    pdf.line(margin, cursor_y, width - margin, cursor_y)
+    cursor_y -= 1.2 * cm
+
+    # Datos del solicitante
+    pdf.setFont("Helvetica-Bold", 12)
+    pdf.drawString(margin, cursor_y, "Datos del Solicitante:")
+    cursor_y -= 0.8 * cm
+
+    pdf.setFont("Helvetica", 11)
+    pdf.drawString(margin, cursor_y, f"Nombre: {nombre}")
+    cursor_y -= 0.6 * cm
+    pdf.drawString(margin, cursor_y, f"Método de búsqueda: {tipo_busqueda}")
+    cursor_y -= 0.6 * cm
+    pdf.drawString(margin, cursor_y, f"Datos de búsqueda: {datos_busqueda}")
+    cursor_y -= 1.2 * cm
+
+    # Afecciones ambientales
+    pdf.setFont("Helvetica-Bold", 12)
+    pdf.drawString(margin, cursor_y, "Afecciones Ambientales Detectadas:")
+    cursor_y -= 0.8 * cm
+
+    text = pdf.beginText(margin, cursor_y)
+    text.setFont("Helvetica", 11)
+
+    # Si no hay afecciones
+    if not afecciones_texto:
+        afecciones_texto = "No se han detectado afecciones ambientales en esta ubicación."
+
+    for linea in afecciones_texto.splitlines():
+        text.textLine(linea.strip())
+    pdf.drawText(text)
+
+    cursor_y = text.getY() - 1.2 * cm
+
+    # Mapa
+    if os.path.exists(mapa_path):
+        pdf.setFont("Helvetica-Bold", 12)
+        pdf.drawString(margin, cursor_y, "Mapa de Localización:")
+        cursor_y -= 0.8 * cm
+
+        try:
+            pdf.drawImage(mapa_path, margin, cursor_y - 10*cm, width=width - 2*margin, height=10*cm, preserveAspectRatio=True, mask='auto')
+        except Exception as e:
+            pdf.setFont("Helvetica", 10)
+            pdf.drawString(margin, cursor_y, f"No se pudo cargar el mapa: {e}")
+    else:
+        pdf.setFont("Helvetica", 10)
+        pdf.drawString(margin, cursor_y, "Mapa no disponible.")
+
+    pdf.showPage()
+    pdf.save()
+    buffer.seek(0)
+    return buffer
 
 # Interfaz de Streamlit
 st.title("\U0001F5FA️ Informe de Afecciones Ambientales")
