@@ -222,46 +222,62 @@ campos_localizacion = ["Municipio", "Polígono", "Parcela"]
 def generar_pdf(datos, x, y, filename):
     pdf = FPDF()
     pdf.add_page()
-    pdf.set_auto_page_break(auto=True, margin=15)
 
     # Título principal
-    pdf.set_font("Arial", "B", 14)
+    pdf.set_font("Arial", "B", size=16)
     pdf.cell(0, 10, "Informe de Afecciones Ambientales", ln=True, align="C")
-    pdf.ln(5)
+
+    pdf.ln(10)
+
+    # Colores
+    azul_rgb = (141, 179, 226)
 
     def seccion_titulo(texto):
-        pdf.set_fill_color(141, 179, 226)  # azul claro
-        pdf.set_font("Arial", "B", 12)
+        pdf.set_fill_color(*azul_rgb)
+        pdf.set_text_color(0, 0, 0)
+        pdf.set_font("Arial", "B", 13)
         pdf.cell(0, 10, texto, ln=True, fill=True)
-        pdf.ln(1)
+        pdf.ln(2)
 
-    def campo_linea(nombre, valor):
+    def campo_orden(titulo, valor):
         pdf.set_font("Arial", "B", 12)
-        pdf.multi_cell(0, 8, f"{nombre}: ", border=0)
+        pdf.cell(40, 8, f"{titulo}:", ln=0)
         pdf.set_font("Arial", "", 12)
-        pdf.multi_cell(0, 8, str(valor), border=0)
+        pdf.multi_cell(0, 8, valor if valor else "No especificado")
 
     # 1. Datos del solicitante
     seccion_titulo("1. Datos del solicitante")
+    campos_orden = [
+        "fecha solicitud", "fecha informe", "nombre", "apellidos", "dni", "dirección", 
+        "teléfono", "email", "objeto de la solicitud"
+    ]
     for campo in campos_orden:
-        valor = datos.get(campo, "No especificado")
-        campo_linea(campo, valor)
+        valor = datos.get(campo, "").strip()
+        campo_orden(campo.capitalize(), valor)
 
     # 2. Afecciones detectadas
     seccion_titulo("2. Afecciones detectadas")
-    afecciones = [k for k in datos.keys() if "afección" in k.lower()]
-    if afecciones:
-        for k in afecciones:
-            campo_linea(k, datos[k])
+    afecciones_keys = [k for k in datos if k.lower().startswith("afección")]
+    if afecciones_keys:
+        for key in afecciones_keys:
+            pdf.set_font("Arial", "B", 12)
+            pdf.cell(0, 8, f"{key.capitalize()}:", ln=True)
+            pdf.set_font("Arial", "", 12)
+            valor = datos[key]
+            for linea in valor.split("\n"):
+                pdf.multi_cell(0, 8, linea)
     else:
-        campo_linea("Afecciones", "No se han detectado afecciones.")
+        pdf.set_font("Arial", "", 12)
+        pdf.cell(0, 8, "No se han detectado afecciones.", ln=True)
 
     # 3. Localización
     seccion_titulo("3. Localización")
-    for campo in campos_localizacion:
-        valor = datos.get(campo, "No disponible")
-        campo_linea(campo, valor)
-    pdf.set_font("Arial", "", 12)
+    for campo in ["municipio", "polígono", "parcela"]:
+        valor = datos.get(campo, "").strip()
+        campo_orden(campo.capitalize(), valor if valor else "No disponible")
+
+    # Coordenadas
+    pdf.set_font("Arial", "B", 12)
     pdf.cell(0, 10, f"Coordenadas ETRS89: X = {x}, Y = {y}", ln=True)
 
     # Guardar PDF
