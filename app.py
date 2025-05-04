@@ -467,11 +467,14 @@ if submitted:
             masa_sel = None
             parcela_sel = None
             base_url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/CATASTRO/"
+            
             for municipio in sorted(shp_urls.keys()):
                 archivo_url = base_url + municipio + "_CATASTRO.shp"
                 gdf = cargar_shapefile_desde_github(archivo_url)
+                
                 if gdf is not None:
                     contiene = gdf[gdf.geometry.contains(punto)]
+                    
                     if not contiene.empty:
                         municipio_sel = contiene.iloc[0]["TM"]
                         masa_sel = contiene.iloc[0]["MASA"]
