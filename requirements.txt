@@ -16,4 +16,4 @@ pandas
 shapely
 Pillow
 openpyxl
-
+pypandoc
