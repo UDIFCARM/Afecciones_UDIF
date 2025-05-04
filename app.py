@@ -211,6 +211,32 @@ def crear_mapa(x, y, afecciones=[]):
     return mapa_html, afecciones
 
 # Función para generar el PDF con los datos de la solicitud
+# Descargar e insertar el logo
+logo_url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/logos.jpg"
+response = requests.get(logo_url)
+if response.status_code == 200:
+    logo_image = BytesIO(response.content)
+
+    # Ajustar ancho del logo al ancho de la página menos márgenes
+    page_width = pdf.w - 2 * pdf.l_margin
+    logo_width = page_width
+    pdf.image(logo_image, x=pdf.l_margin, y=10, w=logo_width)
+
+    # Mover el cursor debajo del logo con un margen
+    logo_height = logo_width * 0.2  # Aproximación si el logo es más ancho que alto
+    pdf.set_y(10 + logo_height + 5)  # 5 mm de separación
+
+# Título principal
+pdf.set_font("Arial", "B", size=16)
+pdf.set_text_color(0, 0, 0)
+pdf.cell(0, 10, "Informe de Afecciones Ambientales", ln=True, align="C")
+pdf.ln(10)
+
+# Color personalizado azul (aunque FPDF usa RGB de 0 a 255)
+azul_rgb = (141, 179, 226)
+pdf.set_fill_color(*azul_rgb)
+
+# Aquí podrías continuar con más contenido del informe...
 # Lista de campos que deben aparecer en orden y en negrita
 campos_orden = [
     "Fecha solicitud", "Fecha informe", "Nombre", "Apellidos", "Dni", "Dirección",
