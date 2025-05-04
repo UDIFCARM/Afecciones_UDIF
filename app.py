@@ -461,8 +461,6 @@ if submitted:
             st.write(f"Polígono seleccionado: {masa_sel}")
             st.write(f"Parcela seleccionada: {parcela_sel}")
 
-if modo == "por coordenadas":
-    else:
         st.write("Modo por coordenadas seleccionado")
     def cargar_shapefile_desde_github(base_name):
         base_url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/CATASTRO/"
