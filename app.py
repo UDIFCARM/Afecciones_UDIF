@@ -15,6 +15,7 @@ from docx import Document
 from branca.element import Template, MacroElement
 from io import BytesIO
 from html2image import Html2Image
+from staticmap import StaticMap, CircleMarker
 
 # Diccionario con los nombres de municipios y sus nombres base de archivo
 shp_urls = {
@@ -212,18 +213,15 @@ def crear_mapa(x, y, afecciones=[]):
     return mapa_html, afecciones
 
 # Función auxiliar para convertir el mapa HTML en imagen PNG
-def guardar_mapa_como_imagen_html2image(mapa_html_path):
-    hti = Html2Image()
+def generar_imagen_estatica_mapa(x, y, zoom=16, size=(800, 600)):
+    mapa = StaticMap(size[0], size[1])
+    marcador = CircleMarker((x, y), 'red', 12)
+    mapa.add_marker(marcador)
+    image = mapa.render(zoom=zoom)
+
     temp_dir = tempfile.mkdtemp()
     output_path = os.path.join(temp_dir, "mapa.png")
-    
-    # Renderizar el HTML como imagen
-    hti.screenshot(
-        html_file=mapa_html_path,
-        save_as="mapa.png",
-        size=(800, 600),
-        output_path=temp_dir
-    )
+    image.save(output_path)
     return output_path
 
 # Función para generar el PDF con los datos de la solicitud
@@ -364,9 +362,9 @@ def generar_pdf(datos, x, y, filename):
     pdf.cell(0, 10, f"Coordenadas ETRS89: X = {x}, Y = {y}", ln=True)
 
     # Insertar imagen del mapa si existe
-    mapa_html_path = "mapa.html"
+    imagen_mapa_path = generar_imagen_estatica_mapa(x, y)
     if os.path.exists(mapa_html_path):
-        imagen_mapa_path = guardar_mapa_como_imagen_html2image(mapa_html_path)
+        pdf.image(imagen_mapa_path, x=pdf.l_margin, w=pdf.epw)
         if os.path.exists(imagen_mapa_path):
             pdf.ln(5)
             pdf.set_font("Arial", "B", 12)
