@@ -241,9 +241,15 @@ def generar_pdf(datos, x, y, filename):
     pdf.set_font("Arial", "B", 12)
     pdf.cell(0, 10, "3. Afecciones detectadas", ln=True)
     pdf.set_font("Arial", "", 11)
-    afecciones = datos.get("afecciones", [])
-    if afecciones:
-        for afeccion in afecciones:
+    afecciones = datos.get("afecciones", "")
+
+    if isinstance(afecciones, str):
+        afecciones_list = [line.strip() for line in afecciones.split("\n") if line.strip()]
+    else:
+        afecciones_list = afecciones if isinstance(afecciones, list) else []
+
+    if afecciones_list:
+        for afeccion in afecciones_list:
             pdf.multi_cell(0, 8, f"- {afeccion}")
     else:
         pdf.cell(0, 8, "No se han detectado afecciones.", ln=True)
