@@ -325,8 +325,6 @@ with tempfile.TemporaryDirectory() as tmpdirname:
 
 if 'mapa_html' not in st.session_state:
     st.session_state['mapa_html'] = None
-if 'pdf_file' not in st.session_state:
-    st.session_state['pdf_file'] = None
 
 if submitted:
     # Validación de entradas
@@ -400,15 +398,6 @@ if submitted:
         with open(mapa_html, 'r') as f:
             html(f.read(), height=500)
 
-        # PDF generado desde los datos
-        pdf_filename = f"informe_{uuid.uuid4().hex[:8]}.pdf"
-        generar_pdf(datos, x, y, pdf_filename)
-        st.session_state['pdf_file'] = pdf_filename
-
 # Botones de descarga
-if st.session_state['mapa_html'] and st.session_state['pdf_file']:
-    with open(st.session_state['pdf_file'], "rb") as f:
-        st.download_button("📄 Descargar informe PDF", f, file_name="informe_afecciones.pdf")
-
     with open(st.session_state['mapa_html'], "r") as f:
         st.download_button("🌍 Descargar mapa HTML", f, file_name="mapa_busqueda.html")
