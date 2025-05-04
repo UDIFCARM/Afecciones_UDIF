@@ -201,7 +201,6 @@ x_coord = st.text_input("Coordenada X (ETRS89 UTM Zona 30N):")
 y_coord = st.text_input("Coordenada Y (ETRS89 UTM Zona 30N):")
 
 if st.button("Generar informe"):
-if submitted:
     with st.spinner("Procesando..."):
         x = float(x_coord)
         y = float(y_coord)
@@ -242,8 +241,8 @@ if submitted:
         if "Dentro de MUP" in mup_resultado:
             afecciones_lista.append(mup_resultado)
 
-        mapa_html, _ = crear_mapa(lon, lat, afecciones_lista)
-        st.session_state["mapa_html"] = mapa_html
+        mapa = crear_mapa(lon, lat, afecciones_lista)
+        folium_static(mapa, height=600)
 
         with open(mapa_html, "r", encoding="utf-8") as f:
             html_content = f.read()
