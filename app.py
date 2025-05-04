@@ -213,70 +213,69 @@ def crear_mapa(x, y, afecciones=[]):
 def generar_pdf(datos, x, y, filename):
     pdf = FPDF()
     pdf.add_page()
-
-    # Título
+    
     pdf.set_font("Arial", "B", size=16)
     pdf.cell(0, 10, "Informe de Afecciones Ambientales", ln=True, align="C")
     pdf.ln(10)
 
-    # Datos personales y solicitud
-    pdf.set_font("Arial", "B", 12)
+    # 1. Datos del solicitante
+    pdf.set_font("Arial", "B", 14)
     pdf.cell(0, 10, "1. Datos del solicitante", ln=True)
-    pdf.set_font("Arial", "", 11)
-    for campo in ["nombre", "apellidos", "dni", "direccion"]:
+    pdf.set_font("Arial", "", 12)
+
+    campos_solicitante = [
+        "fecha_solicitud", "fecha_informe", "nombre", "apellidos", "dni",
+        "dirección", "teléfono", "email", "objeto de la solicitud"
+    ]
+    for campo in campos_solicitante:
         if campo in datos:
-            pdf.cell(0, 8, f"{campo.capitalize()}: {datos[campo]}", ln=True)
+            pdf.cell(0, 10, f"{campo.replace('_', ' ').capitalize()}: {datos[campo]}", ln=True)
     pdf.ln(5)
 
-    pdf.set_font("Arial", "B", 12)
-    pdf.cell(0, 10, "2. Objeto de la solicitud", ln=True)
-    pdf.set_font("Arial", "", 11)
-    pdf.multi_cell(0, 8, datos.get("objeto", "Sin especificar."))
+    # 2. Afecciones detectadas
+    pdf.set_font("Arial", "B", 14)
+    pdf.cell(0, 10, "2. Afecciones detectadas", ln=True)
+    pdf.set_font("Arial", "", 12)
+
+    afecciones_detectadas = []
+    for clave in datos:
+        if clave.startswith("afección"):
+            valor = datos[clave]
+            if "no se encuentra" not in valor.lower():
+                afecciones_detectadas.append(f"{clave.replace('_', ' ').capitalize()}: {valor}")
+
+    if afecciones_detectadas:
+        for af in afecciones_detectadas:
+            pdf.multi_cell(0, 10, af)
+    else:
+        pdf.cell(0, 10, "No se han detectado afecciones.", ln=True)
+
     pdf.ln(5)
 
-    # Afecciones detectadas
-    pdf.set_font("Arial", "B", 12)
-    pdf.cell(0, 10, "3. Afecciones detectadas", ln=True)
-    pdf.set_font("Arial", "", 11)
-    afecciones = datos.get("afecciones", "")
-    if isinstance(afecciones, str):
-        afecciones_list = [line.strip() for line in afecciones.split("\n") if line.strip()]
-    elif isinstance(afecciones, list):
-        afecciones_list = afecciones
-    else:
-        afecciones_list = []
+    # 3. Detalles ambientales
+    pdf.set_font("Arial", "B", 14)
+    pdf.cell(0, 10, "3. Detalles ambientales", ln=True)
+    pdf.set_font("Arial", "", 12)
 
-    if afecciones_list:
-        for afeccion in afecciones_list:
-            pdf.multi_cell(0, 8, f"- {afeccion}")
+    if "afección mup" in datos and "dentro de mup" in datos["afección mup"].lower():
+        for line in datos["afección mup"].split("\n"):
+            pdf.cell(0, 10, line.strip(), ln=True)
     else:
-        pdf.cell(0, 8, "No se han detectado afecciones.", ln=True)
+        pdf.cell(0, 10, "Sin información adicional.", ln=True)
+
     pdf.ln(5)
 
-    # Detalles ambientales
-    pdf.set_font("Arial", "B", 12)
-    pdf.cell(0, 10, "4. Detalles ambientales", ln=True)
-    pdf.set_font("Arial", "", 11)
-    detalles = datos.get("detalles_afecciones", "")
-    if isinstance(detalles, str):
-        detalles_list = [line.strip() for line in detalles.split("\n") if line.strip()]
-    elif isinstance(detalles, list):
-        detalles_list = detalles
-    else:
-        detalles_list = []
+    # 4. Localización
+    pdf.set_font("Arial", "B", 14)
+    pdf.cell(0, 10, "4. Localización", ln=True)
+    pdf.set_font("Arial", "", 12)
 
-    if detalles_list:
-        for linea in detalles_list:
-            pdf.multi_cell(0, 8, f"- {linea}")
-    else:
-        pdf.cell(0, 8, "Sin información adicional.", ln=True)
-    pdf.ln(5)
+    for campo in ["municipio", "polígono", "parcela"]:
+        if campo in datos:
+            pdf.cell(0, 10, f"{campo.capitalize()}: {datos[campo]}", ln=True)
 
-    # Coordenadas
-    pdf.set_font("Arial", "I", 11)
-    pdf.cell(0, 8, f"Coordenadas ETRS89: X = {x}, Y = {y}", ln=True)
+    pdf.cell(0, 10, f"Coordenadas ETRS89: X = {x}, Y = {y}", ln=True)
 
-    # Guardar PDF
     pdf.output(filename)
     return filename
 
