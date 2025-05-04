@@ -1,18 +1,19 @@
 import streamlit as st
-import folium
-from streamlit.components.v1 import html
-from fpdf import FPDF
-from pyproj import Transformer
-import requests
-import xml.etree.ElementTree as ET
 import geopandas as gpd
+import pandas as pd
+import folium
+from streamlit_folium import st_folium
+from folium.plugins import MarkerCluster
 import tempfile
-import os
-from shapely.geometry import Point
-import uuid
+import base64
+from jinja2 import Template
+from docxtpl import DocxTemplate, InlineImage
+from docx.shared import Mm
 from datetime import datetime
-from docx import Document
-from branca.element import Template, MacroElement
+import os
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from PIL import Image
 
 # Diccionario con los nombres de municipios y sus nombres base de archivo
 shp_urls = {
@@ -209,31 +210,50 @@ def crear_mapa(x, y, afecciones=[]):
 
     return mapa_html, afecciones
 
-# Función para generar el PDF con los datos de la solicitud
-def generar_pdf(datos, x, y, filename):
-    pdf = FPDF()
-    pdf.add_page()
+# Función para generar el informe DOCX y convertirlo a PDF
+# --- Cargar plantilla ---
+TEMPLATE_PATH = "plantilla_informe_afecciones.docx"
 
-    pdf.set_font("Arial", "B", size=14)
-    pdf.cell(200, 10, "Informe de Afecciones Ambientales", ln=True, align="C")
+def generar_mapa(lat, lon):
+    m = folium.Map(location=[lat, lon], zoom_start=15)
+    folium.Marker([lat, lon], tooltip="Ubicación seleccionada").add_to(m)
+    return m
 
-    pdf.set_font("Arial", size=12)
-    pdf.ln(10)
+def capturar_mapa_como_imagen(mapa):
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".html") as tmpfile:
+        mapa.save(tmpfile.name)
+        tmp_html = tmpfile.name
 
-    for k, v in datos.items():
-        if k.lower() == "afección mup" and v.startswith("Dentro de MUP"): 
-            v_lines = v.split("\n")
-            for line in v_lines:
-                pdf.cell(200, 10, line, ln=True)
-        else:
-            pdf.multi_cell(0, 10, f"{k.capitalize()}: {v}")
+    options = Options()
+    options.add_argument("--headless")
+    options.add_argument("--disable-gpu")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--window-size=800,600")
 
-    pdf.ln(5)
-    pdf.cell(200, 10, f"Coordenadas ETRS89: X = {x}, Y = {y}", ln=True)
-    pdf.output(filename)
-    return filename
+    driver = webdriver.Chrome(options=options)
+    driver.get("file://" + tmp_html)
+    screenshot_path = tmp_html.replace(".html", ".png")
+    driver.save_screenshot(screenshot_path)
+    driver.quit()
+
+    return screenshot_path
+
+def generar_informe(contexto, mapa_img_path):
+    doc = DocxTemplate(TEMPLATE_PATH)
+    contexto["mapa"] = InlineImage(doc, mapa_img_path, width=Mm(150))
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".docx") as tmpdoc:
+        doc.render(contexto)
+        doc.save(tmpdoc.name)
+        return tmpdoc.name
+
+def convertir_docx_a_pdf(docx_path):
+    from docx2pdf import convert
+    output_path = docx_path.replace(".docx", ".pdf")
+    convert(docx_path, output_path)
+    return output_path
 
 # Interfaz de Streamlit
+st.set_page_config(page_title="Informe de Afecciones Ambientales", layout="centered")
 st.title("\U0001F5FA️ Informe de Afecciones Ambientales")
 
 modo = st.radio("Selecciona el modo de búsqueda", ["Por coordenadas", "Por parcela"])
@@ -299,11 +319,58 @@ with st.form("formulario"):
     email = st.text_input("Correo electrónico")
     objeto = st.text_area("Objeto de la solicitud", max_chars=255)       
     submitted = st.form_submit_button("Generar informe")
+    enviar = st.form_submit_button("Generar informe")
+
+if enviar:
+    with st.spinner("Generando informe..."):
+        # 1. Generar mapa y captura
+        mapa = generar_mapa(coordenadas_y, coordenadas_x)
+        img_path = capturar_mapa_como_imagen(mapa)
+
+        # 2. Preparar contexto
+        contexto = {
+            "fecha_solicitud": datetime.today().strftime("%d/%m/%Y"),
+            "fecha_informe": datetime.today().strftime("%d/%m/%Y"),
+            "nombre": nombre,
+            "apellidos": apellidos,
+            "dni": dni,
+            "direccion": direccion,
+            "telefono": telefono,
+            "email": email,
+            "objeto": objeto,
+            "municipio": municipio,
+            "poligono": poligono,
+            "parcela": parcela,
+            "coordenadas_x": coordenadas_x,
+            "coordenadas_y": coordenadas_y,
+            "mup_id": mup_id,
+            "mup_nombre": mup_nombre,
+            "mup_municipio": mup_municipio,
+            "mup_propiedad": mup_propiedad,
+            "tm": tm,
+            "vp": vp,
+            "enp": enp,
+            "zepa": zepa,
+            "lic": lic,
+        }
+
+        # 3. Generar DOCX
+        docx_path = generar_informe(contexto, img_path)
+
+        # 4. Convertir a PDF
+        pdf_path = convertir_docx_a_pdf(docx_path)
+
+        with open(pdf_path, "rb") as f:
+            st.download_button(
+                label="Descargar informe PDF",
+                data=f,
+                file_name="informe_afecciones.pdf",
+                mime="application/pdf"
+            )
+
 
 if 'mapa_html' not in st.session_state:
     st.session_state['mapa_html'] = None
-if 'pdf_file' not in st.session_state:
-    st.session_state['pdf_file'] = None
 
 if submitted:
     # Validación de entradas
