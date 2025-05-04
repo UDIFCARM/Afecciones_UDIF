@@ -220,99 +220,88 @@ campos_orden = [
 campos_localizacion = ["Municipio", "Polígono", "Parcela"]
 
 def generar_pdf(datos, x, y, filename):
-    pdf = FPDF()
+    class PDF(FPDF):
+        def header_section(self, title):
+            self.set_fill_color(141, 179, 226)  # Azul claro
+            self.set_font("Arial", "B", 12)
+            self.cell(0, 10, title, ln=True, fill=True)
+
+        def add_kv(self, key, value, bold=False):
+            if bold:
+                self.set_font("Arial", "B", 12)
+            else:
+                self.set_font("Arial", "", 12)
+            self.multi_cell(0, 8, f"{key}: {value}")
+
+        def add_table(self, headers, rows):
+            self.set_font("Arial", "B", 12)
+            col_widths = [40, 70, 40, 40]
+            for i, header in enumerate(headers):
+                self.cell(col_widths[i], 8, header, border=1)
+            self.ln()
+            self.set_font("Arial", "", 12)
+            for row in rows:
+                for i, cell in enumerate(row):
+                    self.cell(col_widths[i], 8, cell, border=1)
+                self.ln()
+
+    pdf = PDF()
     pdf.add_page()
 
-    # Título principal
-    pdf.set_font("Arial", "B", size=16)
+    pdf.set_font("Arial", "B", 14)
     pdf.cell(0, 10, "Informe de Afecciones Ambientales", ln=True, align="C")
-    pdf.ln(10)
-
-    azul_rgb = (141, 179, 226)
-
-    def seccion_titulo(texto):
-        pdf.set_fill_color(*azul_rgb)
-        pdf.set_text_color(0, 0, 0)
-        pdf.set_font("Arial", "B", 13)
-        pdf.cell(0, 10, texto, ln=True, fill=True)
-        pdf.ln(2)
-
-    def campo_orden(titulo, valor):
-        pdf.set_font("Arial", "B", 12)
-        pdf.cell(40, 8, f"{titulo}:", ln=0)
-        pdf.set_font("Arial", "", 12)
-        pdf.multi_cell(0, 8, valor if valor else "No especificado")
+    pdf.ln(5)
 
     # 1. Datos del solicitante
-    seccion_titulo("1. Datos del solicitante")
-    campos_orden = [
-        "fecha solicitud", "fecha informe", "nombre", "apellidos", 
-        "dni", "dirección", "teléfono", "email"
-    ]
+    pdf.header_section("1. Datos del solicitante")
+    campos_orden = ["fecha solicitud", "fecha informe", "nombre", "apellidos", "dni", "dirección", "teléfono", "email"]
     for campo in campos_orden:
-        valor = datos.get(campo, "").strip()
-        campo_orden(campo.capitalize(), valor)
+        valor = datos.get(campo, "No especificado")
+        pdf.add_kv(campo.capitalize(), valor, bold=True)
 
-    # Objeto de la solicitud
-    objeto = datos.get("objeto de la solicitud", "").strip()
-    pdf.ln(2)
-    pdf.set_font("Arial", "B", 12)
-    pdf.cell(0, 8, "Objeto de la solicitud:", ln=True)
-    pdf.set_font("Arial", "", 12)
-    pdf.multi_cell(0, 8, objeto if objeto else "No especificado")
+    # Objeto de la solicitud (línea aparte)
+    objeto = datos.get("objeto de la solicitud", "No especificado")
+    pdf.add_kv("Objeto de la solicitud", "", bold=True)
+    pdf.multi_cell(0, 8, objeto)
 
     # 2. Afecciones detectadas
-    seccion_titulo("2. Afecciones detectadas")
-    afecciones_keys = [k for k in datos if k.lower().startswith("afección")]
-    if afecciones_keys:
-        for key in afecciones_keys:
-            valor = datos[key].strip()
-            if key.lower() == "afección mup" and valor.lower().startswith("dentro de mup"):
-                pdf.set_font("Arial", "B", 12)
-                pdf.cell(0, 8, f"{key.capitalize()}:", ln=True)
-                pdf.set_font("Arial", "", 12)
-                
-                lines = valor.split("\n")
-                resumen = lines[0]
-                pdf.multi_cell(0, 8, resumen)
-                if len(lines) > 1:
-                    # Cabecera tabla
-                    pdf.set_fill_color(200, 200, 200)
-                    pdf.set_font("Arial", "B", 11)
-                    pdf.cell(30, 8, "ID", border=1, fill=True)
-                    pdf.cell(80, 8, "Nombre", border=1, fill=True)
-                    pdf.cell(40, 8, "Municipio", border=1, fill=True)
-                    pdf.cell(40, 8, "Propiedad", border=1, ln=True, fill=True)
-                    
-                    # Filas
-                    pdf.set_font("Arial", "", 11)
-                    for line in lines[1:]:
-                        partes = [p.strip() for p in line.split(";")]
-                        if len(partes) == 4:
-                            pdf.cell(30, 8, partes[0], border=1)
-                            pdf.cell(80, 8, partes[1], border=1)
-                            pdf.cell(40, 8, partes[2], border=1)
-                            pdf.cell(40, 8, partes[3], border=1, ln=True)
-                        else:
-                            pdf.multi_cell(0, 8, line)  # Si no cumple formato, texto normal
-            else:
-                pdf.set_font("Arial", "B", 12)
-                pdf.cell(0, 8, f"{key.capitalize()}:", ln=True)
-                pdf.set_font("Arial", "", 12)
-                pdf.multi_cell(0, 8, valor)
+    pdf.ln(3)
+    pdf.header_section("2. Afecciones detectadas")
+
+    # Tabla si hay afección MUP con formato esperado
+    afeccion_mup = datos.get("afección mup", "")
+    if afeccion_mup.startswith("Dentro de MUP"):
+        lines = [line.strip() for line in afeccion_mup.split("\n") if ":" in line]
+        rows = []
+        current = {}
+        for line in lines:
+            key, val = line.split(":", 1)
+            current[key.strip()] = val.strip()
+            if len(current) == 4:
+                rows.append([
+                    current.get("ID", ""),
+                    current.get("Nombre", ""),
+                    current.get("Municipio", ""),
+                    current.get("Propiedad", "")
+                ])
+                current = {}
+        pdf.add_kv("Afección MUP", "Dentro de MUP", bold=True)
+        pdf.add_table(["ID", "Nombre", "Municipio", "Propiedad"], rows)
     else:
-        pdf.set_font("Arial", "", 12)
-        pdf.cell(0, 8, "No se han detectado afecciones.", ln=True)
+        pdf.add_kv("Afección MUP", afeccion_mup)
+
+    # Resto de afecciones
+    for key in ["afección vp", "afección enp", "afección zepa", "afección lic", "afección tm"]:
+        if key in datos:
+            pdf.add_kv(key.capitalize(), datos[key])
 
     # 3. Localización
-    seccion_titulo("3. Localización")
+    pdf.ln(3)
+    pdf.header_section("3. Localización")
     for campo in ["municipio", "polígono", "parcela"]:
-        valor = datos.get(campo, "").strip()
-        campo_orden(campo.capitalize(), valor if valor else "No disponible")
-
-    # Coordenadas
-    pdf.set_font("Arial", "B", 12)
-    pdf.cell(0, 10, f"Coordenadas ETRS89: X = {x}, Y = {y}", ln=True)
+        valor = datos.get(campo, "N/A")
+        pdf.add_kv(campo.capitalize(), valor, bold=True)
+    pdf.add_kv("Coordenadas ETRS89", f"X = {x}, Y = {y}", bold=True)
 
     pdf.output(filename)
     return filename
