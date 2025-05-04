@@ -220,27 +220,13 @@ campos_orden = [
 # Campos de localización
 campos_localizacion = ["Municipio", "Polígono", "Parcela"]
 
-def generar_pdf(datos, x, y, filename, mapa_img_path=None):
+def generar_pdf(datos, x, y, filename):
     pdf = FPDF()
     pdf.add_page()
 
-    # Insertar logo desde GitHub
-    def insertar_logo():
-        url_logo = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/logos.jpg"
-        try:
-            response = requests.get(url_logo)
-            if response.status_code == 200:
-                logo_path = "/tmp/logo.jpg"
-                with open(logo_path, "wb") as f:
-                    f.write(response.content)
-                pdf.image(logo_path, x=10, y=8, w=40)
-        except Exception:
-            pass  # Si falla, no rompe el informe
-
-    insertar_logo()
-    pdf.set_font("Arial", "B", 16)
+    pdf.set_font("Arial", "B", size=16)
     pdf.cell(0, 10, "Informe de Afecciones Ambientales", ln=True, align="C")
-    pdf.ln(20)
+    pdf.ln(10)
 
     azul_rgb = (141, 179, 226)
 
@@ -253,7 +239,7 @@ def generar_pdf(datos, x, y, filename, mapa_img_path=None):
 
     def campo_orden(titulo, valor):
         pdf.set_font("Arial", "B", 12)
-        pdf.cell(40, 8, f"{titulo}:", ln=0)
+        pdf.cell(50, 8, f"{titulo}:", ln=0)
         pdf.set_font("Arial", "", 12)
         pdf.multi_cell(0, 8, valor if valor else "No especificado")
 
@@ -277,19 +263,20 @@ def generar_pdf(datos, x, y, filename, mapa_img_path=None):
 
     # 2. Afecciones detectadas
     seccion_titulo("2. Afecciones detectadas")
-    afecciones_keys = [k for k in datos if k.lower().startswith("afección") and not k.lower().startswith("afección tm")]
+    afecciones_keys = [k for k in datos if k.lower().startswith("afección")]
+
     if afecciones_keys:
         for key in afecciones_keys:
             valor = datos[key].strip()
+            pdf.set_font("Arial", "B", 12)
+            pdf.cell(0, 8, f"{key.capitalize()}:", ln=True)
+            pdf.set_font("Arial", "", 12)
+
             if key.lower() == "afección mup" and valor.lower().startswith("dentro de mup"):
-                pdf.set_font("Arial", "B", 12)
-                pdf.cell(0, 8, f"{key.capitalize()}:", ln=True)
-                pdf.set_font("Arial", "", 12)
-                
                 lines = valor.split("\n")
                 resumen = lines[0]
                 pdf.multi_cell(0, 8, resumen)
-                if len(lines) > 1:
+                if len(lines) > 4:
                     # Cabecera tabla
                     pdf.set_fill_color(200, 200, 200)
                     pdf.set_font("Arial", "B", 11)
@@ -297,22 +284,25 @@ def generar_pdf(datos, x, y, filename, mapa_img_path=None):
                     pdf.cell(80, 8, "Nombre", border=1, fill=True)
                     pdf.cell(40, 8, "Municipio", border=1, fill=True)
                     pdf.cell(40, 8, "Propiedad", border=1, ln=True, fill=True)
-                    
-                    # Filas
-                    pdf.set_font("Arial", "", 11)
+
+                    # Obtener los campos por líneas (se asume estructura tipo 'ID: valor')
+                    datos_mup = {}
                     for line in lines[1:]:
-                        partes = [p.strip() for p in line.split(";")]
-                        if len(partes) == 4:
-                            pdf.cell(30, 8, partes[0], border=1)
-                            pdf.cell(80, 8, partes[1], border=1)
-                            pdf.cell(40, 8, partes[2], border=1)
-                            pdf.cell(40, 8, partes[3], border=1, ln=True)
-                        else:
-                            pdf.multi_cell(0, 8, line)
+                        if ":" in line:
+                            clave, valor_linea = line.split(":", 1)
+                            datos_mup[clave.strip().lower()] = valor_linea.strip()
+
+                    pdf.set_font("Arial", "", 11)
+                    pdf.cell(30, 8, datos_mup.get("id", ""), border=1)
+                    pdf.cell(80, 8, datos_mup.get("nombre", ""), border=1)
+                    pdf.cell(40, 8, datos_mup.get("municipio", ""), border=1)
+                    pdf.cell(40, 8, datos_mup.get("propiedad", ""), border=1, ln=True)
+                else:
+                    pdf.multi_cell(0, 8, "\n".join(lines[1:]))
+            elif key.lower() == "afección tm":
+                # Se mueve a la sección de localización
+                continue
             else:
-                pdf.set_font("Arial", "B", 12)
-                pdf.cell(0, 8, f"{key.capitalize()}:", ln=True)
-                pdf.set_font("Arial", "", 12)
                 pdf.multi_cell(0, 8, valor)
     else:
         pdf.set_font("Arial", "", 12)
@@ -320,32 +310,21 @@ def generar_pdf(datos, x, y, filename, mapa_img_path=None):
 
     # 3. Localización
     seccion_titulo("3. Localización")
-
-    municipio = datos.get("municipio", "").strip()
-    tm = datos.get("afección tm", "").strip()
-
-    if municipio.lower() == "n/a" and tm:
-        pdf.set_font("Arial", "B", 12)
-        pdf.cell(0, 8, "Municipio:", ln=True)
-        pdf.set_font("Arial", "", 12)
-        pdf.multi_cell(0, 8, tm)
-    else:
-        campo_orden("Municipio", municipio)
-
-    for campo in ["polígono", "parcela"]:
+    for campo in ["municipio", "polígono", "parcela"]:
         valor = datos.get(campo, "").strip()
         campo_orden(campo.capitalize(), valor if valor else "No disponible")
 
+    # Afección TM si existe
+    afeccion_tm = datos.get("afección tm", "")
+    if afeccion_tm:
+        pdf.set_font("Arial", "B", 12)
+        pdf.cell(0, 8, "Afección TM:", ln=True)
+        pdf.set_font("Arial", "", 12)
+        pdf.multi_cell(0, 8, afeccion_tm)
+
+    # Coordenadas
     pdf.set_font("Arial", "B", 12)
     pdf.cell(0, 10, f"Coordenadas ETRS89: X = {x}, Y = {y}", ln=True)
-
-    # Incrustar mapa si se ha generado imagen
-    if mapa_img_path and os.path.exists(mapa_img_path):
-        pdf.add_page()
-        pdf.set_font("Arial", "B", 13)
-        pdf.cell(0, 10, "Mapa de localización", ln=True)
-        pdf.ln(5)
-        pdf.image(mapa_img_path, x=15, w=180)  # Ajuste de ancho
 
     pdf.output(filename)
     return filename
