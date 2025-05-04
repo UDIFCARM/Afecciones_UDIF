@@ -214,22 +214,57 @@ def generar_pdf(datos, x, y, filename):
     pdf = FPDF()
     pdf.add_page()
 
-    pdf.set_font("Arial", "B", size=14)
-    pdf.cell(200, 10, "Informe de Afecciones Ambientales", ln=True, align="C")
-
-    pdf.set_font("Arial", size=12)
+    # Título principal
+    pdf.set_font("Arial", "B", 16)
+    pdf.cell(0, 10, "Informe de Afecciones Ambientales", ln=True, align="C")
     pdf.ln(10)
 
-    for k, v in datos.items():
-        if k.lower() == "afección mup" and v.startswith("Dentro de MUP"): 
-            v_lines = v.split("\n")
-            for line in v_lines:
-                pdf.cell(200, 10, line, ln=True)
-        else:
-            pdf.multi_cell(0, 10, f"{k.capitalize()}: {v}")
+    # Sección: Datos del solicitante
+    pdf.set_font("Arial", "B", 14)
+    pdf.cell(0, 10, "1. Datos del solicitante", ln=True)
+    pdf.set_font("Arial", "", 12)
 
+    campos_orden = [
+        "fecha_solicitud", "fecha_informe", "nombre", "apellidos", "dni",
+        "dirección", "teléfono", "email", "objeto de la solicitud"
+    ]
+    for k in campos_orden:
+        if k in datos:
+            pdf.multi_cell(0, 8, f"{k.replace('_', ' ').capitalize()}: {datos[k]}")
     pdf.ln(5)
-    pdf.cell(200, 10, f"Coordenadas ETRS89: X = {x}, Y = {y}", ln=True)
+
+    # Sección: Afecciones detectadas
+    pdf.set_font("Arial", "B", 14)
+    pdf.cell(0, 10, "2. Afecciones detectadas", ln=True)
+    pdf.set_font("Arial", "", 12)
+
+    afecciones = [k for k in datos if k.lower().startswith("afección")]
+    afecciones_utiles = [
+        (k, datos[k]) for k in afecciones if "no se encuentra" not in datos[k].lower()
+    ]
+
+    if afecciones_utiles:
+        for k, v in afecciones_utiles:
+            if k.lower() == "afección mup" and v.startswith("Dentro de MUP"): 
+                for line in v.split("\n"):
+                    pdf.multi_cell(0, 8, line.strip())
+            else:
+                pdf.multi_cell(0, 8, f"{k.replace('_', ' ').capitalize()}: {v}")
+    else:
+        pdf.cell(0, 10, "No se han detectado afecciones.", ln=True)
+    pdf.ln(5)
+
+    # Sección: Localización
+    pdf.set_font("Arial", "B", 14)
+    pdf.cell(0, 10, "3. Localización", ln=True)
+    pdf.set_font("Arial", "", 12)
+
+    for campo in ["municipio", "polígono", "parcela"]:
+        if campo in datos:
+            pdf.cell(0, 10, f"{campo.capitalize()}: {datos[campo]}", ln=True)
+    pdf.cell(0, 10, f"Coordenadas ETRS89: X = {x}, Y = {y}", ln=True)
+
+    # Guardar PDF
     pdf.output(filename)
     return filename
 
