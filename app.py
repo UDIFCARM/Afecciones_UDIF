@@ -15,6 +15,7 @@ from docx import Document
 from docx.shared import Inches
 from docx2pdf import convert
 from branca.element import Template, MacroElement
+import pypandoc
 
 # Diccionario con los nombres de municipios y sus nombres base de archivo
 shp_urls = {
