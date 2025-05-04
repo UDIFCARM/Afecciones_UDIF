@@ -253,7 +253,7 @@ def generar_pdf(datos, x, y, filename):
         valor = datos.get(campo, "").strip()
         campo_orden(campo.capitalize(), valor)
 
-    # Objeto de la solicitud en línea aparte dentro de la sección 1
+    # Objeto de la solicitud
     objeto = datos.get("objeto de la solicitud", "").strip()
     pdf.ln(2)
     pdf.set_font("Arial", "B", 12)
@@ -266,12 +266,40 @@ def generar_pdf(datos, x, y, filename):
     afecciones_keys = [k for k in datos if k.lower().startswith("afección")]
     if afecciones_keys:
         for key in afecciones_keys:
-            pdf.set_font("Arial", "B", 12)
-            pdf.cell(0, 8, f"{key.capitalize()}:", ln=True)
-            pdf.set_font("Arial", "", 12)
-            valor = datos[key]
-            for linea in valor.split("\n"):
-                pdf.multi_cell(0, 8, linea)
+            valor = datos[key].strip()
+            if key.lower() == "afección mup" and valor.lower().startswith("dentro de mup"):
+                pdf.set_font("Arial", "B", 12)
+                pdf.cell(0, 8, f"{key.capitalize()}:", ln=True)
+                pdf.set_font("Arial", "", 12)
+                
+                lines = valor.split("\n")
+                resumen = lines[0]
+                pdf.multi_cell(0, 8, resumen)
+                if len(lines) > 1:
+                    # Cabecera tabla
+                    pdf.set_fill_color(200, 200, 200)
+                    pdf.set_font("Arial", "B", 11)
+                    pdf.cell(30, 8, "ID", border=1, fill=True)
+                    pdf.cell(80, 8, "Nombre", border=1, fill=True)
+                    pdf.cell(40, 8, "Municipio", border=1, fill=True)
+                    pdf.cell(40, 8, "Propiedad", border=1, ln=True, fill=True)
+                    
+                    # Filas
+                    pdf.set_font("Arial", "", 11)
+                    for line in lines[1:]:
+                        partes = [p.strip() for p in line.split(";")]
+                        if len(partes) == 4:
+                            pdf.cell(30, 8, partes[0], border=1)
+                            pdf.cell(80, 8, partes[1], border=1)
+                            pdf.cell(40, 8, partes[2], border=1)
+                            pdf.cell(40, 8, partes[3], border=1, ln=True)
+                        else:
+                            pdf.multi_cell(0, 8, line)  # Si no cumple formato, texto normal
+            else:
+                pdf.set_font("Arial", "B", 12)
+                pdf.cell(0, 8, f"{key.capitalize()}:", ln=True)
+                pdf.set_font("Arial", "", 12)
+                pdf.multi_cell(0, 8, valor)
     else:
         pdf.set_font("Arial", "", 12)
         pdf.cell(0, 8, "No se han detectado afecciones.", ln=True)
@@ -286,7 +314,6 @@ def generar_pdf(datos, x, y, filename):
     pdf.set_font("Arial", "B", 12)
     pdf.cell(0, 10, f"Coordenadas ETRS89: X = {x}, Y = {y}", ln=True)
 
-    # Guardar PDF
     pdf.output(filename)
     return filename
     
