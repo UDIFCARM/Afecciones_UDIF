@@ -243,6 +243,12 @@ def generar_pdf(datos, x, y, filename):
         pdf.set_font("Arial", "", 12)
         pdf.multi_cell(0, 8, valor if valor else "No especificado")
 
+    def formatear_fecha(fecha_str):
+        try:
+            return datetime.strptime(fecha_str, "%Y-%m-%d").strftime("%d/%m/%Y")
+        except:
+            return "No especificado"
+    
     # 1. Datos del solicitante
     seccion_titulo("1. Datos del solicitante")
     campos_orden = [
