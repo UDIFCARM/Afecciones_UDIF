@@ -16,7 +16,6 @@ from fpdf import FPDF
 import xml.etree.ElementTree as ET
 from shapely.geometry import Point
 import uuid
-from datetime import datetime
 from branca.element import Template, MacroElement
 
 # Diccionario con los nombres de municipios y sus nombres base de archivo
@@ -276,8 +275,13 @@ if submitted:
             }
 
         # Generar mapa
-        mapa = crear_mapa(lon, lat, afecciones, mup_resultado)
-        folium_static(mapa)
+    afecciones_lista = list(afecciones["ENP"] + afecciones["ZEPA"] + afecciones["LIC"] + afecciones["VP"] + afecciones["TM"])
+    if "Dentro de MUP" in mup_resultado:
+    afecciones_lista.append(mup_resultado)
+
+    mapa_html, _ = crear_mapa(lon, lat, afecciones_lista)
+    m = folium.Map(location=[lat, lon], zoom_start=16)  # reconstruyes `m` solo para folium_static
+    folium_static(m)
 
         # Crear contexto para el informe
         contexto = {
@@ -326,5 +330,6 @@ if submitted:
             )
 
 # Botones de descarga
-    with open(st.session_state['mapa_html'], "r") as f:
+if "mapa_html" in st.session_state:
+    with open(st.session_state["mapa_html"], "r") as f:
         st.download_button("🌍 Descargar mapa HTML", f, file_name="mapa_busqueda.html")
