@@ -276,6 +276,53 @@ with st.form("formulario"):
     objeto = st.text_area("Objeto de la solicitud", max_chars=255)       
     submitted = st.form_submit_button("Generar informe")
 
+# Preparar contexto para plantilla
+contexto = {
+    'fecha_solicitud': fecha_solicitud,
+    'fecha_informe': datetime.today().strftime('%Y-%m-%d'),
+    'nombre': nombre,
+    'apellidos': apellidos,
+    'dni': dni,
+    'direccion': direccion,
+    'telefono': telefono,
+    'email': email,
+    'objeto': objeto,
+    'municipio': municipio,
+    'poligono': poligono,
+    'parcela': parcela,
+    'coordenadas_x': coordenadas[0] if coordenadas else '',
+    'coordenadas_y': coordenadas[1] if coordenadas else '',
+    'mup_id': datos_mup.get("CUP", ""),
+    'mup_nombre': datos_mup.get("NOMBRE", ""),
+    'mup_municipio': datos_mup.get("MUNICIPIO", ""),
+    'mup_propiedad': datos_mup.get("PROPIEDAD", ""),
+    'tm': ', '.join(afecciones.get("TM", [])),
+    'vp': ', '.join(afecciones.get("VP", [])),
+    'enp': ', '.join(afecciones.get("ENP", [])),
+    'zepa': ', '.join(afecciones.get("ZEPA", [])),
+    'lic': ', '.join(afecciones.get("LIC", []))
+}
+
+# Cargar plantilla y generar informe
+plantilla_path = "plantilla_informe_afecciones.docx"
+doc = DocxTemplate(plantilla_path)
+doc.render(contexto)
+
+with tempfile.TemporaryDirectory() as tmpdirname:
+    docx_output = os.path.join(tmpdirname, "informe.docx")
+    pdf_output = os.path.join(tmpdirname, "informe.pdf")
+
+    doc.save(docx_output)
+    convert(docx_output, pdf_output)
+
+    with open(pdf_output, "rb") as f:
+        st.download_button(
+            label="Descargar informe en PDF",
+            data=f,
+            file_name="informe_afecciones.pdf",
+            mime="application/pdf"
+        )
+
 if 'mapa_html' not in st.session_state:
     st.session_state['mapa_html'] = None
 if 'pdf_file' not in st.session_state:
