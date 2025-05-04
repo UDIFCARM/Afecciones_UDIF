@@ -308,18 +308,20 @@ def generar_pdf(datos, x, y, filename):
         pdf.cell(0, 8, "No se han detectado afecciones.", ln=True)
 
     # 3. Localización
-    seccion_titulo("3. Localización")
-    for campo in ["municipio", "polígono", "parcela"]:
+   seccion_titulo("3. Localización")
+
+    # Detectar municipio por defecto
+    municipio_val = datos.get("municipio", "").strip()
+    afeccion_tm_val = datos.get("afección tm", "").strip()
+
+    if not municipio_val or municipio_val.upper() == "N/A":
+        if "dentro de tm:" in afeccion_tm_val.lower():
+            municipio_val = afeccion_tm_val.split(":")[-1].strip()
+
+    campo_orden("Municipio", municipio_val if municipio_val else "No disponible")
+    for campo in ["polígono", "parcela"]:
         valor = datos.get(campo, "").strip()
         campo_orden(campo.capitalize(), valor if valor else "No disponible")
-
-    # Afección TM si existe
-    afeccion_tm = datos.get("afección tm", "")
-    if afeccion_tm:
-        pdf.set_font("Arial", "B", 12)
-        pdf.cell(0, 8, "Afección TM:", ln=True)
-        pdf.set_font("Arial", "", 12)
-        pdf.multi_cell(0, 8, afeccion_tm)
 
     # Coordenadas
     pdf.set_font("Arial", "B", 12)
