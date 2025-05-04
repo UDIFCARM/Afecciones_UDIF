@@ -216,33 +216,33 @@ def generar_pdf(datos, x, y, filename):
     pdf = FPDF()
     pdf.add_page()
 
-# Descargar e insertar el logo
-logo_url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/logos.jpg"
-response = requests.get(logo_url)
-if response.status_code == 200:
-    logo_image = BytesIO(response.content)
-    page_width = pdf.w - 2 * pdf.l_margin
-    logo_width = page_width
-    pdf.image(logo_image, x=pdf.l_margin, y=10, w=logo_width)
-    logo_height = logo_width * 0.2
-    pdf.set_y(10 + logo_height + 5)
+    # Descargar e insertar el logo
+    logo_url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/logos.jpg"
+    response = requests.get(logo_url)
+    if response.status_code == 200:
+        logo_image = BytesIO(response.content)
+        page_width = pdf.w - 2 * pdf.l_margin
+        logo_width = page_width
+        pdf.image(logo_image, x=pdf.l_margin, y=10, w=logo_width)
+        logo_height = logo_width * 0.2
+        pdf.set_y(10 + logo_height + 5)
 
-# Título principal
-pdf.set_font("Arial", "B", size=16)
-pdf.set_text_color(0, 0, 0)
-pdf.cell(0, 10, "Informe de Afecciones Ambientales", ln=True, align="C")
-pdf.ln(10)
+    # Título principal
+    pdf.set_font("Arial", "B", size=16)
+    pdf.set_text_color(0, 0, 0)
+    pdf.cell(0, 10, "Informe de Afecciones Ambientales", ln=True, align="C")
+    pdf.ln(10)
 
-azul_rgb = (141, 179, 226)
+    azul_rgb = (141, 179, 226)
 
-# Lista de campos que deben aparecer en orden y en negrita
-campos_orden = [
-    "Fecha solicitud", "Fecha informe", "Nombre", "Apellidos", "Dni", "Dirección",
-    "Teléfono", "Email", "Objeto de la solicitud"
-]
+    # Lista de campos que deben aparecer en orden y en negrita
+    campos_orden = [
+        "Fecha solicitud", "Fecha informe", "Nombre", "Apellidos", "Dni", "Dirección",
+        "Teléfono", "Email", "Objeto de la solicitud"
+    ]
 
-# Campos de localización
-campos_localizacion = ["Municipio", "Polígono", "Parcela"]
+    # Campos de localización
+    campos_localizacion = ["Municipio", "Polígono", "Parcela"]
     
     def seccion_titulo(texto):
         pdf.set_fill_color(*azul_rgb)
