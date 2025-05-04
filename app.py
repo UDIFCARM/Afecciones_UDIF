@@ -13,6 +13,7 @@ import uuid
 from datetime import datetime
 from docx import Document
 from branca.element import Template, MacroElement
+from io import BytesIO
 
 # Diccionario con los nombres de municipios y sus nombres base de archivo
 shp_urls = {
