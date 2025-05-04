@@ -210,28 +210,51 @@ def crear_mapa(x, y, afecciones=[]):
     return mapa_html, afecciones
 
 # Función para generar el PDF con los datos de la solicitud
-def generar_pdf(datos, x, y, filename):
-    pdf = FPDF()
-    pdf.add_page()
+def generar_pdf(datos, x, y, nombre_pdf):
+    # Abrir plantilla Word
+    plantilla_path = "plantilla_informe_afecciones.docx"
+    doc = Document(plantilla_path)
 
-    pdf.set_font("Arial", "B", size=14)
-    pdf.cell(200, 10, "Informe de Afecciones Ambientales", ln=True, align="C")
+    # Reemplazar campos en la plantilla
+    for p in doc.paragraphs:
+        for key, value in datos.items():
+            marcador = f"{{{{{key}}}}}"
+            if marcador in p.text:
+                p.text = p.text.replace(marcador, str(value))
 
-    pdf.set_font("Arial", size=12)
-    pdf.ln(10)
+    # Generar imagen del mapa
+    mapa_html = st.session_state['mapa_html']
+    imagen_mapa_path = os.path.join(tempfile.gettempdir(), "mapa.png")
+    img_data = None
+    if mapa_html:
+        import base64
+        import re
+        from selenium import webdriver
+        from selenium.webdriver.chrome.options import Options
 
-    for k, v in datos.items():
-        if k.lower() == "afección mup" and v.startswith("Dentro de MUP"): 
-            v_lines = v.split("\n")
-            for line in v_lines:
-                pdf.cell(200, 10, line, ln=True)
-        else:
-            pdf.multi_cell(0, 10, f"{k.capitalize()}: {v}")
+        options = Options()
+        options.add_argument("--headless")
+        options.add_argument("--disable-gpu")
+        options.add_argument("--no-sandbox")
+        driver = webdriver.Chrome(options=options)
+        driver.set_window_size(800, 600)
+        driver.get("file://" + os.path.abspath(mapa_html))
+        driver.save_screenshot(imagen_mapa_path)
+        driver.quit()
 
-    pdf.ln(5)
-    pdf.cell(200, 10, f"Coordenadas ETRS89: X = {x}, Y = {y}", ln=True)
-    pdf.output(filename)
-    return filename
+    # Insertar imagen del mapa reemplazando el marcador {{mapa}}
+    for i, p in enumerate(doc.paragraphs):
+        if "{{mapa}}" in p.text:
+            p.clear()
+            run = p.add_run()
+            run.add_picture(imagen_mapa_path, width=Inches(5.5))
+
+    # Guardar temporal como Word
+    temp_word_path = os.path.join(tempfile.gettempdir(), "temp.docx")
+    doc.save(temp_word_path)
+
+    # Convertir a PDF
+    convert(temp_word_path, nombre_pdf)
 
 # Interfaz de Streamlit
 st.title("\U0001F5FA️ Informe de Afecciones Ambientales")
