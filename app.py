@@ -211,15 +211,6 @@ def crear_mapa(x, y, afecciones=[]):
     return mapa_html, afecciones
 
 # Función para generar el PDF con los datos de la solicitud
-# Aquí podrías continuar con más contenido del informe...
-# Lista de campos que deben aparecer en orden y en negrita
-campos_orden = [
-    "Fecha solicitud", "Fecha informe", "Nombre", "Apellidos", "Dni", "Dirección",
-    "Teléfono", "Email", "Objeto de la solicitud"
-]
-
-# Campos de localización
-campos_localizacion = ["Municipio", "Polígono", "Parcela"]
 
 def generar_pdf(datos, x, y, filename):
     pdf = FPDF()
@@ -248,6 +239,15 @@ pdf.ln(10)
 
 azul_rgb = (141, 179, 226)
 pdf.set_fill_color(*azul_rgb)
+
+# Lista de campos que deben aparecer en orden y en negrita
+campos_orden = [
+    "Fecha solicitud", "Fecha informe", "Nombre", "Apellidos", "Dni", "Dirección",
+    "Teléfono", "Email", "Objeto de la solicitud"
+]
+
+# Campos de localización
+campos_localizacion = ["Municipio", "Polígono", "Parcela"]
     
     def seccion_titulo(texto):
         pdf.set_fill_color(*azul_rgb)
