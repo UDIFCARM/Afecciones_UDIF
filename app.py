@@ -432,7 +432,12 @@ with st.form("formulario"):
     else:
         # Muestra las coordenadas calculadas y las pone como campo oculto para el formulario
         st.info(f"Coordenadas obtenidas de la parcela: X = {x}, Y = {y}")
-        
+        municipio = st.selectbox("Municipio", lista_municipios)
+        masa = st.text_input("Masa")
+        parcela = st.text_input("Parcela")
+
+    submitted = st.form_submit_button("Buscar")
+       
     fecha_solicitud = st.date_input("Fecha de la solicitud")
     nombre = st.text_input("Nombre")
     apellidos = st.text_input("Apellidos")
@@ -461,7 +466,10 @@ if submitted:
             st.write(f"Polígono seleccionado: {masa_sel}")
             st.write(f"Parcela seleccionada: {parcela_sel}")
 
+   if submitted:
+    if modo == "Por coordenadas":
         st.write("Modo por coordenadas seleccionado")
+        
     def cargar_shapefile_desde_github(base_name):
         base_url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/CATASTRO/"
         exts = [".shp", ".shx", ".dbf", ".prj", ".cpg"]
