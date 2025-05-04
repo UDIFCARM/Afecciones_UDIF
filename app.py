@@ -461,7 +461,30 @@ if submitted:
             st.write(f"Polígono seleccionado: {masa_sel}")
             st.write(f"Parcela seleccionada: {parcela_sel}")
         else:
-            st.write("Modo por coordenadas seleccionado. Municipio no disponible.")
+            st.write("Modo por coordenadas seleccionado")
+            punto = Point(x, y)
+            municipio_sel = None
+            masa_sel = None
+            parcela_sel = None
+            base_url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/CATASTRO/"
+            for municipio in sorted(shp_urls.keys()):
+                archivo_url = base_url + municipio + "_CATASTRO.shp"
+                gdf = cargar_shapefile_desde_github(archivo_url)
+                if gdf is not None:
+                    contiene = gdf[gdf.geometry.contains(punto)]
+                    if not contiene.empty:
+                        municipio_sel = contiene.iloc[0]["TM"]
+                        masa_sel = contiene.iloc[0]["MASA"]
+                        parcela_sel = contiene.iloc[0]["PARCELA"]
+                        break
+
+            if municipio_sel and masa_sel and parcela_sel:
+            st.success("Se ha localizado la parcela correspondiente a las coordenadas.")
+            st.write(f"Municipio: {municipio_sel}")
+            st.write(f"Polígono: {masa_sel}")
+            st.write(f"Parcela: {parcela_sel}")
+            else:
+                st.warning("No se encontró ninguna parcela que contenga las coordenadas proporcionadas.")
 
         # URLs GeoJSON
         enp_url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/GeoJSON/ENP.json"
@@ -500,9 +523,9 @@ if submitted:
             "afección TM": afeccion_tm,
             "coordenadas_x": x,
             "coordenadas_y": y,
-            "municipio": municipio_sel if modo == "Por parcela" else "N/A",  # Solo en modo parcela
-            "polígono": masa_sel if modo == "Por parcela" else "N/A",  # Solo en modo parcela
-            "parcela": parcela_sel if modo == "Por parcela" else "N/A"  # Solo en modo parcela  
+            "municipio": municipio_sel if municipio_sel else "N/A",  
+            "polígono": masa_sel if masa_sel else "N/A",  
+            "parcela": parcela_sel if parcela_sel else "N/A"  
         }
         
         # Crear mapa con afecciones
