@@ -210,13 +210,14 @@ def crear_mapa(x, y, afecciones=[]):
     return mapa_html, afecciones
 
 # Función para generar el PDF con los datos de la solicitud
-# Lista de campos en orden y que deben ir en negrita
+# Lista de campos que deben aparecer en orden y en negrita
 campos_orden = [
     "Fecha solicitud", "Fecha informe", "Nombre", "Apellidos", "Dni", "Dirección",
-    "Teléfono", "Email", "Objeto de la solicitud", "Afección MUP", "Afección VP",
-    "Afección ENP", "Afección ZEPA", "Afección LIC", "Afección TM", "Municipio",
-    "Polígono", "Parcela"
+    "Teléfono", "Email", "Objeto de la solicitud"
 ]
+
+# Campos de localización
+campos_localizacion = ["Municipio", "Polígono", "Parcela"]
 
 def generar_pdf(datos, x, y, filename):
     pdf = FPDF()
@@ -235,33 +236,30 @@ def generar_pdf(datos, x, y, filename):
         pdf.ln(1)
 
     def campo_linea(nombre, valor):
-        if isinstance(valor, str) and '\n' in valor:
-            for line in valor.split('\n'):
-                pdf.set_font("Arial", "B", 12)
-                pdf.multi_cell(0, 8, f"{nombre}: {line}")
-        else:
-            pdf.set_font("Arial", "B" if nombre in campos_orden else "", 12)
-            pdf.multi_cell(0, 8, f"{nombre}: {valor}")
+        pdf.set_font("Arial", "B", 12)
+        pdf.multi_cell(0, 8, f"{nombre}: ", border=0)
+        pdf.set_font("Arial", "", 12)
+        pdf.multi_cell(0, 8, str(valor), border=0)
 
     # 1. Datos del solicitante
     seccion_titulo("1. Datos del solicitante")
     for campo in campos_orden:
-        if campo in datos and campo.lower().startswith("afección") is False:
-            campo_linea(campo, datos[campo])
+        valor = datos.get(campo, "No especificado")
+        campo_linea(campo, valor)
 
     # 2. Afecciones detectadas
     seccion_titulo("2. Afecciones detectadas")
-    afecciones_clave = [k for k in datos.keys() if "afección" in k.lower()]
-    if afecciones_clave:
-        for k in afecciones_clave:
+    afecciones = [k for k in datos.keys() if "afección" in k.lower()]
+    if afecciones:
+        for k in afecciones:
             campo_linea(k, datos[k])
     else:
         campo_linea("Afecciones", "No se han detectado afecciones.")
 
     # 3. Localización
     seccion_titulo("3. Localización")
-    for campo in ["Municipio", "Polígono", "Parcela"]:
-        valor = datos.get(campo, "N/A")
+    for campo in campos_localizacion:
+        valor = datos.get(campo, "No disponible")
         campo_linea(campo, valor)
     pdf.set_font("Arial", "", 12)
     pdf.cell(0, 10, f"Coordenadas ETRS89: X = {x}, Y = {y}", ln=True)
