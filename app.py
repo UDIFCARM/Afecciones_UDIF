@@ -211,8 +211,20 @@ def crear_mapa(x, y, afecciones=[]):
     return mapa_html, afecciones
 
 # Función para generar el PDF con los datos de la solicitud
-pdf = FPDF()
-pdf.add_page()
+# Aquí podrías continuar con más contenido del informe...
+# Lista de campos que deben aparecer en orden y en negrita
+campos_orden = [
+    "Fecha solicitud", "Fecha informe", "Nombre", "Apellidos", "Dni", "Dirección",
+    "Teléfono", "Email", "Objeto de la solicitud"
+]
+
+# Campos de localización
+campos_localizacion = ["Municipio", "Polígono", "Parcela"]
+
+def generar_pdf(datos, x, y, filename):
+    pdf = FPDF()
+    pdf.add_page()
+
 # Descargar e insertar el logo
 logo_url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/logos.jpg"
 response = requests.get(logo_url)
@@ -234,30 +246,9 @@ pdf.set_text_color(0, 0, 0)
 pdf.cell(0, 10, "Informe de Afecciones Ambientales", ln=True, align="C")
 pdf.ln(10)
 
-# Color personalizado azul (aunque FPDF usa RGB de 0 a 255)
 azul_rgb = (141, 179, 226)
 pdf.set_fill_color(*azul_rgb)
-
-# Aquí podrías continuar con más contenido del informe...
-# Lista de campos que deben aparecer en orden y en negrita
-campos_orden = [
-    "Fecha solicitud", "Fecha informe", "Nombre", "Apellidos", "Dni", "Dirección",
-    "Teléfono", "Email", "Objeto de la solicitud"
-]
-
-# Campos de localización
-campos_localizacion = ["Municipio", "Polígono", "Parcela"]
-
-def generar_pdf(datos, x, y, filename):
-    pdf = FPDF()
-    pdf.add_page()
-
-    pdf.set_font("Arial", "B", size=16)
-    pdf.cell(0, 10, "Informe de Afecciones Ambientales", ln=True, align="C")
-    pdf.ln(10)
-
-    azul_rgb = (141, 179, 226)
-
+    
     def seccion_titulo(texto):
         pdf.set_fill_color(*azul_rgb)
         pdf.set_text_color(0, 0, 0)
