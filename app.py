@@ -1,18 +1,22 @@
 import streamlit as st
 import folium
+from folium.plugins import MarkerCluster
 from streamlit.components.v1 import html
-from fpdf import FPDF
-from pyproj import Transformer
-import requests
-import xml.etree.ElementTree as ET
 import geopandas as gpd
+import pandas as pd
+import requests
 import tempfile
 import os
-from shapely.geometry import Point
-import uuid
+from io import BytesIO
 from datetime import datetime
 from docxtpl import DocxTemplate
 from docx2pdf import convert
+from pyproj import Transformer
+from fpdf import FPDF
+import xml.etree.ElementTree as ET
+from shapely.geometry import Point
+import uuid
+from datetime import datetime
 from branca.element import Template, MacroElement
 
 # Diccionario con los nombres de municipios y sus nombres base de archivo
@@ -211,136 +215,36 @@ def crear_mapa(x, y, afecciones=[]):
     return mapa_html, afecciones
 
 # Interfaz de Streamlit
+st.set_page_config(page_title="Informe de Afecciones Ambientales", layout="centered")
 st.title("\U0001F5FA️ Informe de Afecciones Ambientales")
 
 modo = st.radio("Selecciona el modo de búsqueda", ["Por coordenadas", "Por parcela"])
 
-# Variables iniciales de coordenadas y de selección (para el modo parcela)
-x = 0.0
-y = 0.0
-municipio_sel = ""
-masa_sel = ""
-parcela_sel = ""
-
 if modo == "Por parcela":
-    municipio_sel = st.selectbox("Municipio", sorted(shp_urls.keys()))
-    archivo_base = shp_urls[municipio_sel]
-    
-    # Cargar el shapefile del municipio seleccionado
-    gdf = cargar_shapefile_desde_github(archivo_base)
-    
-    if gdf is not None:
-        masa_sel = st.selectbox("Polígono", sorted(gdf["MASA"].unique()))
-        parcela_sel = st.selectbox("Parcela", sorted(gdf[gdf["MASA"] == masa_sel]["PARCELA"].unique()))
-        parcela = gdf[(gdf["MASA"] == masa_sel) & (gdf["PARCELA"] == parcela_sel)]
-        
-        if parcela.geometry.geom_type.isin(['Polygon', 'MultiPolygon']).all():
-            # Calcular el centroide y asignar coordenadas
-            puntos = parcela.copy()
-            puntos["geometry"] = puntos.geometry.centroid
-            puntos["longitude"] = puntos.geometry.x
-            puntos["latitude"] = puntos.geometry.y
-            parcela = puntos  
-          
-            punto_centro = parcela.geometry.iloc[0]
-            x = punto_centro.x
-            y = punto_centro.y         
-                    
-            st.success("Parcela cargada correctamente.")
-            st.write(f"Municipio: {municipio_sel}")
-            st.write(f"Polígono: {masa_sel}")
-            st.write(f"Parcela: {parcela_sel}")
-        else:
-            st.error("La geometría seleccionada no es un polígono válido.")
-    else:
-        st.error(f"No se pudo cargar el shapefile para el municipio: {municipio_sel}")
+    municipio_sel = st.text_input("Municipio:")
+    masa_sel = st.text_input("Polígono:")
+    parcela_sel = st.text_input("Parcela:")
+    x_coord = st.text_input("Coordenada X (UTM ETRS89 Zona 30N):")
+    y_coord = st.text_input("Coordenada Y (UTM ETRS89 Zona 30N):")
+else:
+    x_coord = st.text_input("Coordenada X (UTM ETRS89 Zona 30N):")
+    y_coord = st.text_input("Coordenada Y (UTM ETRS89 Zona 30N):")
 
-# Si el modo es "Por coordenadas" NO se solicita la entrada previa
-# Se incluirán los inputs de coordenadas en el formulario
-
-with st.form("formulario"):
-    # Si el modo es "Por coordenadas", incluir campos para las coordenadas en el formulario
-    if modo == "Por coordenadas":
-        x = st.number_input("Coordenada X (ETRS89)", format="%.2f", help="Introduce coordenadas en metros, sistema ETRS89 / UTM zona 30")
-        y = st.number_input("Coordenada Y (ETRS89)", format="%.2f")
-    else:
-        # Muestra las coordenadas calculadas y las pone como campo oculto para el formulario
-        st.info(f"Coordenadas obtenidas de la parcela: X = {x}, Y = {y}")
-        
-    fecha_solicitud = st.date_input("Fecha de la solicitud")
-    nombre = st.text_input("Nombre")
-    apellidos = st.text_input("Apellidos")
-    dni = st.text_input("DNI")
-    direccion = st.text_input("Dirección")
-    telefono = st.text_input("Teléfono")
-    email = st.text_input("Correo electrónico")
-    objeto = st.text_area("Objeto de la solicitud", max_chars=255)       
-    submitted = st.form_submit_button("Generar informe")
-
-# Preparar contexto para plantilla
-contexto = {
-    'fecha_solicitud': fecha_solicitud,
-    'fecha_informe': datetime.today().strftime('%Y-%m-%d'),
-    'nombre': nombre,
-    'apellidos': apellidos,
-    'dni': dni,
-    'direccion': direccion,
-    'telefono': telefono,
-    'email': email,
-    'objeto': objeto,
-    'municipio': municipio,
-    'poligono': poligono,
-    'parcela': parcela,
-    'coordenadas_x': coordenadas[0] if coordenadas else '',
-    'coordenadas_y': coordenadas[1] if coordenadas else '',
-    'mup_id': datos_mup.get("CUP", ""),
-    'mup_nombre': datos_mup.get("NOMBRE", ""),
-    'mup_municipio': datos_mup.get("MUNICIPIO", ""),
-    'mup_propiedad': datos_mup.get("PROPIEDAD", ""),
-    'tm': ', '.join(afecciones.get("TM", [])),
-    'vp': ', '.join(afecciones.get("VP", [])),
-    'enp': ', '.join(afecciones.get("ENP", [])),
-    'zepa': ', '.join(afecciones.get("ZEPA", [])),
-    'lic': ', '.join(afecciones.get("LIC", []))
-}
-
-# Cargar plantilla y generar informe
-plantilla_path = "plantilla_informe_afecciones.docx"
-doc = DocxTemplate(plantilla_path)
-doc.render(contexto)
-
-with tempfile.TemporaryDirectory() as tmpdirname:
-    docx_output = os.path.join(tmpdirname, "informe.docx")
-    pdf_output = os.path.join(tmpdirname, "informe.pdf")
-
-    doc.save(docx_output)
-    convert(docx_output, pdf_output)
-
-    with open(pdf_output, "rb") as f:
-        st.download_button(
-            label="Descargar informe en PDF",
-            data=f,
-            file_name="informe_afecciones.pdf",
-            mime="application/pdf"
-        )
-
-if 'mapa_html' not in st.session_state:
-    st.session_state['mapa_html'] = None
+submitted = st.button("Generar informe")
 
 if submitted:
-    # Validación de entradas
-    if not nombre or not apellidos or not dni or x == 0 or y == 0:
-        st.warning("Por favor, completa todos los campos obligatorios y asegúrate de que las coordenadas son correctas.")
-    else:
+    with st.spinner("Procesando..."):
+
+        # Coordenadas
+        x = float(x_coord)
+        y = float(y_coord)
         lon, lat = transformar_coordenadas(x, y)
 
-        # Mostrar los datos seleccionados (solo si estamos en modo parcela)
-        if modo == "Por parcela":
-            st.write(f"Municipio seleccionado: {municipio_sel}")
-            st.write(f"Polígono seleccionado: {masa_sel}")
-            st.write(f"Parcela seleccionada: {parcela_sel}")
-        else:
-            st.write("Modo por coordenadas seleccionado. Municipio no disponible.")
+        # Definir variables según modo
+        municipio = municipio_sel if modo == "Por parcela" else ""
+        poligono = masa_sel if modo == "Por parcela" else ""
+        parcela = parcela_sel if modo == "Por parcela" else ""
+        coordenadas = (x, y)
 
         # URLs GeoJSON
         enp_url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/GeoJSON/ENP.json"
@@ -350,54 +254,76 @@ if submitted:
         tm_url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/GeoJSON/TM.json"
         mup_url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/GeoJSON/MUP.json"
 
-        # Consultas de afecciones
-        afeccion_enp = consultar_geojson(x, y, enp_url, "ENP", campo_nombre="nombre")
-        afeccion_zepa = consultar_geojson(x, y, zepa_url, "ZEPA", campo_nombre="SITE_NAME")
-        afeccion_lic = consultar_geojson(x, y, lic_url, "LIC", campo_nombre="SITE_NAME")
-        afeccion_vp = consultar_geojson(x, y, vp_url, "VP", campo_nombre="VP_NB")
-        afeccion_tm = consultar_geojson(x, y, tm_url, "TM", campo_nombre="NAMEUNIT")
-        afeccion_mup = consultar_mup(x, y, mup_url)
-
-        # Compilando datos para mostrar
-        afecciones = [afeccion_enp, afeccion_zepa, afeccion_lic, afeccion_vp, afeccion_tm, afeccion_mup]
-        
-        datos = {
-            "fecha_solicitud": fecha_solicitud.strftime('%d/%m/%Y'),
-            "fecha_informe": datetime.today().strftime('%d/%m/%Y'),
-            "nombre": nombre,
-            "apellidos": apellidos,
-            "dni": dni,
-            "dirección": direccion,
-            "teléfono": telefono,
-            "email": email,
-            "objeto de la solicitud": objeto,
-            "afección MUP": afeccion_mup,
-            "afección VP": afeccion_vp,
-            "afección ENP": afeccion_enp,
-            "afección ZEPA": afeccion_zepa,
-            "afección LIC": afeccion_lic,
-            "afección TM": afeccion_tm,
-            "coordenadas_x": x,
-            "coordenadas_y": y,
-            "municipio": municipio_sel if modo == "Por parcela" else "N/A",  # Solo en modo parcela
-            "polígono": masa_sel if modo == "Por parcela" else "N/A",  # Solo en modo parcela
-            "parcela": parcela_sel if modo == "Por parcela" else "N/A"  # Solo en modo parcela  
+        # Consultar afecciones
+        afecciones = {
+            "ENP": [consultar_geojson(lon, lat, enp_url, "ENP")],
+            "ZEPA": [consultar_geojson(lon, lat, zepa_url, "ZEPA")],
+            "LIC": [consultar_geojson(lon, lat, lic_url, "LIC")],
+            "VP": [consultar_geojson(lon, lat, vp_url, "Vías pecuarias")],
+            "TM": [consultar_geojson(lon, lat, tm_url, "Término Municipal")],
         }
-        
-        # Crear mapa con afecciones
-        mapa_html, afecciones = crear_mapa(lon, lat, afecciones)
 
-        # Guardar estado 
-        st.session_state['mapa_html'] = mapa_html
-        st.session_state['afecciones'] = afecciones
+        # Consultar MUP
+        datos_mup = {}
+        mup_resultado = consultar_mup(lon, lat, mup_url)
+        if "Dentro de MUP" in mup_resultado:
+            partes = mup_resultado.split('\n')
+            datos_mup = {
+                "CUP": partes[1].split(":")[1].strip(),
+                "NOMBRE": partes[2].split(":")[1].strip(),
+                "MUNICIPIO": partes[3].split(":")[1].strip(),
+                "PROPIEDAD": partes[4].split(":")[1].strip(),
+            }
 
-        # Mostrar el mapa y el PDF
-        st.subheader("Resultado de las afecciones")
-        for afeccion in afecciones:
-            st.write(f"• {afeccion}")
+        # Generar mapa
+        mapa = crear_mapa(lon, lat, afecciones, mup_resultado)
+        folium_static(mapa)
 
-        with open(mapa_html, 'r') as f:
-            html(f.read(), height=500)
+        # Crear contexto para el informe
+        contexto = {
+            "fecha": datetime.now().strftime("%d/%m/%Y"),
+            "modo": modo,
+            "municipio": municipio,
+            "poligono": poligono,
+            "parcela": parcela,
+            "coordenadas_x": coordenadas[0],
+            "coordenadas_y": coordenadas[1],
+            "mup_id": datos_mup.get("CUP", ""),
+            "mup_nombre": datos_mup.get("NOMBRE", ""),
+            "mup_municipio": datos_mup.get("MUNICIPIO", ""),
+            "mup_propiedad": datos_mup.get("PROPIEDAD", ""),
+            "enp": afecciones["ENP"][0],
+            "zepa": afecciones["ZEPA"][0],
+            "lic": afecciones["LIC"][0],
+            "vp": afecciones["VP"][0],
+            "tm": afecciones["TM"][0],
+        }
+
+        # Generar informe
+        doc = DocxTemplate("plantilla_informe.docx")
+        doc.render(contexto)
+        docx_output = BytesIO()
+        doc.save(docx_output)
+        docx_output.seek(0)
+
+        # Convertir a PDF
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".docx") as tmp_docx:
+            tmp_docx.write(docx_output.read())
+            tmp_docx_path = tmp_docx.name
+
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_pdf:
+            tmp_pdf_path = tmp_pdf.name
+
+        convert(tmp_docx_path, tmp_pdf_path)
+
+        # Descargar informe
+        with open(tmp_pdf_path, "rb") as f:
+            st.download_button(
+                label="📄 Descargar informe en PDF",
+                data=f.read(),
+                file_name="informe_afecciones.pdf",
+                mime="application/pdf"
+            )
 
 # Botones de descarga
     with open(st.session_state['mapa_html'], "r") as f:
