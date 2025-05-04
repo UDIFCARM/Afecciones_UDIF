@@ -252,14 +252,14 @@ def generar_pdf(datos, x, y, filename):
     # 1. Datos del solicitante
     seccion_titulo("1. Datos del solicitante")
     campos_orden = [
-        ("Fecha solicitud", formatear_fecha(datos.get("fecha solicitud", ""))),
-        ("Fecha informe", formatear_fecha(datos.get("fecha informe", ""))),
-        ("Nombre", datos.get("nombre", "").strip()),
-        ("Apellidos", datos.get("apellidos", "").strip()),
-        ("DNI", datos.get("dni", "").strip()),
-        ("Dirección", datos.get("dirección", "").strip()),
-        ("Teléfono", datos.get("teléfono", "").strip()),
-        ("Email", datos.get("email", "").strip()),
+        ("Fecha solicitud", formatear_fecha(datos.get("Fecha solicitud", ""))),
+        ("Fecha informe", formatear_fecha(datos.get("Fecha informe", ""))),
+        ("Nombre", datos.get("Nombre", "").strip()),
+        ("Apellidos", datos.get("Apellidos", "").strip()),
+        ("DNI", datos.get("Dni", "").strip()),
+        ("Dirección", datos.get("Dirección", "").strip()),
+        ("Teléfono", datos.get("Teléfono", "").strip()),
+        ("Email", datos.get("Email", "").strip()),
     ]
     for titulo, valor in campos_orden:
         campo_orden(titulo, valor)
@@ -274,7 +274,7 @@ def generar_pdf(datos, x, y, filename):
 
     # 2. Afecciones detectadas
     seccion_titulo("2. Afecciones detectadas")
-    afecciones_keys = [k for k in datos if k.lower().startswith("afección")]
+    afecciones_keys = [k for k in datos if k.lower().startswith("afección") and k.lower() != "afección tm"]
 
     if afecciones_keys:
         for key in afecciones_keys:
