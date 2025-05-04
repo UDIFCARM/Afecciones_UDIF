@@ -17,3 +17,4 @@ shapely
 Pillow
 openpyxl
 pypandoc
+reportlab
