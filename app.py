@@ -221,15 +221,11 @@ logo_url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/logo
 response = requests.get(logo_url)
 if response.status_code == 200:
     logo_image = BytesIO(response.content)
-
-    # Ajustar ancho del logo al ancho de la página menos márgenes
     page_width = pdf.w - 2 * pdf.l_margin
     logo_width = page_width
     pdf.image(logo_image, x=pdf.l_margin, y=10, w=logo_width)
-
-    # Mover el cursor debajo del logo con un margen
-    logo_height = logo_width * 0.2  # Aproximación si el logo es más ancho que alto
-    pdf.set_y(10 + logo_height + 5)  # 5 mm de separación
+    logo_height = logo_width * 0.2
+    pdf.set_y(10 + logo_height + 5)
 
 # Título principal
 pdf.set_font("Arial", "B", size=16)
@@ -238,7 +234,6 @@ pdf.cell(0, 10, "Informe de Afecciones Ambientales", ln=True, align="C")
 pdf.ln(10)
 
 azul_rgb = (141, 179, 226)
-pdf.set_fill_color(*azul_rgb)
 
 # Lista de campos que deben aparecer en orden y en negrita
 campos_orden = [
