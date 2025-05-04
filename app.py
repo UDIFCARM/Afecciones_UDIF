@@ -264,62 +264,65 @@ def generar_pdf(datos, x, y, filename):
     # 2. Afecciones detectadas
     seccion_titulo("2. Afecciones detectadas")
     afecciones_keys = [k for k in datos if k.lower().startswith("afección")]
-    for key in afecciones_keys:
-        valor = datos[key].strip()
-        key_lower = key.lower()
+    if afecciones_keys:
+        for key in afecciones_keys:
+            valor = datos[key].strip()
+            if key.lower() == "afección tm":
+                continue  # Se incluirá en la sección de Localización
 
-        if key_lower == "afección tm":
-            continue  # Se mostrará en Localización
+            pdf.set_font("Arial", "B", 12)
+            pdf.cell(0, 8, f"{key.capitalize()}:", ln=True)
+            pdf.set_font("Arial", "", 12)
 
-        pdf.set_font("Arial", "B", 12)
-        pdf.cell(0, 8, f"{key.capitalize()}:", ln=True)
-        pdf.set_font("Arial", "", 12)
+            if key.lower() == "afección mup" and valor.lower().startswith("dentro de mup"):
+                lines = valor.splitlines()
+                resumen = lines[0]
+                pdf.multi_cell(0, 8, resumen)
 
-        if key_lower == "afección mup" and valor.lower().startswith("dentro de mup"):
-            lines = valor.split("\n")
-            resumen = lines[0]
-            pdf.multi_cell(0, 8, resumen)
-
-            filas_validas = []
-            for line in lines[1:]:
-                partes = [p.strip() for p in line.split(";")]
-                if len(partes) == 4:
-                    filas_validas.append(partes)
-
-            if filas_validas:
-                pdf.set_fill_color(200, 200, 200)
-                pdf.set_font("Arial", "B", 11)
-                pdf.cell(30, 8, "ID", border=1, fill=True)
-                pdf.cell(80, 8, "Nombre", border=1, fill=True)
-                pdf.cell(40, 8, "Municipio", border=1, fill=True)
-                pdf.cell(40, 8, "Propiedad", border=1, ln=True, fill=True)
-
-                pdf.set_font("Arial", "", 11)
-                for fila in filas_validas:
-                    pdf.cell(30, 8, fila[0], border=1)
-                    pdf.cell(80, 8, fila[1], border=1)
-                    pdf.cell(40, 8, fila[2], border=1)
-                    pdf.cell(40, 8, fila[3], border=1, ln=True)
-        else:
-            pdf.multi_cell(0, 8, valor if valor else "Sin información.")
-
-    if not afecciones_keys:
+                tabla = lines[1:] if len(lines) > 1 else []
+                if tabla:
+                    # Cabecera tabla
+                    pdf.set_fill_color(200, 200, 200)
+                    pdf.set_font("Arial", "B", 11)
+                    pdf.cell(30, 8, "ID", border=1, fill=True)
+                    pdf.cell(80, 8, "Nombre", border=1, fill=True)
+                    pdf.cell(40, 8, "Municipio", border=1, fill=True)
+                    pdf.cell(40, 8, "Propiedad", border=1, ln=True, fill=True)
+                    
+                    # Filas
+                    pdf.set_font("Arial", "", 11)
+                    for line in tabla:
+                        partes = [p.strip() for p in line.split(";")]
+                        if len(partes) == 4:
+                            pdf.cell(30, 8, partes[0], border=1)
+                            pdf.cell(80, 8, partes[1], border=1)
+                            pdf.cell(40, 8, partes[2], border=1)
+                            pdf.cell(40, 8, partes[3], border=1, ln=True)
+                        else:
+                            pdf.multi_cell(0, 8, line)
+                else:
+                    pdf.set_font("Arial", "I", 11)
+                    pdf.cell(0, 8, "No se han detallado MUP específicos.", ln=True)
+            else:
+                pdf.multi_cell(0, 8, valor)
+    else:
         pdf.set_font("Arial", "", 12)
         pdf.cell(0, 8, "No se han detectado afecciones.", ln=True)
 
     # 3. Localización
     seccion_titulo("3. Localización")
-    for campo in ["municipio", "polígono", "parcela"]:
-        valor = datos.get(campo, "").strip()
-        campo_orden(campo.capitalize(), valor if valor else "No disponible")
 
-    # Afección TM (mover aquí)
+    # Incluir afección TM en esta sección si está
     afeccion_tm = datos.get("afección tm", "").strip()
     if afeccion_tm:
         pdf.set_font("Arial", "B", 12)
-        pdf.cell(0, 8, "Afección TM:", ln=True)
+        pdf.cell(0, 8, "Término municipal:", ln=True)
         pdf.set_font("Arial", "", 12)
         pdf.multi_cell(0, 8, afeccion_tm)
+
+    for campo in ["municipio", "polígono", "parcela"]:
+        valor = datos.get(campo, "").strip()
+        campo_orden(campo.capitalize(), valor if valor else "No disponible")
 
     # Coordenadas
     pdf.set_font("Arial", "B", 12)
