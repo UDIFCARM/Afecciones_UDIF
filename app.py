@@ -268,7 +268,7 @@ def generar_pdf(datos, x, y, filename):
 
     # 2. Afecciones detectadas
     seccion_titulo("2. Afecciones detectadas")
-    afecciones_keys = [k for k in datos if k.lower().startswith("afección") and k.lower() != "afección tm"]
+    afecciones_keys = [k for k in datos if k.lower().startswith("afección")]
 
     if afecciones_keys:
         for key in afecciones_keys:
