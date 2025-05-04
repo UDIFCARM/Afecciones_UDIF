@@ -12,3 +12,7 @@ docxtpl
 docx2pdf
 xmltodict
 fiona
+pandas
+shapely
+Pillow
+openpyxl
