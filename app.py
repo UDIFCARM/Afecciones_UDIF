@@ -211,6 +211,8 @@ def crear_mapa(x, y, afecciones=[]):
     return mapa_html, afecciones
 
 # Función para generar el PDF con los datos de la solicitud
+pdf = FPDF()
+pdf.add_page()
 # Descargar e insertar el logo
 logo_url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/logos.jpg"
 response = requests.get(logo_url)
