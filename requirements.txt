@@ -16,3 +16,4 @@ pandas
 shapely
 Pillow
 openpyxl
+wkhtmltopdf
