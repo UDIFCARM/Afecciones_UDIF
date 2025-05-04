@@ -376,7 +376,7 @@ def generar_pdf(datos, x, y, filename):
     return filename
     
 # Interfaz de Streamlit  
-st.image("https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/logos.jpg", use_column_width=True)
+st.image("https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/logos.jpg", use_container_width=True)
 st.title("\U0001F5FA️ Informe de Afecciones Ambientales")
 
 modo = st.radio("Selecciona el modo de búsqueda", ["Por coordenadas", "Por parcela"])
