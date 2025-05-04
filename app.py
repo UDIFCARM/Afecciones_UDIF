@@ -247,7 +247,7 @@ def generar_pdf(datos, x, y, filename):
     seccion_titulo("1. Datos del solicitante")
     campos_orden = [
         ("Fecha solicitud", datos.get("fecha_solicitud", "").strip()),
-        ("Fecha informe", datos.get("fecha_informe", "".strip()),
+        ("Fecha informe", datos.get("fecha_informe", "").strip()),
         ("Nombre", datos.get("nombre", "").strip()),
         ("Apellidos", datos.get("apellidos", "").strip()),
         ("DNI", datos.get("dni", "").strip()),
