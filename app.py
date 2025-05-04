@@ -466,62 +466,61 @@ if submitted:
             st.write(f"Polígono seleccionado: {masa_sel}")
             st.write(f"Parcela seleccionada: {parcela_sel}")
 
-   if submitted:
+if submitted:
     if modo == "Por coordenadas":
         st.write("Modo por coordenadas seleccionado")
         
-    def cargar_shapefile_desde_github(base_name):
+        def cargar_shapefile_desde_github(base_name):
+            base_url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/CATASTRO/"
+            exts = [".shp", ".shx", ".dbf", ".prj", ".cpg"]
+    
+            with tempfile.TemporaryDirectory() as tmpdir:
+                local_paths = {}
+                for ext in exts:
+                    filename = base_name + ext
+                    url = base_url + filename
+                    local_path = os.path.join(tmpdir, filename)
+            
+                    response = requests.get(url)
+                    if response.status_code != 200:
+                        st.warning(f"Error al descargar {url}")
+                        return None
+            
+                    with open(local_path, "wb") as f:
+                        f.write(response.content)
+                    local_paths[ext] = local_path
+        
+                shp_path = local_paths[".shp"]
+                gdf = gpd.read_file(shp_path)
+                return gdf
+            
+        print(f"Coordenadas: ({x}, {y})")
+        punto = Point(x, y)
+        municipio_sel = None
+        masa_sel = None
+        parcela_sel = None
         base_url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/CATASTRO/"
-        exts = [".shp", ".shx", ".dbf", ".prj", ".cpg"]
     
-        with tempfile.TemporaryDirectory() as tmpdir:
-            local_paths = {}
-            for ext in exts:
-                filename = base_name + ext
-                url = base_url + filename
-                local_path = os.path.join(tmpdir, filename)
-            
-                response = requests.get(url)
-                if response.status_code != 200:
-                    st.warning(f"Error al descargar {url}")
-                    return None
-            
-                with open(local_path, "wb") as f:
-                    f.write(response.content)
-                local_paths[ext] = local_path
+        for municipio in sorted(shp_urls.keys()):
+            archivo_url = base_url + municipio + "_CATASTRO.shp"
+            print(f"Descargando archivo: {archivo_url}")
+            gdf = cargar_shapefile_desde_github(archivo_url)
         
-            shp_path = local_paths[".shp"]
-            gdf = gpd.read_file(shp_path)
-            return gdf
-            
-    print(f"Coordenadas: ({x}, {y})")
-    punto = Point(x, y)
-    municipio_sel = None
-    masa_sel = None
-    parcela_sel = None
-    base_url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/CATASTRO/"
-    
-    for municipio in sorted(shp_urls.keys()):
-        archivo_url = base_url + municipio + "_CATASTRO.shp"
-        print(f"Descargando archivo: {archivo_url}")
-        gdf = cargar_shapefile_desde_github(archivo_url)
-        
-        if gdf is not None:
-            contiene = gdf[gdf.geometry.contains(punto)]
-            print(f"Contiene puntos: {contiene}")
-            if not contiene.empty:
-                municipio_sel = contiene.iloc[0]["TM"]
-                masa_sel = contiene.iloc[0]["MASA"]
-                parcela_sel = contiene.iloc[0]["PARCELA"]
-                break
+            if gdf is not None:
+                contiene = gdf[gdf.geometry.contains(punto)]
+                if not contiene.empty:
+                    municipio_sel = contiene.iloc[0]["TM"]
+                    masa_sel = contiene.iloc[0]["MASA"]
+                    parcela_sel = contiene.iloc[0]["PARCELA"]
+                    break
 
-            if municipio_sel and masa_sel and parcela_sel:
-                st.success("Se ha localizado la parcela correspondiente a las coordenadas.")
-                st.write(f"Municipio: {municipio_sel}")
-                st.write(f"Polígono: {masa_sel}")
-                st.write(f"Parcela: {parcela_sel}")
-            else:
-                st.warning("No se encontró ninguna parcela que contenga las coordenadas proporcionadas.")
+        if municipio_sel and masa_sel and parcela_sel:
+            st.success("Se ha localizado la parcela correspondiente a las coordenadas.")
+            st.write(f"Municipio: {municipio_sel}")
+            st.write(f"Polígono: {masa_sel}")
+            st.write(f"Parcela: {parcela_sel}")
+        else:
+            st.warning("No se encontró ninguna parcela que contenga las coordenadas proporcionadas.")
 
         # URLs GeoJSON
         enp_url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/GeoJSON/ENP.json"
