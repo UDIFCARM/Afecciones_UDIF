@@ -460,26 +460,28 @@ if submitted:
             st.write(f"Municipio seleccionado: {municipio_sel}")
             st.write(f"Polígono seleccionado: {masa_sel}")
             st.write(f"Parcela seleccionada: {parcela_sel}")
-        else:
-            st.write("Modo por coordenadas seleccionado")
-            punto = Point(x, y)
-            municipio_sel = None
-            masa_sel = None
-            parcela_sel = None
-            base_url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/CATASTRO/"
-            
-            for municipio in sorted(shp_urls.keys()):
-                archivo_url = base_url + municipio + "_CATASTRO.shp"
-                gdf = cargar_shapefile_desde_github(archivo_url)
-                
-                if gdf is not None:
-                    contiene = gdf[gdf.geometry.contains(punto)]
-                    
-                    if not contiene.empty:
-                        municipio_sel = contiene.iloc[0]["TM"]
-                        masa_sel = contiene.iloc[0]["MASA"]
-                        parcela_sel = contiene.iloc[0]["PARCELA"]
-                        break
+    else:
+    st.write("Modo por coordenadas seleccionado")
+    print(f"Coordenadas: ({x}, {y})")
+    punto = Point(x, y)
+    municipio_sel = None
+    masa_sel = None
+    parcela_sel = None
+    base_url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/CATASTRO/"
+    
+    for municipio in sorted(shp_urls.keys()):
+        archivo_url = base_url + municipio + "_CATASTRO.shp"
+        print(f"Descargando archivo: {archivo_url}")
+        gdf = cargar_shapefile_desde_github(archivo_url)
+        
+        if gdf is not None:
+            contiene = gdf[gdf.geometry.contains(punto)]
+            print(f"Contiene puntos: {contiene}")
+            if not contiene.empty:
+                municipio_sel = contiene.iloc[0]["TM"]
+                masa_sel = contiene.iloc[0]["MASA"]
+                parcela_sel = contiene.iloc[0]["PARCELA"]
+                break
 
             if municipio_sel and masa_sel and parcela_sel:
                 st.success("Se ha localizado la parcela correspondiente a las coordenadas.")
