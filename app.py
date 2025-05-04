@@ -210,6 +210,21 @@ def crear_mapa(x, y, afecciones=[]):
 
     return mapa_html, afecciones
 
+# Función auxiliar para convertir el mapa HTML en imagen PNG
+def guardar_mapa_como_imagen_html2image(mapa_html_path):
+    hti = Html2Image()
+    temp_dir = tempfile.mkdtemp()
+    output_path = os.path.join(temp_dir, "mapa.png")
+    
+    # Renderizar el HTML como imagen
+    hti.screenshot(
+        html_file=mapa_html_path,
+        save_as="mapa.png",
+        size=(800, 600),
+        output_path=temp_dir
+    )
+    return output_path
+
 # Función para generar el PDF con los datos de la solicitud
 
 def generar_pdf(datos, x, y, filename):
@@ -346,6 +361,16 @@ def generar_pdf(datos, x, y, filename):
     # Coordenadas
     pdf.set_font("Arial", "B", 12)
     pdf.cell(0, 10, f"Coordenadas ETRS89: X = {x}, Y = {y}", ln=True)
+
+    # Insertar imagen del mapa si existe
+    mapa_html_path = "mapa.html"
+    if os.path.exists(mapa_html_path):
+        imagen_mapa_path = guardar_mapa_como_imagen_html2image(mapa_html_path)
+        if os.path.exists(imagen_mapa_path):
+            pdf.ln(5)
+            pdf.set_font("Arial", "B", 12)
+            pdf.cell(0, 8, "Mapa de localización:", ln=True)
+            pdf.image(imagen_mapa_path, x=10, w=pdf.w - 20)
 
     pdf.output(filename)
     return filename
