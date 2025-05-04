@@ -210,64 +210,66 @@ def crear_mapa(x, y, afecciones=[]):
     return mapa_html, afecciones
 
 # Función para generar el PDF con los datos de la solicitud
+# Lista de campos en orden y que deben ir en negrita
+campos_orden = [
+    "Fecha solicitud", "Fecha informe", "Nombre", "Apellidos", "Dni", "Dirección",
+    "Teléfono", "Email", "Objeto de la solicitud", "Afección MUP", "Afección VP",
+    "Afección ENP", "Afección ZEPA", "Afección LIC", "Afección TM", "Municipio",
+    "Polígono", "Parcela"
+]
+
 def generar_pdf(datos, x, y, filename):
     pdf = FPDF()
     pdf.add_page()
+    pdf.set_auto_page_break(auto=True, margin=15)
 
     # Título principal
-    pdf.set_font("Arial", "B", 16)
+    pdf.set_font("Arial", "B", 14)
     pdf.cell(0, 10, "Informe de Afecciones Ambientales", ln=True, align="C")
-    pdf.ln(10)
-
-    # Sección: Datos del solicitante
-    pdf.set_font("Arial", "B", 14)
-    pdf.cell(0, 10, "1. Datos del solicitante", ln=True)
-    pdf.set_font("Arial", "", 12)
-
-    campos_orden = [
-        "fecha_solicitud", "fecha_informe", "nombre", "apellidos", "dni",
-        "dirección", "teléfono", "email", "objeto de la solicitud"
-    ]
-    for k in campos_orden:
-        if k in datos:
-            pdf.multi_cell(0, 8, f"{k.replace('_', ' ').capitalize()}: {datos[k]}")
     pdf.ln(5)
 
-    # Sección: Afecciones detectadas
-    pdf.set_font("Arial", "B", 14)
-    pdf.cell(0, 10, "2. Afecciones detectadas", ln=True)
-    pdf.set_font("Arial", "", 12)
+    def seccion_titulo(texto):
+        pdf.set_fill_color(141, 179, 226)  # azul claro
+        pdf.set_font("Arial", "B", 12)
+        pdf.cell(0, 10, texto, ln=True, fill=True)
+        pdf.ln(1)
 
-    afecciones = [k for k in datos if k.lower().startswith("afección")]
-    afecciones_utiles = [
-        (k, datos[k]) for k in afecciones if "no se encuentra" not in datos[k].lower()
-    ]
+    def campo_linea(nombre, valor):
+        if isinstance(valor, str) and '\n' in valor:
+            for line in valor.split('\n'):
+                pdf.set_font("Arial", "B", 12)
+                pdf.multi_cell(0, 8, f"{nombre}: {line}")
+        else:
+            pdf.set_font("Arial", "B" if nombre in campos_orden else "", 12)
+            pdf.multi_cell(0, 8, f"{nombre}: {valor}")
 
-    if afecciones_utiles:
-        for k, v in afecciones_utiles:
-            if k.lower() == "afección mup" and v.startswith("Dentro de MUP"): 
-                for line in v.split("\n"):
-                    pdf.multi_cell(0, 8, line.strip())
-            else:
-                pdf.multi_cell(0, 8, f"{k.replace('_', ' ').capitalize()}: {v}")
+    # 1. Datos del solicitante
+    seccion_titulo("1. Datos del solicitante")
+    for campo in campos_orden:
+        if campo in datos and campo.lower().startswith("afección") is False:
+            campo_linea(campo, datos[campo])
+
+    # 2. Afecciones detectadas
+    seccion_titulo("2. Afecciones detectadas")
+    afecciones_clave = [k for k in datos.keys() if "afección" in k.lower()]
+    if afecciones_clave:
+        for k in afecciones_clave:
+            campo_linea(k, datos[k])
     else:
-        pdf.cell(0, 10, "No se han detectado afecciones.", ln=True)
-    pdf.ln(5)
+        campo_linea("Afecciones", "No se han detectado afecciones.")
 
-    # Sección: Localización
-    pdf.set_font("Arial", "B", 14)
-    pdf.cell(0, 10, "3. Localización", ln=True)
+    # 3. Localización
+    seccion_titulo("3. Localización")
+    for campo in ["Municipio", "Polígono", "Parcela"]:
+        valor = datos.get(campo, "N/A")
+        campo_linea(campo, valor)
     pdf.set_font("Arial", "", 12)
-
-    for campo in ["municipio", "polígono", "parcela"]:
-        if campo in datos:
-            pdf.cell(0, 10, f"{campo.capitalize()}: {datos[campo]}", ln=True)
     pdf.cell(0, 10, f"Coordenadas ETRS89: X = {x}, Y = {y}", ln=True)
 
     # Guardar PDF
     pdf.output(filename)
     return filename
-
+    
 # Interfaz de Streamlit
 st.title("\U0001F5FA️ Informe de Afecciones Ambientales")
 
