@@ -18,3 +18,4 @@ Pillow
 openpyxl
 pypandoc
 reportlab
+html2image
