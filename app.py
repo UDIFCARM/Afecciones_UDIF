@@ -226,7 +226,6 @@ def generar_pdf(datos, x, y, filename):
     # Título principal
     pdf.set_font("Arial", "B", size=16)
     pdf.cell(0, 10, "Informe de Afecciones Ambientales", ln=True, align="C")
-
     pdf.ln(10)
 
     # Colores
@@ -248,12 +247,23 @@ def generar_pdf(datos, x, y, filename):
     # 1. Datos del solicitante
     seccion_titulo("1. Datos del solicitante")
     campos_orden = [
-        "fecha solicitud", "fecha informe", "nombre", "apellidos", "dni", "dirección", 
-        "teléfono", "email", "objeto de la solicitud"
+        "fecha solicitud", "fecha informe", "nombre", "apellidos", 
+        "dni", "dirección", "teléfono", "email"
     ]
     for campo in campos_orden:
         valor = datos.get(campo, "").strip()
         campo_orden(campo.capitalize(), valor)
+
+    # Objeto de la solicitud en línea aparte
+    objeto = datos.get("objeto de la solicitud", "").strip()
+    if objeto:
+        pdf.ln(4)
+        pdf.set_font("Arial", "B", 12)
+        pdf.cell(0, 8, "Objeto de la solicitud:", ln=True)
+        pdf.set_font("Arial", "", 12)
+        pdf.multi_cell(0, 8, objeto)
+    else:
+        pdf.multi_cell(0, 8, "Objeto de la solicitud: No especificado")
 
     # 2. Afecciones detectadas
     seccion_titulo("2. Afecciones detectadas")
