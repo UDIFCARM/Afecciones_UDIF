@@ -11,7 +11,12 @@ import os
 from shapely.geometry import Point
 import uuid
 from datetime import datetime
-from docx import Document
+from docxtpl import DocxTemplate, InlineImage
+from docx.shared import Mm
+from io import BytesIO
+from docx2pdf import convert
+from PIL import Image
+import base64
 from branca.element import Template, MacroElement
 
 # Diccionario con los nombres de municipios y sus nombres base de archivo
