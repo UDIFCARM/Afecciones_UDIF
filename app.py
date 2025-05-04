@@ -202,8 +202,13 @@ y_coord = st.text_input("Coordenada Y (ETRS89 UTM Zona 30N):")
 
 if st.button("Generar informe"):
     with st.spinner("Procesando..."):
-        x = float(x_coord)
-        y = float(y_coord)
+        try:
+            x = float(x_coord)
+            y = float(y_coord)
+        except ValueError:
+            st.error("Coordenadas inválidas. Introduce valores numéricos.")
+            st.stop()
+
         lon, lat = transformar_coordenadas(x, y)
 
         municipio = municipio_sel if modo == "Por parcela" else ""
@@ -242,7 +247,7 @@ if st.button("Generar informe"):
             afecciones_lista.append(mup_resultado)
 
         mapa = crear_mapa(lon, lat, afecciones_lista)
-        folium_static(mapa, height=600)
+        folium_static(mapa)  # Visualiza el mapa
 
         with open(mapa_html, "r", encoding="utf-8") as f:
             html_content = f.read()
