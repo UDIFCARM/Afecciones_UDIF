@@ -379,7 +379,7 @@ def generar_pdf(datos, x, y, filename):
 st.image("https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/logos.jpg", use_container_width=True)
 st.title("Informe básico de Afecciones UDIF")
 
-modo = st.radio("Selecciona el modo de búsqueda", ["Por coordenadas", "Por parcela"])
+modo = st.radio("Selecciona el modo de búsqueda", ["Por coordenadas, valido para afecciones de Dominio Público Pecuario", "Por parcela, la afección se calcula al centroide de la parcela, por tanto si desea obtener afecciones a Dominio Público Pecuario, utilice busqueda por coordenadas"])
 
 # Variables iniciales de coordenadas y de selección (para el modo parcela)
 x = 0.0
