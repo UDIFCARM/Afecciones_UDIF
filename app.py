@@ -402,16 +402,7 @@ if modo == "Por parcela":
         parcela = gdf[(gdf["MASA"] == masa_sel) & (gdf["PARCELA"] == parcela_sel)]
         
         if parcela.geometry.geom_type.isin(['Polygon', 'MultiPolygon']).all():
-            # Calcular el centroide y asignar coordenadas
-            puntos = parcela.copy()
-            puntos["geometry"] = puntos.geometry.centroid
-            puntos["longitude"] = puntos.geometry.x
-            puntos["latitude"] = puntos.geometry.y
-            parcela = puntos  
-          
-            punto_centro = parcela.geometry.iloc[0]
-            x = punto_centro.x
-            y = punto_centro.y         
+            poligono_parcela = parcela.geometry.unary_union
                     
             st.success("Parcela cargada correctamente.")
             st.write(f"Municipio: {municipio_sel}")
