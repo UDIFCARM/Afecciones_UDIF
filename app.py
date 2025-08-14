@@ -14,10 +14,6 @@ from datetime import datetime
 from docx import Document
 from branca.element import Template, MacroElement
 from io import BytesIO
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-from webdriver_manager.chrome import ChromeDriverManager
-import time
 
 # Diccionario con los nombres de municipios y sus nombres base de archivo
 shp_urls = {
@@ -232,48 +228,100 @@ def crear_mapa(lon, lat, afecciones=[], parcela_gdf=None):
 
     return mapa_html, afecciones
 
-# Función para generar la imagen estática del mapa usando Selenium
-def generar_imagen_estatica_mapa(x, y, zoom=16, size=(800, 600), mapa_html=None):
-    if mapa_html is None:
-        st.error("No se proporcionó un archivo HTML para el mapa.")
-        return None
-    
+# Función para generar la imagen estática del mapa usando WMS requests
+def generar_imagen_estatica_mapa(x, y, zoom=16, size=(800, 600), parcela_gdf=None):
     # Transformar coordenadas de ETRS89 a WGS84
     lon, lat = transformar_coordenadas(x, y)
     
-    # Configurar opciones de Selenium para modo headless
-    chrome_options = Options()
-    chrome_options.add_argument("--headless")
-    chrome_options.add_argument("--no-sandbox")
-    chrome_options.add_argument("--disable-dev-shm-usage")
-    chrome_options.add_argument(f"--window-size={size[0]},{size[1]}")
+    # Calcular el bounding box basado en el zoom y las coordenadas
+    # Aproximar el tamaño del mapa en grados (basado en el zoom)
+    meters_per_pixel = 156543.03392 * (2 ** (-zoom))  # Aproximación para zoom en WGS84
+    delta_lon = (size[0] * meters_per_pixel) / 111319.9  # Conversión a grados (~111 km por grado)
+    delta_lat = delta_lon  # Asumimos proporción similar para latitud
+    bbox = f"{lon-delta_lon},{lat-delta_lat},{lon+delta_lon},{lat+delta_lat}"
     
-    # Iniciar el navegador con webdriver_manager
-    try:
-        driver = webdriver.Chrome(service=webdriver.chrome.service.Service(ChromeDriverManager().install()), options=chrome_options)
-    except Exception as e:
-        st.error(f"Error al iniciar el navegador: {e}")
-        return None
+    # Configuración de las capas WMS
+    wms_layers = [
+        {
+            "url": "https://ovc.catastro.meh.es/Cartografia/WMS/ServidorWMS.aspx",
+            "layers": "Catastro",
+            "transparent": "TRUE",
+            "opacity": 1.0
+        },
+        {
+            "url": "https://wms.mapama.gob.es/sig/Biodiversidad/RedNatura/wms.aspx",
+            "layers": "Red Natura 2000",
+            "transparent": "TRUE",
+            "opacity": 0.25
+        },
+        {
+            "url": "https://wms.mapama.gob.es/sig/Biodiversidad/PropiedadMontes_UP/wms.aspx",
+            "layers": "Catálogo de Montes de Utilidad Pública",
+            "transparent": "TRUE",
+            "opacity": 0.25
+        }
+    ]
     
-    # Cargar el archivo HTML del mapa
-    try:
-        driver.get(f"file://{os.path.abspath(mapa_html)}")
-        time.sleep(3)  # Esperar a que el mapa se renderice completamente
+    # Parámetros base para la solicitud WMS
+    wms_params = {
+        "SERVICE": "WMS",
+        "VERSION": "1.1.1",
+        "REQUEST": "GetMap",
+        "FORMAT": "image/png",
+        "SRS": "EPSG:4326",
+        "WIDTH": str(size[0]),
+        "HEIGHT": str(size[1]),
+        "BBOX": bbox
+    }
+    
+    # Crear directorio temporal para la imagen
+    temp_dir = tempfile.mkdtemp()
+    output_path = os.path.join(temp_dir, "mapa.png")
+    
+    # Descargar y combinar las capas
+    from PIL import Image
+    base_image = None
+    for layer in wms_layers:
+        params = wms_params.copy()
+        params["LAYERS"] = layer["layers"]
+        params["TRANSPARENT"] = layer["transparent"]
+        if layer["opacity"] != 1.0:
+            params["OPACITY"] = str(layer["opacity"])
         
-        # Tomar captura de pantalla
-        temp_dir = tempfile.mkdtemp()
-        output_path = os.path.join(temp_dir, "mapa.png")
-        driver.save_screenshot(output_path)
+        response = requests.get(layer["url"], params=params)
+        if response.status_code == 200:
+            with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp_file:
+                tmp_file.write(response.content)
+                layer_image = Image.open(tmp_file.name).convert("RGBA")
+            
+            if base_image is None:
+                base_image = layer_image
+            else:
+                base_image = Image.alpha_composite(base_image, layer_image)
+        else:
+            st.warning(f"Error al descargar capa WMS {layer['layers']}: {response.status_code}")
+    
+    # Añadir marcador (círculo rojo) en el centro
+    if base_image:
+        from PIL import ImageDraw
+        draw = ImageDraw.Draw(base_image)
+        center_x = size[0] // 2
+        center_y = size[1] // 2
+        radius = 10
+        draw.ellipse(
+            [(center_x - radius, center_y - radius), (center_x + radius, center_y + radius)],
+            fill="red", outline="black"
+        )
         
-        driver.quit()
+        # Guardar la imagen combinada
+        base_image.save(output_path, "PNG")
         return output_path
-    except Exception as e:
-        st.error(f"Error al generar la captura del mapa: {e}")
-        driver.quit()
+    else:
+        st.error("No se pudo generar la imagen del mapa con las capas WMS.")
         return None
 
 # Función para generar el PDF con los datos de la solicitud
-def generar_pdf(datos, x, y, filename, mapa_html=None):
+def generar_pdf(datos, x, y, filename, parcela_gdf=None):
     pdf = FPDF()
     pdf.add_page()
 
@@ -369,7 +417,7 @@ def generar_pdf(datos, x, y, filename, mapa_html=None):
     pdf.set_font("Arial", "B", 12)
     pdf.cell(0, 10, f"Coordenadas ETRS89: X = {x}, Y = {y}", ln=True)
 
-    imagen_mapa_path = generar_imagen_estatica_mapa(x, y, mapa_html=mapa_html)
+    imagen_mapa_path = generar_imagen_estatica_mapa(x, y, parcela_gdf=parcela_gdf)
 
     if imagen_mapa_path and os.path.exists(imagen_mapa_path):
         epw = pdf.w - 2 * pdf.l_margin
@@ -517,7 +565,7 @@ if submitted:
             html(f.read(), height=500)
 
         pdf_filename = f"informe_{uuid.uuid4().hex[:8]}.pdf"
-        generar_pdf(datos, x, y, pdf_filename, mapa_html=mapa_html)
+        generar_pdf(datos, x, y, pdf_filename, parcela_gdf=parcela)
         st.session_state['pdf_file'] = pdf_filename
 
 if st.session_state['mapa_html'] and st.session_state['pdf_file']:
