@@ -14,8 +14,10 @@ from datetime import datetime
 from docx import Document
 from branca.element import Template, MacroElement
 from io import BytesIO
-from html2image import Html2Image
-from staticmap import StaticMap, CircleMarker
+from PIL import Image
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+import time
 
 # Diccionario con los nombres de municipios y sus nombres base de archivo
 shp_urls = {
@@ -82,7 +84,7 @@ def cargar_shapefile_desde_github(base_name):
             response = requests.get(url)
             if response.status_code != 200:
                 st.error(f"Error al descargar {url}")
-                return None  # Si falta algún archivo esencial, falla todo
+                return None
             
             with open(local_path, "wb") as f:
                 f.write(response.content)
@@ -101,7 +103,7 @@ def encontrar_municipio_poligono_parcela(x, y):
             continue
         seleccion = gdf[gdf.contains(punto)]
         if not seleccion.empty:
-            parcela_gdf = seleccion.iloc[[0]]  # Tomar la primera parcela encontrada
+            parcela_gdf = seleccion.iloc[[0]]
             masa = parcela_gdf["MASA"].iloc[0]
             parcela = parcela_gdf["PARCELA"].iloc[0]
             return municipio, masa, parcela, parcela_gdf
@@ -234,20 +236,40 @@ def crear_mapa(lon, lat, afecciones=[], parcela_gdf=None):
 
     return mapa_html, afecciones
 
-# Función auxiliar para convertir el mapa HTML en imagen PNG
-def generar_imagen_estatica_mapa(x, y, zoom=16, size=(800, 600)):
-    mapa = StaticMap(size[0], size[1])
-    marcador = CircleMarker((x, y), 'red', 12)
-    mapa.add_marker(marcador)
-    image = mapa.render(zoom=zoom)
+# Función para generar imagen estática del mapa usando Selenium
+def generar_imagen_estatica_mapa(mapa_html, size=(800, 600)):
+    try:
+        # Configurar Selenium con Chrome en modo headless
+        chrome_options = Options()
+        chrome_options.add_argument("--headless")
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--disable-dev-shm-usage")
+        driver = webdriver.Chrome(options=chrome_options)
 
-    temp_dir = tempfile.mkdtemp()
-    output_path = os.path.join(temp_dir, "mapa.png")
-    image.save(output_path)
-    return output_path
+        # Cargar el mapa HTML
+        driver.get(f"file://{os.path.abspath(mapa_html)}")
+        time.sleep(3)  # Esperar a que el mapa se renderice completamente
+
+        # Establecer el tamaño de la ventana
+        driver.set_window_size(size[0], size[1])
+
+        # Tomar captura de pantalla
+        screenshot = driver.get_screenshot_as_png()
+        driver.quit()
+
+        # Convertir captura a imagen PNG
+        temp_dir = tempfile.mkdtemp()
+        output_path = os.path.join(temp_dir, "mapa.png")
+        with Image.open(BytesIO(screenshot)) as img:
+            img.save(output_path, "PNG")
+
+        return output_path
+    except Exception as e:
+        st.error(f"Error al generar la imagen del mapa: {e}")
+        return None
 
 # Función para generar el PDF con los datos de la solicitud
-def generar_pdf(datos, x, y, filename):
+def generar_pdf(datos, x, y, mapa_html):
     pdf = FPDF()
     pdf.add_page()
 
@@ -280,9 +302,6 @@ def generar_pdf(datos, x, y, filename):
         "Teléfono", "Email", "Objeto de la solicitud"
     ]
 
-    # Campos de localización
-    campos_localizacion = ["Municipio", "Polígono", "Parcela"]
-    
     def seccion_titulo(texto):
         pdf.set_fill_color(*azul_rgb)
         pdf.set_text_color(0, 0, 0)
@@ -295,10 +314,10 @@ def generar_pdf(datos, x, y, filename):
         pdf.cell(50, 8, f"{titulo}:", ln=0)
         pdf.set_font("Arial", "", 12)
         pdf.multi_cell(0, 8, valor if valor else "No especificado")
- 
+
     # 1. Datos del solicitante
     seccion_titulo("1. Datos del solicitante")
-    campos_orden = [
+    for titulo, valor in [
         ("Fecha solicitud", datos.get("fecha_solicitud", "").strip()),
         ("Fecha informe", datos.get("fecha_informe", "").strip()),
         ("Nombre", datos.get("nombre", "").strip()),
@@ -307,8 +326,7 @@ def generar_pdf(datos, x, y, filename):
         ("Dirección", datos.get("dirección", "").strip()),
         ("Teléfono", datos.get("teléfono", "").strip()),
         ("Email", datos.get("email", "").strip()),
-    ]
-    for titulo, valor in campos_orden:
+    ]:
         campo_orden(titulo, valor)
 
     # Objeto de la solicitud
@@ -354,19 +372,22 @@ def generar_pdf(datos, x, y, filename):
     pdf.cell(0, 10, f"Coordenadas ETRS89: X = {x}, Y = {y}", ln=True)
 
     # Insertar imagen del mapa si existe
-    imagen_mapa_path = generar_imagen_estatica_mapa(x, y)
-
-    if os.path.exists(imagen_mapa_path):
-        epw = pdf.w - 2 * pdf.l_margin  # Calcular el ancho útil de la página
-        pdf.ln(5)
-        pdf.set_font("Arial", "B", 12)
-        pdf.cell(0, 8, "Mapa de localización:", ln=True)
+    pdf.ln(5)
+    pdf.set_font("Arial", "B", 12)
+    pdf.cell(0, 8, "Mapa de localización:", ln=True)
+    imagen_mapa_path = generar_imagen_estatica_mapa(mapa_html)
+    if imagen_mapa_path and os.path.exists(imagen_mapa_path):
+        epw = pdf.w - 2 * pdf.l_margin
         pdf.image(imagen_mapa_path, x=pdf.l_margin, w=epw)
+    else:
+        pdf.set_font("Arial", "", 12)
+        pdf.cell(0, 8, "No se pudo generar la imagen del mapa.", ln=True)
 
-    pdf.output(filename)
-    return filename
-    
-# Interfaz de Streamlit  
+    pdf_filename = f"informe_{uuid.uuid4().hex[:8]}.pdf"
+    pdf.output(pdf_filename)
+    return pdf_filename
+
+# Interfaz de Streamlit
 st.image("https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/logos.jpg", use_container_width=True)
 st.title("Informe básico de Afecciones al Medio Natural")
 
@@ -500,7 +521,7 @@ if submitted:
         # Crear mapa con afecciones
         mapa_html, afecciones = crear_mapa(lon, lat, afecciones, parcela_gdf=parcela)
 
-        # Guardar estado 
+        # Guardar estado
         st.session_state['mapa_html'] = mapa_html
         st.session_state['afecciones'] = afecciones
 
@@ -513,8 +534,7 @@ if submitted:
             html(f.read(), height=500)
 
         # PDF generado desde los datos
-        pdf_filename = f"informe_{uuid.uuid4().hex[:8]}.pdf"
-        generar_pdf(datos, x, y, pdf_filename)
+        pdf_filename = generar_pdf(datos, x, y, mapa_html)
         st.session_state['pdf_file'] = pdf_filename
 
 # Botones de descarga
