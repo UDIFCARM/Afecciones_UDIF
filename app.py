@@ -14,8 +14,7 @@ from datetime import datetime
 from docx import Document
 from branca.element import Template, MacroElement
 from io import BytesIO
-from html2image import Html2Image
-from staticmap import StaticMap, CircleMarker
+import imgkit
 
 # Diccionario con los nombres de municipios y sus nombres base de archivo
 shp_urls = {
@@ -82,7 +81,7 @@ def cargar_shapefile_desde_github(base_name):
             response = requests.get(url)
             if response.status_code != 200:
                 st.error(f"Error al descargar {url}")
-                return None  # Si falta algún archivo esencial, falla todo
+                return None
             
             with open(local_path, "wb") as f:
                 f.write(response.content)
@@ -101,19 +100,19 @@ def encontrar_municipio_poligono_parcela(x, y):
             continue
         seleccion = gdf[gdf.contains(punto)]
         if not seleccion.empty:
-            parcela_gdf = seleccion.iloc[[0]]  # Tomar la primera parcela encontrada
+            parcela_gdf = seleccion.iloc[[0]]
             masa = parcela_gdf["MASA"].iloc[0]
             parcela = parcela_gdf["PARCELA"].iloc[0]
             return municipio, masa, parcela, parcela_gdf
     return "N/A", "N/A", "N/A", None
 
-# Función para transformar coordenadas de ETRS89 a WGS84 (Long, Lat)
+# Función para transformar coordenadas de ETRS89 a WGS84
 def transformar_coordenadas(x, y):
     transformer = Transformer.from_crs("EPSG:25830", "EPSG:4326", always_xy=True)
     lon, lat = transformer.transform(x, y)
     return lon, lat
 
-# Función para consultar si la geometría (punto o parcela) intersecta con algún polígono del GeoJSON
+# Función para consultar si la geometría intersecta con algún polígono del GeoJSON
 def consultar_geojson(geom, geojson_url, nombre_afeccion="Afección", campo_nombre="nombre"):
     try:
         gdf = gpd.read_file(geojson_url)
@@ -127,7 +126,7 @@ def consultar_geojson(geom, geojson_url, nombre_afeccion="Afección", campo_nomb
         st.error(f"Error al leer GeoJSON de {nombre_afeccion}: {e}")
         return f"Error al consultar {nombre_afeccion}"
 
-# Función para consultar si la geometría (punto o parcela) intersecta con algún MUP del GeoJSON
+# Función para consultar si la geometría intersecta con algún MUP del GeoJSON
 def consultar_mup(geom, geojson_url):
     try:
         gdf = gpd.read_file(geojson_url)
@@ -152,7 +151,6 @@ def crear_mapa(lon, lat, afecciones=[], parcela_gdf=None):
     m = folium.Map(location=[lat, lon], zoom_start=16)
     folium.Marker([lat, lon], popup=f"Coordenadas transformadas: {lon}, {lat}").add_to(m)
 
-    # Si hay parcela, añadir su contorno
     if parcela_gdf is not None:
         parcela_4326 = parcela_gdf.to_crs("EPSG:4326")
         folium.GeoJson(
@@ -161,7 +159,6 @@ def crear_mapa(lon, lat, afecciones=[], parcela_gdf=None):
             style_function=lambda x: {'fillColor': 'transparent', 'color': 'blue', 'weight': 2, 'dashArray': '5, 5'}
         ).add_to(m)
 
-    # Agregar capas WMS
     folium.raster_layers.WmsTileLayer(
         url="https://ovc.catastro.meh.es/Cartografia/WMS/ServidorWMS.aspx",
         layers="Catastro",
@@ -193,7 +190,6 @@ def crear_mapa(lon, lat, afecciones=[], parcela_gdf=None):
 
     folium.LayerControl().add_to(m)
 
-    # Añadir leyenda personalizada
     legend_html = """
     {% macro html(this, kwargs) %}
 <div style="
@@ -208,7 +204,7 @@ def crear_mapa(lon, lat, afecciones=[], parcela_gdf=None):
     box-shadow: 2px 2px 6px rgba(0,0,0,0.2);
     line-height: 1.1em;
     width: auto;
-    transform: scale(0.75); /* Escala todo el contenedor */
+    transform: scale(0.75);
     transform-origin: top left;
 ">
     <b>Leyenda</b><br>
@@ -224,7 +220,6 @@ def crear_mapa(lon, lat, afecciones=[], parcela_gdf=None):
     legend._template = Template(legend_html)
     m.get_root().add_child(legend)
 
-    # Agregar afecciones como marcadores en el mapa
     for afeccion in afecciones:
         folium.Marker([lat, lon], popup=afeccion).add_to(m)
 
@@ -234,16 +229,24 @@ def crear_mapa(lon, lat, afecciones=[], parcela_gdf=None):
 
     return mapa_html, afecciones
 
-# Función auxiliar para convertir el mapa HTML en imagen PNG
+# Nueva función para generar la imagen estática del mapa
 def generar_imagen_estatica_mapa(x, y, zoom=16, size=(800, 600)):
-    mapa = StaticMap(size[0], size[1])
-    marcador = CircleMarker((x, y), 'red', 12)
-    mapa.add_marker(marcador)
-    image = mapa.render(zoom=zoom)
-
+    # Transformar coordenadas de ETRS89 a WGS84
+    lon, lat = transformar_coordenadas(x, y)
+    
+    # Crear un mapa Folium simple para la captura
+    m = folium.Map(location=[lat, lon], zoom_start=zoom, tiles='OpenStreetMap')
+    folium.Marker([lat, lon], popup="Ubicación").add_to(m)
+    
+    # Guardar el mapa como HTML temporal
     temp_dir = tempfile.mkdtemp()
+    temp_html_path = os.path.join(temp_dir, "temp_map.html")
+    m.save(temp_html_path)
+    
+    # Usar imgkit para capturar el mapa como PNG
     output_path = os.path.join(temp_dir, "mapa.png")
-    image.save(output_path)
+    imgkit.from_file(temp_html_path, output_path, options={'width': size[0], 'height': size[1]})
+    
     return output_path
 
 # Función para generar el PDF con los datos de la solicitud
@@ -251,7 +254,6 @@ def generar_pdf(datos, x, y, filename):
     pdf = FPDF()
     pdf.add_page()
 
-    # Descargar e insertar el logo
     logo_url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/logos.jpg"
     response = requests.get(logo_url)
     if response.status_code == 200:
@@ -266,7 +268,6 @@ def generar_pdf(datos, x, y, filename):
         logo_height = logo_width * 0.2
         pdf.set_y(10 + logo_height + 5)
 
-    # Título principal
     pdf.set_font("Arial", "B", size=16)
     pdf.set_text_color(0, 0, 0)
     pdf.cell(0, 10, "Informe de Afecciones Ambientales", ln=True, align="C")
@@ -274,13 +275,11 @@ def generar_pdf(datos, x, y, filename):
 
     azul_rgb = (141, 179, 226)
 
-    # Lista de campos que deben aparecer en orden y en negrita
     campos_orden = [
         "Fecha solicitud", "Fecha informe", "Nombre", "Apellidos", "Dni", "Dirección",
         "Teléfono", "Email", "Objeto de la solicitud"
     ]
 
-    # Campos de localización
     campos_localizacion = ["Municipio", "Polígono", "Parcela"]
     
     def seccion_titulo(texto):
@@ -296,7 +295,6 @@ def generar_pdf(datos, x, y, filename):
         pdf.set_font("Arial", "", 12)
         pdf.multi_cell(0, 8, valor if valor else "No especificado")
  
-    # 1. Datos del solicitante
     seccion_titulo("1. Datos del solicitante")
     campos_orden = [
         ("Fecha solicitud", datos.get("fecha_solicitud", "").strip()),
@@ -311,7 +309,6 @@ def generar_pdf(datos, x, y, filename):
     for titulo, valor in campos_orden:
         campo_orden(titulo, valor)
 
-    # Objeto de la solicitud
     objeto = datos.get("objeto de la solicitud", "").strip()
     pdf.ln(2)
     pdf.set_font("Arial", "B", 12)
@@ -319,7 +316,6 @@ def generar_pdf(datos, x, y, filename):
     pdf.set_font("Arial", "", 12)
     pdf.multi_cell(0, 8, objeto if objeto else "No especificado")
 
-    # 2. Afecciones detectadas
     seccion_titulo("2. Afecciones detectadas")
     afecciones_keys = [k for k in datos if k.lower().startswith("afección")]
 
@@ -334,7 +330,6 @@ def generar_pdf(datos, x, y, filename):
         pdf.set_font("Arial", "", 12)
         pdf.cell(0, 8, "No se han detectado afecciones.", ln=True)
 
-    # Afecciones adicionales que no se han mostrado
     for key in ["afección vp", "afección enp", "afección zepa", "afección lic", "afección tm"]:
         valor = datos.get(key, "").strip()
         if valor:
@@ -343,21 +338,18 @@ def generar_pdf(datos, x, y, filename):
             pdf.set_font("Arial", "", 12)
             pdf.multi_cell(0, 8, valor)
 
-    # 3. Localización
     seccion_titulo("3. Localización")
     for campo in ["municipio", "polígono", "parcela"]:
         valor = datos.get(campo, "").strip()
         campo_orden(campo.capitalize(), valor if valor else "No disponible")
 
-    # Coordenadas
     pdf.set_font("Arial", "B", 12)
     pdf.cell(0, 10, f"Coordenadas ETRS89: X = {x}, Y = {y}", ln=True)
 
-    # Insertar imagen del mapa si existe
     imagen_mapa_path = generar_imagen_estatica_mapa(x, y)
 
     if os.path.exists(imagen_mapa_path):
-        epw = pdf.w - 2 * pdf.l_margin  # Calcular el ancho útil de la página
+        epw = pdf.w - 2 * pdf.l_margin
         pdf.ln(5)
         pdf.set_font("Arial", "B", 12)
         pdf.cell(0, 8, "Mapa de localización:", ln=True)
@@ -372,7 +364,6 @@ st.title("Informe básico de Afecciones al Medio Natural")
 
 modo = st.radio("Selecciona el modo de búsqueda, si se desea buscar la afección a Dominio Público Pecuario emplear busqueda por coordenadas. Recuerde que la busqueda por parcela analiza afecciones al total de la superficie de la parcela", ["Por coordenadas", "Por parcela"])
 
-# Variables iniciales de coordenadas y de selección
 x = 0.0
 y = 0.0
 municipio_sel = ""
@@ -384,7 +375,6 @@ if modo == "Por parcela":
     municipio_sel = st.selectbox("Municipio", sorted(shp_urls.keys()))
     archivo_base = shp_urls[municipio_sel]
     
-    # Cargar el shapefile del municipio seleccionado
     gdf = cargar_shapefile_desde_github(archivo_base)
     
     if gdf is not None:
@@ -393,7 +383,6 @@ if modo == "Por parcela":
         parcela = gdf[(gdf["MASA"] == masa_sel) & (gdf["PARCELA"] == parcela_sel)]
         
         if parcela.geometry.geom_type.isin(['Polygon', 'MultiPolygon']).all():
-            # Calcular el centroide solo para el marcador y coordenadas
             centroide = parcela.geometry.centroid.iloc[0]
             x = centroide.x
             y = centroide.y         
@@ -408,7 +397,6 @@ if modo == "Por parcela":
         st.error(f"No se pudo cargar el shapefile para el municipio: {municipio_sel}")
 
 with st.form("formulario"):
-    # Si el modo es "Por coordenadas", incluir campos para las coordenadas
     if modo == "Por coordenadas":
         x = st.number_input("Coordenada X (ETRS89)", format="%.2f", help="Introduce coordenadas en metros, sistema ETRS89 / UTM zona 30")
         y = st.number_input("Coordenada Y (ETRS89)", format="%.2f")
@@ -419,7 +407,6 @@ with st.form("formulario"):
             else:
                 st.warning("No se encontró una parcela para las coordenadas proporcionadas.")
     else:
-        # Muestra las coordenadas calculadas del centroide en modo parcela
         st.info(f"Coordenadas obtenidas del centroide de la parcela: X = {x}, Y = {y}")
         
     fecha_solicitud = st.date_input("Fecha de la solicitud")
@@ -438,24 +425,20 @@ if 'pdf_file' not in st.session_state:
     st.session_state['pdf_file'] = None
 
 if submitted:
-    # Validación de entradas
     if not nombre or not apellidos or not dni or x == 0 or y == 0:
         st.warning("Por favor, completa todos los campos obligatorios y asegúrate de que las coordenadas son correctas.")
     else:
         lon, lat = transformar_coordenadas(x, y)
 
-        # Determinar la geometría de consulta
         if modo == "Por parcela":
-            query_geom = parcela.geometry.iloc[0]  # Geometría completa de la parcela
+            query_geom = parcela.geometry.iloc[0]
         else:
-            query_geom = Point(x, y)  # Punto para modo coordenadas
+            query_geom = Point(x, y)
 
-        # Mostrar los datos seleccionados
         st.write(f"Municipio seleccionado: {municipio_sel}")
         st.write(f"Polígono seleccionado: {masa_sel}")
         st.write(f"Parcela seleccionada: {parcela_sel}")
 
-        # URLs GeoJSON
         enp_url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/GeoJSON/ENP.json"
         zepa_url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/GeoJSON/ZEPA.json"
         lic_url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/GeoJSON/LIC.json"
@@ -463,7 +446,6 @@ if submitted:
         tm_url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/GeoJSON/TM.json"
         mup_url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/GeoJSON/MUP.json"
 
-        # Consultas de afecciones
         afeccion_enp = consultar_geojson(query_geom, enp_url, "ENP", campo_nombre="nombre")
         afeccion_zepa = consultar_geojson(query_geom, zepa_url, "ZEPA", campo_nombre="SITE_NAME")
         afeccion_lic = consultar_geojson(query_geom, lic_url, "LIC", campo_nombre="SITE_NAME")
@@ -471,7 +453,6 @@ if submitted:
         afeccion_tm = consultar_geojson(query_geom, tm_url, "TM", campo_nombre="NAMEUNIT")
         afeccion_mup = consultar_mup(query_geom, mup_url)
 
-        # Compilando datos para mostrar
         afecciones = [afeccion_enp, afeccion_zepa, afeccion_lic, afeccion_vp, afeccion_tm, afeccion_mup]
         
         datos = {
@@ -497,14 +478,11 @@ if submitted:
             "parcela": parcela_sel
         }
         
-        # Crear mapa con afecciones
         mapa_html, afecciones = crear_mapa(lon, lat, afecciones, parcela_gdf=parcela)
 
-        # Guardar estado 
         st.session_state['mapa_html'] = mapa_html
         st.session_state['afecciones'] = afecciones
 
-        # Mostrar el mapa y el PDF
         st.subheader("Resultado de las afecciones")
         for afeccion in afecciones:
             st.write(f"• {afeccion}")
@@ -512,12 +490,10 @@ if submitted:
         with open(mapa_html, 'r') as f:
             html(f.read(), height=500)
 
-        # PDF generado desde los datos
         pdf_filename = f"informe_{uuid.uuid4().hex[:8]}.pdf"
         generar_pdf(datos, x, y, pdf_filename)
         st.session_state['pdf_file'] = pdf_filename
 
-# Botones de descarga
 if st.session_state['mapa_html'] and st.session_state['pdf_file']:
     with open(st.session_state['pdf_file'], "rb") as f:
         st.download_button("📄 Descargar informe PDF", f, file_name="informe_afecciones.pdf")
