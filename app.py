@@ -448,18 +448,15 @@ if 'pdf_file' not in st.session_state:
 
 if submitted:
     # Validación de entradas
-    if not nombre or not apellidos or not dni or x == 0 or y == 0:
+    if not nombre or not apellidos or not dni or (modo == "Por coordenadas" and (x == 0 or y == 0)):
         st.warning("Por favor, completa todos los campos obligatorios y asegúrate de que las coordenadas son correctas.")
     else:
-        lon, lat = transformar_coordenadas(x, y)
-
-        # Mostrar los datos seleccionados (solo si estamos en modo parcela)
-        if modo == "Por parcela":
-            st.write(f"Municipio seleccionado: {municipio_sel}")
-            st.write(f"Polígono seleccionado: {masa_sel}")
-            st.write(f"Parcela seleccionada: {parcela_sel}")
-        else:
-            st.write("Modo por coordenadas seleccionado. Municipio no disponible.")
+       if modo == "Por coordenadas":
+            lon, lat = transformar_coordenadas(x, y)
+            geom = Point(x, y)  # Consulta por punto
+       else:
+            geom = st.session_state['geom_parcela']  # Consulta por parcela
+            lon, lat = transformar_coordenadas(x, y)  # Para el mapa
 
         # URLs GeoJSON
         enp_url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/GeoJSON/ENP.json"
@@ -470,12 +467,21 @@ if submitted:
         mup_url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/GeoJSON/MUP.json"
 
         # Consultas de afecciones
-        afeccion_enp = consultar_geojson(x, y, enp_url, "ENP", campo_nombre="nombre")
-        afeccion_zepa = consultar_geojson(x, y, zepa_url, "ZEPA", campo_nombre="SITE_NAME")
-        afeccion_lic = consultar_geojson(x, y, lic_url, "LIC", campo_nombre="SITE_NAME")
-        afeccion_vp = consultar_geojson(x, y, vp_url, "VP", campo_nombre="VP_NB")
-        afeccion_tm = consultar_geojson(x, y, tm_url, "TM", campo_nombre="NAMEUNIT")
-        afeccion_mup = consultar_mup(x, y, mup_url)
+        if modo == "Por coordenadas":
+            afeccion_enp = consultar_geojson(x, y, enp_url, "ENP", campo_nombre="nombre")
+            afeccion_zepa = consultar_geojson(x, y, zepa_url, "ZEPA", campo_nombre="SITE_NAME")
+            afeccion_lic = consultar_geojson(x, y, lic_url, "LIC", campo_nombre="SITE_NAME")
+            afeccion_vp = consultar_geojson(x, y, vp_url, "VP", campo_nombre="VP_NB")
+            afeccion_tm = consultar_geojson(x, y, tm_url, "TM", campo_nombre="NAMEUNIT")
+            afeccion_mup = consultar_mup(x, y, mup_url)
+
+        else:
+            afeccion_enp = consultar_geojson_geom(geom, enp_url, "ENP", campo_nombre="nombre")
+            afeccion_zepa = consultar_geojson_geom(geom, zepa_url, "ZEPA", campo_nombre="SITE_NAME")
+            afeccion_lic = consultar_geojson_geom(geom, lic_url, "LIC", campo_nombre="SITE_NAME")
+            afeccion_vp = consultar_geojson_geom(geom, vp_url, "VP", campo_nombre="VP_NB")
+            afeccion_tm = consultar_geojson_geom(geom, tm_url, "TM", campo_nombre="NAMEUNIT")
+            afeccion_mup = consultar_mup_geom(geom, mup_url)
 
         # Compilando datos para mostrar
         afecciones = [afeccion_enp, afeccion_zepa, afeccion_lic, afeccion_vp, afeccion_tm, afeccion_mup]
