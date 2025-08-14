@@ -20,3 +20,15 @@ pypandoc
 reportlab
 html2image
 staticmap
+streamlit
+folium
+fpdf
+pyproj
+requests
+geopandas
+shapely
+python-docx
+branca
+html2image
+selenium
+Pillow
