@@ -100,11 +100,10 @@ def transformar_coordenadas(x, y):
     return lon, lat
 
 # Función para consultar si el punto está dentro de algún polígono del GeoJSON
-def consultar_geojson(x, y, geojson_url, nombre_afeccion="Afección", campo_nombre="nombre"):
+def consultar_geojson_geom(geom, geojson_url, nombre_afeccion="Afección", campo_nombre="nombre"):
     try:
         gdf = gpd.read_file(geojson_url)
-        punto = Point(x, y)
-        seleccion = gdf[gdf.contains(punto)]
+         seleccion = gdf[gdf.intersects(geom)]
         if not seleccion.empty:
             props = seleccion.iloc[0]
             nombre = props.get(campo_nombre, f"{nombre_afeccion} encontrado")
@@ -116,11 +115,10 @@ def consultar_geojson(x, y, geojson_url, nombre_afeccion="Afección", campo_nomb
         return f"Error al consultar {nombre_afeccion}"
 
 # Función para consultar si el punto está dentro de algún MUP del GeoJSON
-def consultar_mup(x, y, geojson_url):
+def consultar_mup_geom(geom, geojson_url):
     try:
         gdf = gpd.read_file(geojson_url)
-        punto = Point(x, y)
-        seleccion = gdf[gdf.contains(punto)]
+        seleccion = gdf[gdf.intersects(geom)]
         if not seleccion.empty:
             props = seleccion.iloc[0]
             id_monte = props.get("ID_MONTE", "Desconocido")
