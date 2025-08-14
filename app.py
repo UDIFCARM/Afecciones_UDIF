@@ -474,7 +474,6 @@ if submitted:
             afeccion_vp = consultar_geojson(x, y, vp_url, "VP", campo_nombre="VP_NB")
             afeccion_tm = consultar_geojson(x, y, tm_url, "TM", campo_nombre="NAMEUNIT")
             afeccion_mup = consultar_mup(x, y, mup_url)
-
         else:
             afeccion_enp = consultar_geojson_geom(geom, enp_url, "ENP", campo_nombre="nombre")
             afeccion_zepa = consultar_geojson_geom(geom, zepa_url, "ZEPA", campo_nombre="SITE_NAME")
