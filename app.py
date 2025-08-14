@@ -1,4 +1,3 @@
-# Requirements necesarios
 import streamlit as st
 import folium
 from streamlit.components.v1 import html
@@ -20,52 +19,51 @@ from staticmap import StaticMap, CircleMarker
 
 # Diccionario con los nombres de municipios y sus nombres base de archivo
 shp_urls = {
-"ABANILLA": "ABANILLA",
-"ABARAN": "ABARAN",
-"AGUILAS": "AGUILAS",
-"ALBUDEITE": "ALBUDEITE",
-"ALCANTARILLA": "ALCANTARILLA",
-"ALEDO": "ALEDO",
-"ALGUAZAS": "ALGUAZAS",
-"ALHAMA_DE_MURCIA": "ALHAMA_DE_MURCIA",
-"ARCHENA": "ARCHENA",
-"BENIEL": "BENIEL",
-"BLANCA": "BLANCA",
-"BULLAS": "BULLAS",
-"CALASPARRA": "CALASPARRA",
-"CAMPOS_DEL_RIO": "CAMPOS_DEL_RIO",
-"CARAVACA_DE_LA_CRUZ": "CARAVACA_DE_LA_CRUZ",
-"CARTAGENA": "CARTAGENA",
-"CEHEGIN": "CEHEGIN",
-"CEUTI": "CEUTI",
-"CIEZA": "CIEZA",
-"FORTUNA": "FORTUNA",
-"FUENTE_ALAMO_DE_MURCIA": "FUENTE_ALAMO_DE_MURCIA",
-"JUMILLA": "JUMILLA",
-"LAS_TORRES_DE_COTILLAS": "LAS_TORRES_DE_COTILLAS",
-"LA_UNION": "LA_UNION",
-"LIBRILLA": "LIBRILLA",
-"LORCA": "LORCA",
-"LORQUI": "LORQUI",
-"LOS_ALCAZARES": "LOS_ALCAZARES",
-"MAZARRON": "MAZARRON",
-"MOLINA_DE_SEGURA": "MOLINA_DE_SEGURA",
-"MORATALLA": "MORATALLA",
-"MULA": "MULA",
-"MURCIA": "MURCIA",
-"OJOS": "OJOS",
-"PLIEGO": "PLIEGO",
-"PUERTO_LUMBRERAS": "PUERTO_LUMBRERAS",
-"RICOTE": "RICOTE",
-"SANTOMERA": "SANTOMERA",
-"SAN_JAVIER": "SAN_JAVIER",
-"SAN_PEDRO_DEL_PINATAR": "SAN_PEDRO_DEL_PINATAR",
-"TORRE_PACHECO": "TORRE_PACHECO",
-"TOTANA": "TOTANA",
-"ULEA": "ULEA",
-"VILLANUEVA_DEL_RIO_SEGURA": "VILLANUEVA_DEL_RIO_SEGURA",
-"YECLA": "YECLA",
-
+    "ABANILLA": "ABANILLA",
+    "ABARAN": "ABARAN",
+    "AGUILAS": "AGUILAS",
+    "ALBUDEITE": "ALBUDEITE",
+    "ALCANTARILLA": "ALCANTARILLA",
+    "ALEDO": "ALEDO",
+    "ALGUAZAS": "ALGUAZAS",
+    "ALHAMA_DE_MURCIA": "ALHAMA_DE_MURCIA",
+    "ARCHENA": "ARCHENA",
+    "BENIEL": "BENIEL",
+    "BLANCA": "BLANCA",
+    "BULLAS": "BULLAS",
+    "CALASPARRA": "CALASPARRA",
+    "CAMPOS_DEL_RIO": "CAMPOS_DEL_RIO",
+    "CARAVACA_DE_LA_CRUZ": "CARAVACA_DE_LA_CRUZ",
+    "CARTAGENA": "CARTAGENA",
+    "CEHEGIN": "CEHEGIN",
+    "CEUTI": "CEUTI",
+    "CIEZA": "CIEZA",
+    "FORTUNA": "FORTUNA",
+    "FUENTE_ALAMO_DE_MURCIA": "FUENTE_ALAMO_DE_MURCIA",
+    "JUMILLA": "JUMILLA",
+    "LAS_TORRES_DE_COTILLAS": "LAS_TORRES_DE_COTILLAS",
+    "LA_UNION": "LA_UNION",
+    "LIBRILLA": "LIBRILLA",
+    "LORCA": "LORCA",
+    "LORQUI": "LORQUI",
+    "LOS_ALCAZARES": "LOS_ALCAZARES",
+    "MAZARRON": "MAZARRON",
+    "MOLINA_DE_SEGURA": "MOLINA_DE_SEGURA",
+    "MORATALLA": "MORATALLA",
+    "MULA": "MULA",
+    "MURCIA": "MURCIA",
+    "OJOS": "OJOS",
+    "PLIEGO": "PLIEGO",
+    "PUERTO_LUMBRERAS": "PUERTO_LUMBRERAS",
+    "RICOTE": "RICOTE",
+    "SANTOMERA": "SANTOMERA",
+    "SAN_JAVIER": "SAN_JAVIER",
+    "SAN_PEDRO_DEL_PINATAR": "SAN_PEDRO_DEL_PINATAR",
+    "TORRE_PACHECO": "TORRE_PACHECO",
+    "TOTANA": "TOTANA",
+    "ULEA": "ULEA",
+    "VILLANUEVA_DEL_RIO_SEGURA": "VILLANUEVA_DEL_RIO_SEGURA",
+    "YECLA": "YECLA",
 }
 
 # Función para cargar shapefiles desde GitHub
@@ -100,44 +98,53 @@ def transformar_coordenadas(x, y):
     lon, lat = transformer.transform(x, y)
     return lon, lat
 
-# Función para consultar si el punto está dentro de algún polígono del GeoJSON
-def consultar_geojson_parcela(parcela_geom, geojson_url, nombre_afeccion="Afección", campo_nombre="nombre"):
+# Función para consultar si la geometría (punto o parcela) intersecta con algún polígono del GeoJSON
+def consultar_geojson(geom, geojson_url, nombre_afeccion="Afección", campo_nombre="nombre"):
     try:
         gdf = gpd.read_file(geojson_url)
-        seleccion = gdf[gdf.intersects(parcela_geom)]
+        seleccion = gdf[gdf.intersects(geom)]
         if not seleccion.empty:
-            nombres = seleccion[campo_nombre].tolist()
-            return f"{nombre_afeccion} intersectadas: {', '.join(nombres)}"
+            nombres = ', '.join(seleccion[campo_nombre].dropna().unique())
+            return f"Dentro de {nombre_afeccion}: {nombres}"
         else:
-            return f"No se intersecta con ninguna {nombre_afeccion}"
+            return f"No se encuentra en ninguna {nombre_afeccion}"
     except Exception as e:
         st.error(f"Error al leer GeoJSON de {nombre_afeccion}: {e}")
         return f"Error al consultar {nombre_afeccion}"
 
-# Función para consultar si el punto está dentro de algún MUP del GeoJSON
-def consultar_mup_parcela(parcela_geom, geojson_url):
+# Función para consultar si la geometría (punto o parcela) intersecta con algún MUP del GeoJSON
+def consultar_mup(geom, geojson_url):
     try:
         gdf = gpd.read_file(geojson_url)
-        seleccion = gdf[gdf.intersects(parcela_geom)]
+        seleccion = gdf[gdf.intersects(geom)]
         if not seleccion.empty:
-            resultados = []
+            info = []
             for _, props in seleccion.iterrows():
                 id_monte = props.get("ID_MONTE", "Desconocido")
                 nombre_monte = props.get("NOMBREMONT", "Desconocido")
                 municipio = props.get("MUNICIPIO", "Desconocido")
                 propiedad = props.get("PROPIEDAD", "Desconocido")
-                resultados.append(f"ID: {id_monte}, Nombre: {nombre_monte}, Municipio: {municipio}, Propiedad: {propiedad}")
-            return "Dentro de MUP:\n" + "\n".join(resultados)
+                info.append(f"ID: {id_monte}\nNombre: {nombre_monte}\nMunicipio: {municipio}\nPropiedad: {propiedad}")
+            return "Dentro de MUP:\n" + "\n\n".join(info)
         else:
-            return "No se intersecta con ningún MUP"
+            return "No se encuentra en ningún MUP"
     except Exception as e:
         st.error(f"Error al consultar MUP: {e}")
         return "Error al consultar MUP"
 
 # Función para crear el mapa con afecciones específicas
-def crear_mapa(x, y, afecciones=[]):
-    m = folium.Map(location=[y, x], zoom_start=16)
-    folium.Marker([y, x], popup=f"Coordenadas transformadas: {x}, {y}").add_to(m)
+def crear_mapa(lon, lat, afecciones=[], parcela_gdf=None):
+    m = folium.Map(location=[lat, lon], zoom_start=16)
+    folium.Marker([lat, lon], popup=f"Coordenadas transformadas: {lon}, {lat}").add_to(m)
+
+    # Si es modo parcela, añadir el contorno de la parcela
+    if parcela_gdf is not None:
+        parcela_4326 = parcela_gdf.to_crs("EPSG:4326")
+        folium.GeoJson(
+            parcela_4326.to_json(),
+            name="Parcela",
+            style_function=lambda x: {'fillColor': 'transparent', 'color': 'blue', 'weight': 2, 'dashArray': '5, 5'}
+        ).add_to(m)
 
     # Agregar capas WMS
     folium.raster_layers.WmsTileLayer(
@@ -204,7 +211,7 @@ def crear_mapa(x, y, afecciones=[]):
 
     # Agregar afecciones como marcadores en el mapa
     for afeccion in afecciones:
-        folium.Marker([y, x], popup=afeccion).add_to(m)
+        folium.Marker([lat, lon], popup=afeccion).add_to(m)
 
     uid = uuid.uuid4().hex[:8]
     mapa_html = f"mapa_{uid}.html"
@@ -225,7 +232,6 @@ def generar_imagen_estatica_mapa(x, y, zoom=16, size=(800, 600)):
     return output_path
 
 # Función para generar el PDF con los datos de la solicitud
-
 def generar_pdf(datos, x, y, filename):
     pdf = FPDF()
     pdf.add_page()
@@ -308,36 +314,7 @@ def generar_pdf(datos, x, y, filename):
             pdf.set_font("Arial", "B", 12)
             pdf.cell(0, 8, f"{key.capitalize()}:", ln=True)
             pdf.set_font("Arial", "", 12)
-
-            if key.lower() == "afección mup" and valor.lower().startswith("dentro de mup"):
-                lines = valor.split("\n")
-                resumen = lines[0]
-                pdf.multi_cell(0, 8, resumen)
-                if len(lines) > 4:
-                    # Cabecera tabla
-                    pdf.set_fill_color(200, 200, 200)
-                    pdf.set_font("Arial", "B", 11)
-                    pdf.cell(30, 8, "ID", border=1, fill=True)
-                    pdf.cell(80, 8, "Nombre", border=1, fill=True)
-                    pdf.cell(40, 8, "Municipio", border=1, fill=True)
-                    pdf.cell(40, 8, "Propiedad", border=1, ln=True, fill=True)
-
-                    # Obtener los campos por líneas (se asume estructura tipo 'ID: valor')
-                    datos_mup = {}
-                    for line in lines[1:]:
-                        if ":" in line:
-                            clave, valor_linea = line.split(":", 1)
-                            datos_mup[clave.strip().lower()] = valor_linea.strip()
-
-                    pdf.set_font("Arial", "", 11)
-                    pdf.cell(30, 8, datos_mup.get("id", ""), border=1)
-                    pdf.cell(80, 8, datos_mup.get("nombre", ""), border=1)
-                    pdf.cell(40, 8, datos_mup.get("municipio", ""), border=1)
-                    pdf.cell(40, 8, datos_mup.get("propiedad", ""), border=1, ln=True)
-                else:
-                    pdf.multi_cell(0, 8, "\n".join(lines[1:]))
-            else:
-                pdf.multi_cell(0, 8, valor)
+            pdf.multi_cell(0, 8, valor)
     else:
         pdf.set_font("Arial", "", 12)
         pdf.cell(0, 8, "No se han detectado afecciones.", ln=True)
@@ -366,7 +343,6 @@ def generar_pdf(datos, x, y, filename):
 
     if os.path.exists(imagen_mapa_path):
         epw = pdf.w - 2 * pdf.l_margin  # Calcular el ancho útil de la página
-
         pdf.ln(5)
         pdf.set_font("Arial", "B", 12)
         pdf.cell(0, 8, "Mapa de localización:", ln=True)
@@ -379,7 +355,7 @@ def generar_pdf(datos, x, y, filename):
 st.image("https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/logos.jpg", use_container_width=True)
 st.title("Informe básico de Afecciones al Medio Natural")
 
-modo = st.radio("Selecciona el modo de búsqueda, si se desea buscar la afección a Dominio Público Pecuario emplear busqueda por coordenadas. Recuerde que la busqueda por parcela analiza afecciones al centroide de la parcela", ["Por coordenadas", "Por parcela"])
+modo = st.radio("Selecciona el modo de búsqueda, si se desea buscar la afección a Dominio Público Pecuario emplear busqueda por coordenadas. Recuerde que la busqueda por parcela analiza afecciones al total de la superficie de la parcela", ["Por coordenadas", "Por parcela"])
 
 # Variables iniciales de coordenadas y de selección (para el modo parcela)
 x = 0.0
@@ -387,6 +363,7 @@ y = 0.0
 municipio_sel = ""
 masa_sel = ""
 parcela_sel = ""
+parcela = None
 
 if modo == "Por parcela":
     municipio_sel = st.selectbox("Municipio", sorted(shp_urls.keys()))
@@ -401,7 +378,10 @@ if modo == "Por parcela":
         parcela = gdf[(gdf["MASA"] == masa_sel) & (gdf["PARCELA"] == parcela_sel)]
         
         if parcela.geometry.geom_type.isin(['Polygon', 'MultiPolygon']).all():
-            poligono_parcela = parcela.geometry.unary_union
+            # Calcular el centroide solo para el marcador y coordenadas
+            centroide = parcela.geometry.centroid.iloc[0]
+            x = centroide.x
+            y = centroide.y         
                     
             st.success("Parcela cargada correctamente.")
             st.write(f"Municipio: {municipio_sel}")
@@ -422,7 +402,7 @@ with st.form("formulario"):
         y = st.number_input("Coordenada Y (ETRS89)", format="%.2f")
     else:
         # Muestra las coordenadas calculadas y las pone como campo oculto para el formulario
-        st.info(f"Coordenadas obtenidas de la parcela: X = {x}, Y = {y}")
+        st.info(f"Coordenadas obtenidas del centroide de la parcela: X = {x}, Y = {y}")
         
     fecha_solicitud = st.date_input("Fecha de la solicitud")
     nombre = st.text_input("Nombre")
@@ -446,13 +426,19 @@ if submitted:
     else:
         lon, lat = transformar_coordenadas(x, y)
 
+        # Determinar la geometría de consulta
+        if modo == "Por parcela":
+            query_geom = parcela.geometry.iloc[0]  # Geometría completa de la parcela
+        else:
+            query_geom = Point(x, y)  # Punto para modo coordenadas
+
         # Mostrar los datos seleccionados (solo si estamos en modo parcela)
         if modo == "Por parcela":
             st.write(f"Municipio seleccionado: {municipio_sel}")
             st.write(f"Polígono seleccionado: {masa_sel}")
             st.write(f"Parcela seleccionada: {parcela_sel}")
         else:
-            st.write("Modo por coordenadas seleccionado")
+            st.write("Modo por coordenadas seleccionado. Municipio no disponible.")
 
         # URLs GeoJSON
         enp_url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/GeoJSON/ENP.json"
@@ -463,12 +449,12 @@ if submitted:
         mup_url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/GeoJSON/MUP.json"
 
         # Consultas de afecciones
-        afeccion_enp = consultar_geojson(x, y, enp_url, "ENP", campo_nombre="nombre")
-        afeccion_zepa = consultar_geojson(x, y, zepa_url, "ZEPA", campo_nombre="SITE_NAME")
-        afeccion_lic = consultar_geojson(x, y, lic_url, "LIC", campo_nombre="SITE_NAME")
-        afeccion_vp = consultar_geojson(x, y, vp_url, "VP", campo_nombre="VP_NB")
-        afeccion_tm = consultar_geojson(x, y, tm_url, "TM", campo_nombre="NAMEUNIT")
-        afeccion_mup = consultar_mup(x, y, mup_url)
+        afeccion_enp = consultar_geojson(query_geom, enp_url, "ENP", campo_nombre="nombre")
+        afeccion_zepa = consultar_geojson(query_geom, zepa_url, "ZEPA", campo_nombre="SITE_NAME")
+        afeccion_lic = consultar_geojson(query_geom, lic_url, "LIC", campo_nombre="SITE_NAME")
+        afeccion_vp = consultar_geojson(query_geom, vp_url, "VP", campo_nombre="VP_NB")
+        afeccion_tm = consultar_geojson(query_geom, tm_url, "TM", campo_nombre="NAMEUNIT")
+        afeccion_mup = consultar_mup(query_geom, mup_url)
 
         # Compilando datos para mostrar
         afecciones = [afeccion_enp, afeccion_zepa, afeccion_lic, afeccion_vp, afeccion_tm, afeccion_mup]
@@ -491,13 +477,16 @@ if submitted:
             "afección TM": afeccion_tm,
             "coordenadas_x": x,
             "coordenadas_y": y,
-            "municipio": municipio_sel if modo == "Por parcela" else "N/A",  # Solo en modo parcela
-            "polígono": masa_sel if modo == "Por parcela" else "N/A",  # Solo en modo parcela
-            "parcela": parcela_sel if modo == "Por parcela" else "N/A"  # Solo en modo parcela  
+            "municipio": municipio_sel if modo == "Por parcela" else "N/A",
+            "polígono": masa_sel if modo == "Por parcela" else "N/A",
+            "parcela": parcela_sel if modo == "Por parcela" else "N/A"
         }
         
         # Crear mapa con afecciones
-        mapa_html, afecciones = crear_mapa(lon, lat, afecciones)
+        if modo == "Por parcela":
+            mapa_html, afecciones = crear_mapa(lon, lat, afecciones, parcela_gdf=parcela)
+        else:
+            mapa_html, afecciones = crear_mapa(lon, lat, afecciones)
 
         # Guardar estado 
         st.session_state['mapa_html'] = mapa_html
