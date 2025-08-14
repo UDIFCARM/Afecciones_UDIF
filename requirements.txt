@@ -25,3 +25,5 @@ branca
 html2image
 selenium
 imgkit
+staticmap
+py-staticmaps
