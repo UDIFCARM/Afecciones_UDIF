@@ -461,7 +461,7 @@ if submitted:
             st.write(f"Polígono seleccionado: {masa_sel}")
             st.write(f"Parcela seleccionada: {parcela_sel}")
         else:
-            st.write("Modo por coordenadas seleccionado. Municipio no disponible.")
+            st.write("Modo por coordenadas seleccionado")
 
         # URLs GeoJSON
         enp_url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/GeoJSON/ENP.json"
