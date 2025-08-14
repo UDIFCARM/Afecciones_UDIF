@@ -103,11 +103,10 @@ def transformar_coordenadas(x, y):
 def consultar_geojson_geom(geom, geojson_url, nombre_afeccion="Afección", campo_nombre="nombre"):
     try:
         gdf = gpd.read_file(geojson_url)
-         seleccion = gdf[gdf.intersects(geom)]
+        seleccion = gdf[gdf.intersects(geom)]
         if not seleccion.empty:
-            props = seleccion.iloc[0]
-            nombre = props.get(campo_nombre, f"{nombre_afeccion} encontrado")
-            return f"Dentro de {nombre_afeccion}: {nombre}"
+            nombres = seleccion[campo_nombre].dropna().unique()
+            return f"Dentro de {nombre_afeccion}: {', '.join(nombres)}"
         else:
             return f"No se encuentra en ninguna {nombre_afeccion}"
     except Exception as e:
@@ -120,18 +119,21 @@ def consultar_mup_geom(geom, geojson_url):
         gdf = gpd.read_file(geojson_url)
         seleccion = gdf[gdf.intersects(geom)]
         if not seleccion.empty:
-            props = seleccion.iloc[0]
-            id_monte = props.get("ID_MONTE", "Desconocido")
-            nombre_monte = props.get("NOMBREMONT", "Desconocido")
-            municipio = props.get("MUNICIPIO", "Desconocido")
-            propiedad = props.get("PROPIEDAD", "Desconocido")
-            return (f"Dentro de MUP:\nID: {id_monte}\nNombre: {nombre_monte}\nMunicipio: {municipio}\nPropiedad: {propiedad}")
+            resultados = []
+            for _, row in seleccion.iterrows():
+                resultados.append(
+                    f"ID: {row.get('ID_MONTE', 'Desconocido')}, "
+                    f"Nombre: {row.get('NOMBREMONT', 'Desconocido')}, "
+                    f"Municipio: {row.get('MUNICIPIO', 'Desconocido')}, "
+                    f"Propiedad: {row.get('PROPIEDAD', 'Desconocido')}"
+                )
+            return "\n".join(resultados)
         else:
             return "No se encuentra en ningún MUP"
     except Exception as e:
         st.error(f"Error al consultar MUP: {e}")
         return "Error al consultar MUP"
-
+        
 # Función para crear el mapa con afecciones específicas
 def crear_mapa(x, y, afecciones=[]):
     m = folium.Map(location=[y, x], zoom_start=16)
