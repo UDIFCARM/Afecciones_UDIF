@@ -14,6 +14,7 @@ from datetime import datetime
 from docx import Document
 from branca.element import Template, MacroElement
 from io import BytesIO
+from staticmap import StaticMap, CircleMarker
 
 # Diccionario con los nombres de municipios y sus nombres base de archivo
 shp_urls = {
@@ -228,31 +229,23 @@ def crear_mapa(lon, lat, afecciones=[], parcela_gdf=None):
 
     return mapa_html, afecciones
 
-# Nueva función para generar la imagen estática del mapa usando Mapbox Static API
+# Función corregida para generar la imagen estática del mapa usando py-staticmaps
 def generar_imagen_estatica_mapa(x, y, zoom=16, size=(800, 600)):
     # Transformar coordenadas de ETRS89 a WGS84
     lon, lat = transformar_coordenadas(x, y)
     
-    # Configuración de la API de Mapbox
-    mapbox_access_token = "YOUR_MAPBOX_ACCESS_TOKEN"  # Reemplaza con tu clave de Mapbox
-    mapbox_url = (
-        f"https://api.mapbox.com/styles/v1/mapbox/streets-v11/static/"
-        f"pin-s+FF0000({lon},{lat})/{lon},{lat},{zoom}/{size[0]}x{size[1]}"
-        f"?access_token={mapbox_access_token}"
-    )
+    # Crear un mapa estático con py-staticmaps
+    m = StaticMap(size[0], size[1], url_template='http://a.tile.openstreetmap.org/{z}/{x}/{y}.png')
+    marker = CircleMarker((lon, lat), 'red', 12)
+    m.add_marker(marker)
     
-    # Descargar la imagen
+    # Generar la imagen
     temp_dir = tempfile.mkdtemp()
     output_path = os.path.join(temp_dir, "mapa.png")
-    response = requests.get(mapbox_url)
+    image = m.render(zoom=zoom)
+    image.save(output_path)
     
-    if response.status_code == 200:
-        with open(output_path, "wb") as f:
-            f.write(response.content)
-        return output_path
-    else:
-        st.error(f"Error al descargar la imagen del mapa: {response.status_code}")
-        return None
+    return output_path
 
 # Función para generar el PDF con los datos de la solicitud
 def generar_pdf(datos, x, y, filename):
