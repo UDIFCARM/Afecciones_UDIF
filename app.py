@@ -91,7 +91,22 @@ def cargar_shapefile_desde_github(base_name):
         shp_path = local_paths[".shp"]
         gdf = gpd.read_file(shp_path)
         return gdf
-            
+
+# Función para encontrar municipio, polígono y parcela a partir de coordenadas
+def encontrar_municipio_poligono_parcela(x, y):
+    punto = Point(x, y)
+    for municipio, archivo_base in shp_urls.items():
+        gdf = cargar_shapefile_desde_github(archivo_base)
+        if gdf is None:
+            continue
+        seleccion = gdf[gdf.contains(punto)]
+        if not seleccion.empty:
+            parcela_gdf = seleccion.iloc[[0]]  # Tomar la primera parcela encontrada
+            masa = parcela_gdf["MASA"].iloc[0]
+            parcela = parcela_gdf["PARCELA"].iloc[0]
+            return municipio, masa, parcela, parcela_gdf
+    return "N/A", "N/A", "N/A", None
+
 # Función para transformar coordenadas de ETRS89 a WGS84 (Long, Lat)
 def transformar_coordenadas(x, y):
     transformer = Transformer.from_crs("EPSG:25830", "EPSG:4326", always_xy=True)
@@ -137,7 +152,7 @@ def crear_mapa(lon, lat, afecciones=[], parcela_gdf=None):
     m = folium.Map(location=[lat, lon], zoom_start=16)
     folium.Marker([lat, lon], popup=f"Coordenadas transformadas: {lon}, {lat}").add_to(m)
 
-    # Si es modo parcela, añadir el contorno de la parcela
+    # Si hay parcela, añadir su contorno
     if parcela_gdf is not None:
         parcela_4326 = parcela_gdf.to_crs("EPSG:4326")
         folium.GeoJson(
@@ -357,7 +372,7 @@ st.title("Informe básico de Afecciones al Medio Natural")
 
 modo = st.radio("Selecciona el modo de búsqueda, si se desea buscar la afección a Dominio Público Pecuario emplear busqueda por coordenadas. Recuerde que la busqueda por parcela analiza afecciones al total de la superficie de la parcela", ["Por coordenadas", "Por parcela"])
 
-# Variables iniciales de coordenadas y de selección (para el modo parcela)
+# Variables iniciales de coordenadas y de selección
 x = 0.0
 y = 0.0
 municipio_sel = ""
@@ -392,16 +407,19 @@ if modo == "Por parcela":
     else:
         st.error(f"No se pudo cargar el shapefile para el municipio: {municipio_sel}")
 
-# Si el modo es "Por coordenadas" NO se solicita la entrada previa
-# Se incluirán los inputs de coordenadas en el formulario
-
 with st.form("formulario"):
-    # Si el modo es "Por coordenadas", incluir campos para las coordenadas en el formulario
+    # Si el modo es "Por coordenadas", incluir campos para las coordenadas
     if modo == "Por coordenadas":
         x = st.number_input("Coordenada X (ETRS89)", format="%.2f", help="Introduce coordenadas en metros, sistema ETRS89 / UTM zona 30")
         y = st.number_input("Coordenada Y (ETRS89)", format="%.2f")
+        if x != 0.0 and y != 0.0:
+            municipio_sel, masa_sel, parcela_sel, parcela = encontrar_municipio_poligono_parcela(x, y)
+            if municipio_sel != "N/A":
+                st.success(f"Parcela encontrada: Municipio: {municipio_sel}, Polígono: {masa_sel}, Parcela: {parcela_sel}")
+            else:
+                st.warning("No se encontró una parcela para las coordenadas proporcionadas.")
     else:
-        # Muestra las coordenadas calculadas y las pone como campo oculto para el formulario
+        # Muestra las coordenadas calculadas del centroide en modo parcela
         st.info(f"Coordenadas obtenidas del centroide de la parcela: X = {x}, Y = {y}")
         
     fecha_solicitud = st.date_input("Fecha de la solicitud")
@@ -432,13 +450,10 @@ if submitted:
         else:
             query_geom = Point(x, y)  # Punto para modo coordenadas
 
-        # Mostrar los datos seleccionados (solo si estamos en modo parcela)
-        if modo == "Por parcela":
-            st.write(f"Municipio seleccionado: {municipio_sel}")
-            st.write(f"Polígono seleccionado: {masa_sel}")
-            st.write(f"Parcela seleccionada: {parcela_sel}")
-        else:
-            st.write("Modo por coordenadas seleccionado. Municipio no disponible.")
+        # Mostrar los datos seleccionados
+        st.write(f"Municipio seleccionado: {municipio_sel}")
+        st.write(f"Polígono seleccionado: {masa_sel}")
+        st.write(f"Parcela seleccionada: {parcela_sel}")
 
         # URLs GeoJSON
         enp_url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/GeoJSON/ENP.json"
@@ -477,16 +492,13 @@ if submitted:
             "afección TM": afeccion_tm,
             "coordenadas_x": x,
             "coordenadas_y": y,
-            "municipio": municipio_sel if modo == "Por parcela" else "N/A",
-            "polígono": masa_sel if modo == "Por parcela" else "N/A",
-            "parcela": parcela_sel if modo == "Por parcela" else "N/A"
+            "municipio": municipio_sel,
+            "polígono": masa_sel,
+            "parcela": parcela_sel
         }
         
         # Crear mapa con afecciones
-        if modo == "Por parcela":
-            mapa_html, afecciones = crear_mapa(lon, lat, afecciones, parcela_gdf=parcela)
-        else:
-            mapa_html, afecciones = crear_mapa(lon, lat, afecciones)
+        mapa_html, afecciones = crear_mapa(lon, lat, afecciones, parcela_gdf=parcela)
 
         # Guardar estado 
         st.session_state['mapa_html'] = mapa_html
