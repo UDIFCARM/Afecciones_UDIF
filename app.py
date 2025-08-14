@@ -14,6 +14,8 @@ from datetime import datetime
 from docx import Document
 from branca.element import Template, MacroElement
 from io import BytesIO
+from PIL import Image, ImageDraw
+from staticmap import StaticMap, CircleMarker
 
 # Diccionario con los nombres de municipios y sus nombres base de archivo
 shp_urls = {
@@ -228,13 +230,12 @@ def crear_mapa(lon, lat, afecciones=[], parcela_gdf=None):
 
     return mapa_html, afecciones
 
-# Función para generar la imagen estática del mapa usando WMS requests
+# Función para generar la imagen estática del mapa usando WMS con respaldo en py-staticmaps
 def generar_imagen_estatica_mapa(x, y, zoom=16, size=(800, 600), parcela_gdf=None):
     # Transformar coordenadas de ETRS89 a WGS84
     lon, lat = transformar_coordenadas(x, y)
     
     # Calcular el bounding box basado en el zoom y las coordenadas
-    # Aproximar el tamaño del mapa en grados (basado en el zoom)
     meters_per_pixel = 156543.03392 * (2 ** (-zoom))  # Aproximación para zoom en WGS84
     delta_lon = (size[0] * meters_per_pixel) / 111319.9  # Conversión a grados (~111 km por grado)
     delta_lat = delta_lon  # Asumimos proporción similar para latitud
@@ -278,8 +279,7 @@ def generar_imagen_estatica_mapa(x, y, zoom=16, size=(800, 600), parcela_gdf=Non
     temp_dir = tempfile.mkdtemp()
     output_path = os.path.join(temp_dir, "mapa.png")
     
-    # Descargar y combinar las capas
-    from PIL import Image
+    # Intentar descargar y combinar las capas WMS
     base_image = None
     for layer in wms_layers:
         params = wms_params.copy()
@@ -288,22 +288,29 @@ def generar_imagen_estatica_mapa(x, y, zoom=16, size=(800, 600), parcela_gdf=Non
         if layer["opacity"] != 1.0:
             params["OPACITY"] = str(layer["opacity"])
         
-        response = requests.get(layer["url"], params=params)
-        if response.status_code == 200:
-            with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp_file:
-                tmp_file.write(response.content)
-                layer_image = Image.open(tmp_file.name).convert("RGBA")
-            
-            if base_image is None:
-                base_image = layer_image
+        try:
+            response = requests.get(layer["url"], params=params, timeout=10)
+            if response.status_code == 200 and response.headers.get("content-type", "").startswith("image"):
+                with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp_file:
+                    tmp_file.write(response.content)
+                    try:
+                        layer_image = Image.open(tmp_file.name).convert("RGBA")
+                        if base_image is None:
+                            base_image = layer_image
+                        else:
+                            base_image = Image.alpha_composite(base_image, layer_image)
+                    except Exception as e:
+                        st.warning(f"Error al procesar la imagen de la capa {layer['layers']}: {e}")
+                        continue
             else:
-                base_image = Image.alpha_composite(base_image, layer_image)
-        else:
-            st.warning(f"Error al descargar capa WMS {layer['layers']}: {response.status_code}")
+                st.warning(f"Respuesta inválida para la capa {layer['layers']}: estado {response.status_code}, tipo {response.headers.get('content-type', 'desconocido')}")
+                continue
+        except requests.RequestException as e:
+            st.warning(f"Error de red al descargar la capa {layer['layers']}: {e}")
+            continue
     
-    # Añadir marcador (círculo rojo) en el centro
+    # Si las capas WMS se combinaron correctamente, añadir marcador y guardar
     if base_image:
-        from PIL import ImageDraw
         draw = ImageDraw.Draw(base_image)
         center_x = size[0] // 2
         center_y = size[1] // 2
@@ -312,13 +319,17 @@ def generar_imagen_estatica_mapa(x, y, zoom=16, size=(800, 600), parcela_gdf=Non
             [(center_x - radius, center_y - radius), (center_x + radius, center_y + radius)],
             fill="red", outline="black"
         )
-        
-        # Guardar la imagen combinada
         base_image.save(output_path, "PNG")
         return output_path
-    else:
-        st.error("No se pudo generar la imagen del mapa con las capas WMS.")
-        return None
+    
+    # Respaldo con py-staticmaps si las capas WMS fallan
+    st.warning("No se pudieron obtener todas las capas WMS. Generando mapa de respaldo con OpenStreetMap.")
+    m = StaticMap(size[0], size[1], url_template='http://a.tile.openstreetmap.org/{z}/{x}/{y}.png')
+    marker = CircleMarker((lon, lat), 'red', 12)
+    m.add_marker(marker)
+    image = m.render(zoom=zoom)
+    image.save(output_path)
+    return output_path
 
 # Función para generar el PDF con los datos de la solicitud
 def generar_pdf(datos, x, y, filename, parcela_gdf=None):
