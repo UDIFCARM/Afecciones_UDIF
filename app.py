@@ -172,7 +172,7 @@ def crear_mapa(lon, lat, afecciones=[], parcela_gdf=None):
     ).add_to(m)
 
     folium.raster_layers.WmsTileLayer(
-        url="https://wms.mapama.gob.es/sig/Biodiversidad/RedNatura/wms.aspx?",
+        url="https://mapas-gis-inter.carm.es/geoserver/ows?",
         name="Red Natura 2000",
         fmt="image/png",
         layers="Red Natura 2000",
