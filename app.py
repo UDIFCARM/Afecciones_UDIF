@@ -101,36 +101,34 @@ def transformar_coordenadas(x, y):
     return lon, lat
 
 # Función para consultar si el punto está dentro de algún polígono del GeoJSON
-def consultar_geojson(x, y, geojson_url, nombre_afeccion="Afección", campo_nombre="nombre"):
+def consultar_geojson_parcela(parcela_geom, geojson_url, nombre_afeccion="Afección", campo_nombre="nombre"):
     try:
         gdf = gpd.read_file(geojson_url)
-        punto = Point(x, y)
-        seleccion = gdf[gdf.contains(punto)]
+        seleccion = gdf[gdf.intersects(parcela_geom)]
         if not seleccion.empty:
             props = seleccion.iloc[0]
             nombre = props.get(campo_nombre, f"{nombre_afeccion} encontrado")
-            return f"Dentro de {nombre_afeccion}: {nombre}"
+            return f"Parcela intersecta {nombre_afeccion}: {nombre}"
         else:
-            return f"No se encuentra en ninguna {nombre_afeccion}"
+            return f"No se encuentra ninguna {nombre_afeccion} intersectando la parcela"
     except Exception as e:
         st.error(f"Error al leer GeoJSON de {nombre_afeccion}: {e}")
         return f"Error al consultar {nombre_afeccion}"
 
 # Función para consultar si el punto está dentro de algún MUP del GeoJSON
-def consultar_mup(x, y, geojson_url):
+def consultar_mup_parcela(parcela_geom, geojson_url):
     try:
         gdf = gpd.read_file(geojson_url)
-        punto = Point(x, y)
-        seleccion = gdf[gdf.contains(punto)]
+        seleccion = gdf[gdf.intersects(parcela_geom)]
         if not seleccion.empty:
             props = seleccion.iloc[0]
             id_monte = props.get("ID_MONTE", "Desconocido")
             nombre_monte = props.get("NOMBREMONT", "Desconocido")
             municipio = props.get("MUNICIPIO", "Desconocido")
             propiedad = props.get("PROPIEDAD", "Desconocido")
-            return (f"Dentro de MUP:\nID: {id_monte}\nNombre: {nombre_monte}\nMunicipio: {municipio}\nPropiedad: {propiedad}")
+            return (f"Parcela intersecta MUP:\nID: {id_monte}\nNombre: {nombre_monte}\nMunicipio: {municipio}\nPropiedad: {propiedad}")
         else:
-            return "No se encuentra en ningún MUP"
+            return "No se encuentra ningún MUP intersectando la parcela"
     except Exception as e:
         st.error(f"Error al consultar MUP: {e}")
         return "Error al consultar MUP"
