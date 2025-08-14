@@ -106,11 +106,10 @@ def consultar_geojson_parcela(parcela_geom, geojson_url, nombre_afeccion="Afecci
         gdf = gpd.read_file(geojson_url)
         seleccion = gdf[gdf.intersects(parcela_geom)]
         if not seleccion.empty:
-            props = seleccion.iloc[0]
-            nombre = props.get(campo_nombre, f"{nombre_afeccion} encontrado")
-            return f"Parcela intersecta {nombre_afeccion}: {nombre}"
+            nombres = seleccion[campo_nombre].tolist()
+            return f"{nombre_afeccion} intersectadas: {', '.join(nombres)}"
         else:
-            return f"No se encuentra ninguna {nombre_afeccion} intersectando la parcela"
+            return f"No se intersecta con ninguna {nombre_afeccion}"
     except Exception as e:
         st.error(f"Error al leer GeoJSON de {nombre_afeccion}: {e}")
         return f"Error al consultar {nombre_afeccion}"
@@ -121,14 +120,16 @@ def consultar_mup_parcela(parcela_geom, geojson_url):
         gdf = gpd.read_file(geojson_url)
         seleccion = gdf[gdf.intersects(parcela_geom)]
         if not seleccion.empty:
-            props = seleccion.iloc[0]
-            id_monte = props.get("ID_MONTE", "Desconocido")
-            nombre_monte = props.get("NOMBREMONT", "Desconocido")
-            municipio = props.get("MUNICIPIO", "Desconocido")
-            propiedad = props.get("PROPIEDAD", "Desconocido")
-            return (f"Parcela intersecta MUP:\nID: {id_monte}\nNombre: {nombre_monte}\nMunicipio: {municipio}\nPropiedad: {propiedad}")
+            resultados = []
+            for _, props in seleccion.iterrows():
+                id_monte = props.get("ID_MONTE", "Desconocido")
+                nombre_monte = props.get("NOMBREMONT", "Desconocido")
+                municipio = props.get("MUNICIPIO", "Desconocido")
+                propiedad = props.get("PROPIEDAD", "Desconocido")
+                resultados.append(f"ID: {id_monte}, Nombre: {nombre_monte}, Municipio: {municipio}, Propiedad: {propiedad}")
+            return "Dentro de MUP:\n" + "\n".join(resultados)
         else:
-            return "No se encuentra ningún MUP intersectando la parcela"
+            return "No se intersecta con ningún MUP"
     except Exception as e:
         st.error(f"Error al consultar MUP: {e}")
         return "Error al consultar MUP"
