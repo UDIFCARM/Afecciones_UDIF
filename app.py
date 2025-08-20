@@ -376,6 +376,7 @@ def generar_pdf(datos, x, y, filename):
     elif not otras_afecciones:
         pdf.set_font("Arial", "", 12)
         pdf.cell(0, 8, "No se han detectado afecciones.", ln=True)
+        pdf.multi_cell(0, 8, objeto if objeto else "No especificado")
 
     seccion_titulo("3. Localización")
     for campo in ["municipio", "polígono", "parcela"]:
