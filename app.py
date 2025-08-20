@@ -250,7 +250,7 @@ def generar_imagen_estatica_mapa(x, y, zoom=16, size=(800, 600)):
     return output_path
 
 # Función para generar el PDF con los datos de la solicitud
-# Función para generar el PDF con los datos de la solicitud (modificada para tabla de VP si hay múltiples afecciones)
+# Función para generar el PDF con los datos de la solicitud (modificada para evitar duplicación de MUP)
 def generar_pdf(datos, x, y, filename):
     pdf = FPDF()
     pdf.add_page()
@@ -315,8 +315,9 @@ def generar_pdf(datos, x, y, filename):
 
     seccion_titulo("2. Afecciones detectadas")
 
-    afecciones_keys = ["afección ENP", "afección ZEPA", "afección LIC", "afección TM", "afección MUP"]
+    afecciones_keys = ["afección ENP", "afección ZEPA", "afección LIC", "afección TM"]
     vp_key = "afección VP"
+    mup_key = "afección MUP"
 
     # Procesar afecciones VP
     vp_valor = datos.get(vp_key, "").strip()
@@ -340,15 +341,16 @@ def generar_pdf(datos, x, y, filename):
             otras_afecciones.append((key.capitalize(), "No se encuentra"))
 
     # Mostrar otras afecciones con títulos en negrita
-    pdf.set_font("Arial", "B", 12)
-    pdf.cell(0, 8, "Otras afecciones:", ln=True)
-    pdf.ln(2)
-    for titulo, valor in otras_afecciones:
+    if otras_afecciones:
         pdf.set_font("Arial", "B", 12)
-        pdf.cell(60, 8, f"{titulo}:", ln=0)
-        pdf.set_font("Arial", "", 12)
-        pdf.multi_cell(0, 8, valor)
-    pdf.ln(2)
+        pdf.cell(0, 8, "Otras afecciones:", ln=True)
+        pdf.ln(2)
+        for titulo, valor in otras_afecciones:
+            pdf.set_font("Arial", "B", 12)
+            pdf.cell(60, 8, f"{titulo}:", ln=0)
+            pdf.set_font("Arial", "", 12)
+            pdf.multi_cell(0, 8, valor)
+        pdf.ln(2)
 
     # Procesar VP para tabla si hay múltiples
     if vp_detectado:
@@ -378,7 +380,7 @@ def generar_pdf(datos, x, y, filename):
         pdf.ln(10)  # Espacio adicional después de la tabla
 
     # Procesar MUP para tabla
-    mup_valor = datos.get("afección MUP", "").strip()
+    mup_valor = datos.get(mup_key, "").strip()
     mup_detectado = []
     if mup_valor and not mup_valor.startswith("No se encuentra") and not mup_valor.startswith("Error"):
         entries = mup_valor.replace("Dentro de MUP:\n", "").split("\n\n")
