@@ -250,7 +250,7 @@ def generar_imagen_estatica_mapa(x, y, zoom=16, size=(800, 600)):
     return output_path
 
 # Función para generar el PDF con los datos de la solicitud
-# Función para generar el PDF con los datos de la solicitud (modificada para especificar "No se encuentra" en todas las afecciones no detectadas)
+# Función para generar el PDF con los datos de la solicitud (modificada para incluir "Afección MUP: No se encuentra")
 def generar_pdf(datos, x, y, filename):
     pdf = FPDF()
     pdf.add_page()
@@ -315,18 +315,22 @@ def generar_pdf(datos, x, y, filename):
 
     seccion_titulo("2. Afecciones detectadas")
 
-    afecciones_keys = ["afección VP", "afección ENP", "afección ZEPA", "afección LIC", "afección TM"]
-    mup_key = "afección MUP"
+    afecciones_keys = ["afección VP", "afección ENP", "afección ZEPA", "afección LIC", "afección TM", "afección MUP"]
 
-    # Procesar otras afecciones como texto, incluyendo "No se encuentra" para las no detectadas
+    # Procesar todas las afecciones como texto, incluyendo "No se encuentra" para las no detectadas
     otras_afecciones = []
     for key in afecciones_keys:
         valor = datos.get(key, "").strip()
-        if valor and not valor.startswith("No se encuentra") and not valor.startswith("Error"):
-            nombre_afeccion = valor.replace(f"Dentro de {key.replace('afección ', '').strip()}: ", "").strip()
-            otras_afecciones.append((key.capitalize(), nombre_afeccion))
+        if key != "afección MUP":
+            if valor and not valor.startswith("No se encuentra") and not valor.startswith("Error"):
+                nombre_afeccion = valor.replace(f"Dentro de {key.replace('afección ', '').strip()}: ", "").strip()
+                otras_afecciones.append((key.capitalize(), nombre_afeccion))
+            else:
+                otras_afecciones.append((key.capitalize(), "No se encuentra"))
         else:
-            otras_afecciones.append((key.capitalize(), "No se encuentra"))
+            # Para MUP, solo incluir en "Otras afecciones" si no hay detección
+            if not valor or valor.startswith("No se encuentra") or valor.startswith("Error"):
+                otras_afecciones.append((key.capitalize(), "No se encuentra"))
 
     # Mostrar otras afecciones con títulos en negrita
     pdf.set_font("Arial", "B", 12)
@@ -340,7 +344,7 @@ def generar_pdf(datos, x, y, filename):
     pdf.ln(2)
 
     # Procesar MUP para tabla
-    mup_valor = datos.get(mup_key, "").strip()
+    mup_valor = datos.get("afección MUP", "").strip()
     mup_detectado = []
     if mup_valor and not mup_valor.startswith("No se encuentra") and not mup_valor.startswith("Error"):
         entries = mup_valor.replace("Dentro de MUP:\n", "").split("\n\n")
