@@ -250,7 +250,6 @@ def generar_imagen_estatica_mapa(x, y, zoom=16, size=(800, 600)):
     return output_path
 
 # Función para generar el PDF con los datos de la solicitud
-# Función para generar el PDF con los datos de la solicitud (modificada para tabla solo en afecciones de montes)
 def generar_pdf(datos, x, y, filename):
     pdf = FPDF()
     pdf.add_page()
