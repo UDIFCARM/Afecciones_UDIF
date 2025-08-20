@@ -348,16 +348,18 @@ def generar_pdf(datos, x, y, filename):
 
     # Procesar otras afecciones como texto
     otras_afecciones = []
-    for key in afecciones_keys + [vp_key, mup_key]:
+    for key in afecciones_keys:
         valor = datos.get(key, "").strip()
-        if key == vp_key:
-            valor = vp_valor
-        elif key == mup_key:
-            valor = mup_valor
         if valor and not valor.startswith("Error"):
             otras_afecciones.append((key.capitalize(), valor))
         else:
             otras_afecciones.append((key.capitalize(), valor if valor else "No se encuentra"))
+    
+    # Solo incluir MUP o VP en "otras afecciones" si NO tienen detecciones
+    if not vp_detectado:
+        otras_afecciones.append(("Afección VP", vp_valor if vp_valor else "No se encuentra"))
+    if not mup_detectado:
+        otras_afecciones.append(("Afección MUP", mup_valor if mup_valor else "No se encuentra"))
 
     # Mostrar otras afecciones con títulos en negrita
     if otras_afecciones:
