@@ -250,7 +250,7 @@ def generar_imagen_estatica_mapa(x, y, zoom=16, size=(800, 600)):
     return output_path
 
 # Función para generar el PDF con los datos de la solicitud
-# Función para generar el PDF con los datos de la solicitud (modificada para negrita en otras afecciones, inclusión de VP y espacio adicional)
+# Función para generar el PDF con los datos de la solicitud (modificada para mensaje específico si no hay afecciones)
 def generar_pdf(datos, x, y, filename):
     pdf = FPDF()
     pdf.add_page()
@@ -379,7 +379,7 @@ def generar_pdf(datos, x, y, filename):
         pdf.ln(10)  # Espacio adicional después de la tabla
     elif not otras_afecciones:
         pdf.set_font("Arial", "", 12)
-        pdf.cell(0, 8, "No se han detectado afecciones.", ln=True)
+        pdf.cell(0, 8, "No se encuentra en ENP, ZEPA, LIC, VP, MUP", ln=True)
         pdf.ln(10)  # Espacio si no hay tabla
 
     seccion_titulo("3. Localización")
