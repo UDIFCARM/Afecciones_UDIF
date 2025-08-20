@@ -27,3 +27,4 @@ selenium
 imgkit
 staticmap
 py-staticmaps
+webdriver-manager
