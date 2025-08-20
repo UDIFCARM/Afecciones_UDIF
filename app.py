@@ -12,7 +12,7 @@ from shapely.geometry import Point
 import uuid
 from datetime import datetime
 from docx import Document
-from branca.element import Template, MacroElement
+from branca.element import Template, MacroElement 
 from io import BytesIO
 from staticmap import StaticMap, CircleMarker
 
