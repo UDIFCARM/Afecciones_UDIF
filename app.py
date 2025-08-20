@@ -169,7 +169,7 @@ def crear_mapa(lon, lat, afecciones=[], parcela_gdf=None):
         ).add_to(m)
 
     folium.raster_layers.WmsTileLayer(
-        url="https://ovc.catastro.meh.es/Cartografia/WMS/ServidorWMS.aspx",
+        url="https://ovc.catastro.meh.es/Cartografia/WMS/ServidorWMS.aspx?",
         layers="Catastro",
         fmt='image/png',
         transparent=True,
@@ -178,7 +178,7 @@ def crear_mapa(lon, lat, afecciones=[], parcela_gdf=None):
     ).add_to(m)
 
     folium.raster_layers.WmsTileLayer(
-        url="https://mapas-gis-inter.carm.es/geoserver/ows?SERVICE=WMS&",
+        url="https://mapas-gis-inter.carm.es/geoserver/ows?",
         name="Red Natura 2000",
         fmt="image/png",
         layers="SIG_LUP_SITES_CARM:RN2000",
@@ -188,7 +188,7 @@ def crear_mapa(lon, lat, afecciones=[], parcela_gdf=None):
     ).add_to(m)
 
     folium.raster_layers.WmsTileLayer(
-        url="https://mapas-gis-inter.carm.es/geoserver/ows?SERVICE=WMS&",
+        url="https://mapas-gis-inter.carm.es/geoserver/ows?",
         name="Montes",
         fmt="image/png",
         layers="PFO_ZOR_DMVP_CARM:MONTES",
@@ -198,7 +198,7 @@ def crear_mapa(lon, lat, afecciones=[], parcela_gdf=None):
     ).add_to(m)
 
     folium.raster_layers.WmsTileLayer(
-        url="https://mapas-gis-inter.carm.es/geoserver/ows?SERVICE=WMS&",
+        url="https://mapas-gis-inter.carm.es/geoserver/ows?",
         name="Vias Pecuarias",
         fmt="image/png",
         layers="PFO_ZOR_DMVP_CARM:VP_CARM",
@@ -255,73 +255,85 @@ def generar_imagen_estatica_mapa(x, y, parcela_gdf=None, zoom=16, size=(800, 600
     lon, lat = transformar_coordenadas(x, y)
     
     # Calcular BBOX con mayor precisión
-    # Convertir zoom a metros por píxel
     meters_per_pixel = 156543.03392 * math.cos(math.radians(lat)) / (2 ** zoom)
-    # Calcular el ancho y alto en grados
-    delta_lon = (size[0] * meters_per_pixel) / (111319.9 * math.cos(math.radians(lat)))
-    delta_lat = (size[1] * meters_per_pixel) / 111319.9
+    delta_lon = (size[0] * meters_per_pixel) / (111319.9 * math.cos(math.radians(lat))) * 1.5  # Aumentar en 50%
+    delta_lat = (size[1] * meters_per_pixel) / 111319.9 * 1.5  # Aumentar en 50%
     bbox = (lon - delta_lon / 2, lat - delta_lat / 2, lon + delta_lon / 2, lat + delta_lat / 2)
     bbox_str = f"{bbox[0]},{bbox[1]},{bbox[2]},{bbox[3]}"
     logger.info(f"BBOX calculado: {bbox_str}")
+    
+    # Validar que el BBOX esté dentro de los límites de la Región de Murcia
+    if not (-1.5 <= lon <= 0.5 and 37.0 <= lat <= 38.5):
+        logger.warning(f"Coordenadas fuera de rango: lon={lon}, lat={lat}")
+        st.warning("Las coordenadas están fuera del área cubierta por los servidores WMS. Usando mapa estático de retroceso.")
+        return generar_imagen_estatica_mapa_fallback(x, y, zoom, size)
     
     # Configurar reintentos para solicitudes HTTP
     session = requests.Session()
     retries = Retry(total=3, backoff_factor=1, status_forcelist=[429, 500, 502, 503, 504])
     session.mount('https://', HTTPAdapter(max_retries=retries))
     
-    # URLs de las capas WMS
+    # URLs de las capas WMS corregidas
     wms_urls = [
         {
-            "url": f"https://ovc.catastro.meh.es/Cartografia/WMS/ServidorWMS.aspx?service=WMS&version=1.3.0&request=GetMap&layers=Catastro&format=image/png&width={size[0]}&height={size[1]}&crs=EPSG:4326&bbox={bbox_str}",
+            "url": f"https://ovc.catastro.meh.es/Cartografia/WMS/ServidorWMS.aspx?service=WMS&version=1.3.0&request=GetMap&layers=Catastro&styles=&format=image/png&transparent=true&width={size[0]}&height={size[1]}&crs=EPSG:4326&bbox={bbox_str}",
             "name": "Catastro"
         },
         {
-            "url": f"https://mapas-gis-inter.carm.es/geoserver/ows?service=WMS&version=1.3.0&request=GetMap&layers=SIG_LUP_SITES_CARM:RN2000&format=image/png&width={size[0]}&height={size[1]}&crs=EPSG:4326&bbox={bbox_str}&transparent=true",
+            "url": f"https://mapas-gis-inter.carm.es/geoserver/ows?service=WMS&version=1.3.0&request=GetMap&layers=SIG_LUP_SITES_CARM:RN2000&styles=&format=image/png&transparent=true&width={size[0]}&height={size[1]}&crs=EPSG:4326&bbox={bbox_str}",
             "name": "Red Natura 2000"
         },
         {
-            "url": f"https://mapas-gis-inter.carm.es/geoserver/ows?service=WMS&version=1.3.0&request=GetMap&layers=PFO_ZOR_DMVP_CARM:MONTES&format=image/png&width={size[0]}&height={size[1]}&crs=EPSG:4326&bbox={bbox_str}&transparent=true",
+            "url": f"https://mapas-gis-inter.carm.es/geoserver/ows?service=WMS&version=1.3.0&request=GetMap&layers=PFO_ZOR_DMVP_CARM:MONTES&styles=&format=image/png&transparent=true&width={size[0]}&height={size[1]}&crs=EPSG:4326&bbox={bbox_str}",
             "name": "Montes"
         },
         {
-            "url": f"https://mapas-gis-inter.carm.es/geoserver/ows?service=WMS&version=1.3.0&request=GetMap&layers=PFO_ZOR_DMVP_CARM:VP_CARM&format=image/png&width={size[0]}&height={size[1]}&crs=EPSG:4326&bbox={bbox_str}&transparent=true",
+            "url": f"https://mapas-gis-inter.carm.es/geoserver/ows?service=WMS&version=1.3.0&request=GetMap&layers=PFO_ZOR_DMVP_CARM:VP_CARM&styles=&format=image/png&transparent=true&width={size[0]}&height={size[1]}&crs=EPSG:4326&bbox={bbox_str}",
             "name": "Vias Pecuarias"
         },
     ]
     
     # Descargar y combinar imágenes
     images = []
+    temp_dir = tempfile.mkdtemp()
     for wms in wms_urls:
         try:
             logger.info(f"Descargando capa WMS: {wms['name']} ({wms['url']})")
-            response = session.get(wms['url'], timeout=10)
-            if response.status_code == 200:
-                content_type = response.headers.get('content-type', '')
-                if 'image' not in content_type:
-                    logger.error(f"La respuesta de {wms['name']} no es una imagen: {content_type}")
-                    st.warning(f"No se pudo descargar {wms['name']}: Respuesta no es una imagen")
-                    continue
+            response = session.get(wms['url'], timeout=15)
+            content_type = response.headers.get('content-type', '')
+            logger.info(f"Content-Type de {wms['name']}: {content_type}")
+            
+            if response.status_code == 200 and 'image' in content_type:
                 img = Image.open(BytesIO(response.content)).convert("RGBA")
                 images.append(img)
                 logger.info(f"Capa {wms['name']} descargada correctamente")
             else:
-                logger.error(f"Fallo al descargar {wms['name']}: HTTP {response.status_code}")
-                st.warning(f"No se pudo descargar {wms['name']}: HTTP {response.status_code}")
+                logger.error(f"Fallo al descargar {wms['name']}: HTTP {response.status_code}, Content-Type: {content_type}")
+                st.warning(f"No se pudo descargar {wms['name']}: HTTP {response.status_code}, Content-Type: {content_type}")
+                
+                # Guardar la respuesta para depuración
+                error_file = os.path.join(temp_dir, f"error_{wms['name'].replace(' ', '_')}.txt")
+                with open(error_file, 'wb') as f:
+                    f.write(response.content)
+                logger.info(f"Respuesta de error guardada en: {error_file}")
+                
+                try:
+                    # Intentar parsear la respuesta como XML para extraer el mensaje de error
+                    xml_content = response.content.decode('utf-8')
+                    if '<ServiceException' in xml_content:
+                        root = ET.fromstring(xml_content)
+                        error_message = root.text.strip()
+                        logger.error(f"Mensaje de error del servidor para {wms['name']}: {error_message}")
+                        st.warning(f"Mensaje de error del servidor para {wms['name']}: {error_message}")
+                except Exception as e:
+                    logger.warning(f"No se pudo parsear la respuesta como XML para {wms['name']}: {e}")
         except Exception as e:
             logger.error(f"Error al descargar {wms['name']}: {str(e)}")
             st.warning(f"Error al descargar {wms['name']}: {str(e)}")
     
     if not images:
         st.error("No se pudieron descargar las capas WMS. Usando mapa estático de retroceso.")
-        m = StaticMap(size[0], size[1], url_template='http://a.tile.openstreetmap.org/{z}/{x}/{y}.png')
-        marker = CircleMarker((lon, lat), 'red', 12)
-        m.add_marker(marker)
-        temp_dir = tempfile.mkdtemp()
-        output_path = os.path.join(temp_dir, "mapa_fallback.png")
-        image = m.render(zoom=zoom)
-        image.save(output_path)
-        logger.info(f"Mapa de retroceso guardado en: {output_path}")
-        return output_path
+        return generar_imagen_estatica_mapa_fallback(x, y, zoom, size)
     
     # Combinar imágenes
     base_img = Image.new("RGBA", size, (255, 255, 255, 255))  # Fondo blanco
@@ -385,7 +397,7 @@ def generar_imagen_estatica_mapa(x, y, parcela_gdf=None, zoom=16, size=(800, 600
     for legend in legend_urls:
         try:
             response = session.get(legend['url'], timeout=5)
-            if response.status_code == 200:
+            if response.status_code == 200 and 'image' in response.headers.get('content-type', ''):
                 img = Image.open(BytesIO(response.content)).convert("RGBA")
                 legend_images.append((img, legend['name']))
                 logger.info(f"Leyenda {legend['name']} descargada correctamente")
@@ -412,10 +424,23 @@ def generar_imagen_estatica_mapa(x, y, parcela_gdf=None, zoom=16, size=(800, 600
         # Pegar leyenda en la esquina inferior izquierda
         base_img.paste(legend_img, (10, size[1] - legend_img.height - 10), legend_img)
     
-    temp_dir = tempfile.mkdtemp()
     output_path = os.path.join(temp_dir, "mapa.png")
     base_img.save(output_path, "PNG")
     logger.info(f"Imagen WMS guardada en: {output_path}")
+    return output_path
+
+# Función para generar la imagen estática del mapa usando py-staticmaps (retroceso)
+def generar_imagen_estatica_mapa_fallback(x, y, zoom=16, size=(800, 600)):
+    logger.info("Usando py-staticmaps como retroceso para generar el mapa.")
+    lon, lat = transformar_coordenadas(x, y)
+    m = StaticMap(size[0], size[1], url_template='http://a.tile.openstreetmap.org/{z}/{x}/{y}.png')
+    marker = CircleMarker((lon, lat), 'red', 12)
+    m.add_marker(marker)
+    temp_dir = tempfile.mkdtemp()
+    output_path = os.path.join(temp_dir, "mapa_fallback.png")
+    image = m.render(zoom=zoom)
+    image.save(output_path)
+    logger.info(f"Mapa de retroceso guardado en: {output_path}")
     return output_path
 
 # Función para generar el PDF con los datos de la solicitud
