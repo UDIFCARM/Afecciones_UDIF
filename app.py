@@ -250,7 +250,7 @@ def generar_imagen_estatica_mapa(x, y, zoom=16, size=(800, 600)):
     return output_path
 
 # Función para generar el PDF con los datos de la solicitud
-# Función para generar el PDF con los datos de la solicitud (modificada para tabla con columnas ID, Nombre, Municipio, Propiedad)
+# Función para generar el PDF con los datos de la solicitud (modificada para tabla solo en afecciones de montes)
 def generar_pdf(datos, x, y, filename):
     pdf = FPDF()
     pdf.add_page()
@@ -314,53 +314,67 @@ def generar_pdf(datos, x, y, filename):
     pdf.multi_cell(0, 8, objeto if objeto else "No especificado")
 
     seccion_titulo("2. Afecciones detectadas")
-    afecciones_keys = ["afección MUP", "afección VP", "afección ENP", "afección ZEPA", "afección LIC", "afección TM"]
 
-    # Procesar afecciones detectadas
-    afecciones_detectadas = []
+    afecciones_keys = ["afección VP", "afección ENP", "afección ZEPA", "afección LIC", "afección TM"]
+    mup_key = "afección MUP"
+
+    # Procesar otras afecciones como texto
+    otras_afecciones = []
     for key in afecciones_keys:
         valor = datos.get(key, "").strip()
         if valor and not valor.startswith("No se encuentra") and not valor.startswith("Error"):
-            if key == "afección MUP":
-                # Para MUP, extraer ID, Nombre, Municipio, Propiedad
-                entries = valor.split("\n\n")
-                for entry in entries:
-                    lines = entry.split("\n")
-                    if len(lines) >= 4:
-                        id_monte = lines[0].replace("ID: ", "").strip()
-                        nombre_monte = lines[1].replace("Nombre: ", "").strip()
-                        municipio = lines[2].replace("Municipio: ", "").strip()
-                        propiedad = lines[3].replace("Propiedad: ", "").strip()
-                        afecciones_detectadas.append((key.capitalize(), id_monte, nombre_monte, municipio, propiedad))
-            else:
-                # Para otras afecciones, usar el valor como Nombre y "N/A" para el resto
-                afecciones_detectadas.append((key.capitalize(), "N/A", valor.replace(f"Dentro de {key.replace('afección ', '')}: ", "").strip(), "N/A", "N/A"))
+            nombre_afeccion = valor.replace(f"Dentro de {key.replace('afección ', '').strip()}: ", "").strip()
+            otras_afecciones.append(f"{key.capitalize()}: {nombre_afeccion}")
 
-    if afecciones_detectadas:
-        # Configurar la tabla
-        col_widths = [40, 60, 40, 40]  # Anchos: ID, Nombre, Municipio, Propiedad
+    # Mostrar otras afecciones
+    if otras_afecciones:
+        pdf.set_font("Arial", "B", 12)
+        pdf.cell(0, 8, "Otras afecciones:", ln=True)
+        pdf.set_font("Arial", "", 12)
+        for afeccion in otras_afecciones:
+            pdf.multi_cell(0, 8, afeccion)
+        pdf.ln(2)
+
+    # Procesar MUP para tabla
+    mup_valor = datos.get(mup_key, "").strip()
+    mup_detectado = []
+    if mup_valor and not mup_valor.startswith("No se encuentra") and not mup_valor.startswith("Error"):
+        entries = mup_valor.replace("Dentro de MUP:\n", "").split("\n\n")
+        for entry in entries:
+            lines = entry.split("\n")
+            if lines:
+                id_monte = lines[0].replace("ID: ", "").strip() if len(lines) > 0 else "N/A"
+                nombre = lines[1].replace("Nombre: ", "").strip() if len(lines) > 1 else "N/A"
+                municipio = lines[2].replace("Municipio: ", "").strip() if len(lines) > 2 else "N/A"
+                propiedad = lines[3].replace("Propiedad: ", "").strip() if len(lines) > 3 else "N/A"
+                mup_detectado.append((id_monte, nombre, municipio, propiedad))
+
+    if mup_detectado:
+        pdf.set_font("Arial", "B", 12)
+        pdf.cell(0, 8, "Afecciones de Montes (MUP):", ln=True)
+        pdf.ln(2)
+
+        # Configurar la tabla para MUP
+        col_widths = [30, 80, 40, 40]  # ID, Nombre, Municipio, Propiedad
         row_height = 8
         pdf.set_font("Arial", "B", 11)
         pdf.set_fill_color(*azul_rgb)
-        pdf.cell(col_widths[0], row_height, "Afección", border=1, fill=True)
-        pdf.cell(col_widths[1], row_height, "ID", border=1, fill=True)
-        pdf.cell(col_widths[2], row_height, "Nombre", border=1, fill=True)
-        pdf.cell(col_widths[3], row_height, "Municipio", border=1, fill=True)
+        pdf.cell(col_widths[0], row_height, "ID", border=1, fill=True)
+        pdf.cell(col_widths[1], row_height, "Nombre", border=1, fill=True)
+        pdf.cell(col_widths[2], row_height, "Municipio", border=1, fill=True)
         pdf.cell(col_widths[3], row_height, "Propiedad", border=1, fill=True)
         pdf.ln()
 
         # Agregar filas a la tabla
         pdf.set_font("Arial", "", 10)
-        for afeccion, id_monte, nombre, municipio, propiedad in afecciones_detectadas:
-            pdf.cell(col_widths[0], row_height, afeccion, border=1)
-            pdf.cell(col_widths[1], row_height, id_monte, border=1)
-            pdf.multi_cell(col_widths[2], row_height, nombre, border=1)
-            pdf.cell(col_widths[0], row_height, "", border=1)  # Celda vacía para Afección
-            pdf.cell(col_widths[1], row_height, "", border=1)  # Celda vacía para ID
+        for id_monte, nombre, municipio, propiedad in mup_detectado:
+            # Usar cell para cada columna, asumiendo que el texto cabe en una línea
+            pdf.cell(col_widths[0], row_height, id_monte, border=1)
+            pdf.cell(col_widths[1], row_height, nombre, border=1)
             pdf.cell(col_widths[2], row_height, municipio, border=1)
             pdf.cell(col_widths[3], row_height, propiedad, border=1)
             pdf.ln()
-    else:
+    elif not otras_afecciones:
         pdf.set_font("Arial", "", 12)
         pdf.cell(0, 8, "No se han detectado afecciones.", ln=True)
 
