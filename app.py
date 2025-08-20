@@ -250,7 +250,7 @@ def generar_imagen_estatica_mapa(x, y, zoom=16, size=(800, 600)):
     return output_path
 
 # Función para generar el PDF con los datos de la solicitud
-# Función para generar el PDF con los datos de la solicitud (modificada para evitar duplicación de MUP)
+# Función para generar el PDF con los datos de la solicitud (modificada para incluir mensaje "No se encuentra" cuando no hay afecciones)
 def generar_pdf(datos, x, y, filename):
     pdf = FPDF()
     pdf.add_page()
@@ -341,7 +341,7 @@ def generar_pdf(datos, x, y, filename):
             otras_afecciones.append((key.capitalize(), "No se encuentra"))
 
     # Mostrar otras afecciones con títulos en negrita
-    if otras_afecciones:
+    if any(valor != "No se encuentra" for _, valor in otras_afecciones):
         pdf.set_font("Arial", "B", 12)
         pdf.cell(0, 8, "Otras afecciones:", ln=True)
         pdf.ln(2)
@@ -418,7 +418,9 @@ def generar_pdf(datos, x, y, filename):
             pdf.cell(col_widths[3], row_height, propiedad, border=1)
             pdf.ln()
         pdf.ln(10)  # Espacio adicional después de la tabla
-    elif not any(valor != "No se encuentra" for _, valor in otras_afecciones) and not vp_detectado:
+
+    # Mostrar mensaje si no hay ninguna afección detectada
+    if not mup_detectado and not vp_detectado and not any(valor != "No se encuentra" for _, valor in otras_afecciones):
         pdf.set_font("Arial", "", 12)
         pdf.cell(0, 8, "No se encuentra en ENP, ZEPA, LIC, VP, MUP", ln=True)
         pdf.ln(10)  # Espacio si no hay tabla
