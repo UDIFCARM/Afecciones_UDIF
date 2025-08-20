@@ -180,7 +180,7 @@ def crear_mapa(lon, lat, afecciones=[], parcela_gdf=None):
 
     folium.raster_layers.WmsTileLayer(
         url="https://mapas-gis-inter.carm.es/geoserver/ows?SERVICE=WMS&?",
-        name="Catálogo de Montes de Utilidad Pública",
+        name="PFO_ZOR_DMVP_CARM:MONTES",
         fmt="image/png",
         layers="PFO_ZOR_DMVP_CARM:MONTES",
         transparent=True,
