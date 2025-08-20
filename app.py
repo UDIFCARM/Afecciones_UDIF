@@ -172,7 +172,7 @@ def crear_mapa(lon, lat, afecciones=[], parcela_gdf=None):
         url="https://mapas-gis-inter.carm.es/geoserver/ows?SERVICE=WMS&?",
         name="Red Natura 2000",
         fmt="image/png",
-        layers="Red Natura 2000",
+        layers="SIG_LUP_SITES_CARM:RN2000",
         transparent=True,
         opacity=0.25,
         control=True
