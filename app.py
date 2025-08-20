@@ -292,7 +292,7 @@ def generar_pdf(datos, x, y, filename):
     def seccion_titulo(texto):
         pdf.set_fill_color(*azul_rgb)
         pdf.set_text_color(0, 0, 0)
-        pdf.set_font("Arial",10
+        pdf.set_font("Arial",10)
         pdf.cell(0, 10, texto, ln=True, fill=True)
         pdf.ln(2)
 
