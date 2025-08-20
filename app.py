@@ -250,7 +250,7 @@ def generar_imagen_estatica_mapa(x, y, zoom=16, size=(800, 600)):
     return output_path
 
 # Función para generar el PDF con los datos de la solicitud
-# Función para generar el PDF con los datos de la solicitud (modificada para evitar duplicación de MUP)
+# Función para generar el PDF con los datos de la solicitud
 def generar_pdf(datos, x, y, filename):
     pdf = FPDF()
     pdf.add_page()
@@ -329,16 +329,20 @@ def generar_pdf(datos, x, y, filename):
         else:
             # Si solo hay una VP, incluir en otras afecciones
             afecciones_keys.insert(0, vp_key)
+    else:
+        vp_valor = "No se encuentra en ninguna VP"  # Mensaje explícito si no hay afecciones VP
 
     # Procesar otras afecciones como texto, incluyendo "No se encuentra" para las no detectadas
     otras_afecciones = []
     for key in afecciones_keys:
         valor = datos.get(key, "").strip()
+        if key == vp_key:
+            valor = vp_valor  # Usar el valor modificado para VP
         if valor and not valor.startswith("No se encuentra") and not valor.startswith("Error"):
             nombre_afeccion = valor.replace(f"Dentro de {key.replace('afección ', '').strip()}: ", "").strip()
             otras_afecciones.append((key.capitalize(), nombre_afeccion))
         else:
-            otras_afecciones.append((key.capitalize(), "No se encuentra"))
+            otras_afecciones.append((key.capitalize(), valor if valor else "No se encuentra"))
 
     # Mostrar otras afecciones con títulos en negrita
     if otras_afecciones:
