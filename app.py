@@ -15,6 +15,10 @@ from docx import Document
 from branca.element import Template, MacroElement
 from io import BytesIO
 from staticmap import StaticMap, CircleMarker
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
+import time
 
 # Diccionario con los nombres de municipios y sus nombres base de archivo
 shp_urls = {
@@ -240,23 +244,36 @@ def crear_mapa(lon, lat, afecciones=[], parcela_gdf=None):
 
     return mapa_html, afecciones
 
-# Función corregida para generar la imagen estática del mapa usando py-staticmaps
-def generar_imagen_estatica_mapa(x, y, zoom=16, size=(800, 600)):
+# Función modificada para generar la imagen estática del mapa capturando el HTML de Folium con Selenium
+def generar_imagen_estatica_mapa(x, y, mapa_html, zoom=16, size=(800, 600)):
     # Transformar coordenadas de ETRS89 a WGS84
     lon, lat = transformar_coordenadas(x, y)
     
-    # Crear un mapa estático con py-staticmaps
-    m = StaticMap(size[0], size[1], url_template='http://a.tile.openstreetmap.org/{z}/{x}/{y}.png')
-    marker = CircleMarker((lon, lat), 'red', 12)
-    m.add_marker(marker)
+    # Configurar Selenium con Chrome en modo headless
+    options = webdriver.ChromeOptions()
+    options.add_argument('--headless')  # Ejecutar sin interfaz gráfica
+    options.add_argument('--no-sandbox')
+    options.add_argument('--disable-dev-shm-usage')
+    options.add_argument(f'--window-size={size[0]},{size[1]}')
     
-    # Generar la imagen
-    temp_dir = tempfile.mkdtemp()
-    output_path = os.path.join(temp_dir, "mapa.png")
-    image = m.render(zoom=zoom)
-    image.save(output_path)
+    # Iniciar el navegador
+    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
     
-    return output_path
+    try:
+        # Cargar el archivo HTML del mapa
+        driver.get(f"file://{os.path.abspath(mapa_html)}")
+        
+        # Esperar a que el mapa se renderice completamente (ajusta si es necesario)
+        time.sleep(5)
+        
+        # Generar la captura de pantalla
+        temp_dir = tempfile.mkdtemp()
+        output_path = os.path.join(temp_dir, "mapa.png")
+        driver.save_screenshot(output_path)
+        
+        return output_path
+    finally:
+        driver.quit()
 
 # Función para generar el PDF con los datos de la solicitud
 def generar_pdf(datos, x, y, filename):
@@ -355,7 +372,12 @@ def generar_pdf(datos, x, y, filename):
     pdf.set_font("Arial", "B", 12)
     pdf.cell(0, 10, f"Coordenadas ETRS89: X = {x}, Y = {y}", ln=True)
 
-    imagen_mapa_path = generar_imagen_estatica_mapa(x, y)
+    # Modificación: Generar el mapa HTML y capturarlo con Selenium
+    lon, lat = transformar_coordenadas(x, y)
+    afecciones = datos.get("afecciones", [])  # Asume que afecciones están en datos, ajusta si es necesario
+    parcela_gdf = datos.get("parcela_gdf", None)  # Asume que parcela_gdf está disponible, ajusta según el contexto
+    mapa_html, _ = crear_mapa(lon, lat, afecciones, parcela_gdf)
+    imagen_mapa_path = generar_imagen_estatica_mapa(x, y, mapa_html)
 
     if imagen_mapa_path and os.path.exists(imagen_mapa_path):
         epw = pdf.w - 2 * pdf.l_margin
@@ -487,7 +509,9 @@ if submitted:
             "coordenadas_y": y,
             "municipio": municipio_sel,
             "polígono": masa_sel,
-            "parcela": parcela_sel
+            "parcela": parcela_sel,
+            "afecciones": afecciones,  # Agregado para pasar a generar_pdf
+            "parcela_gdf": parcela  # Agregado para pasar a generar_pdf
         }
         
         mapa_html, afecciones = crear_mapa(lon, lat, afecciones, parcela_gdf=parcela)
