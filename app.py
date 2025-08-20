@@ -170,9 +170,9 @@ def crear_mapa(lon, lat, afecciones=[], parcela_gdf=None):
 
     folium.raster_layers.WmsTileLayer(
         url="https://mapas-gis-inter.carm.es/geoserver/ows?service=WMS&version=1.3.0&request=GetLegendGraphic&format=image%2Fpng&width=20&height=20&layer=SIG_LUP_SITES_CARM%3ARN2000",
-        name="Red Natura 2000",
+        name="SIG_LUP_SITES_CARM:RN2000",
         fmt="image/png",
-        layers="Red Natura 2000",
+        layers="SIG_LUP_SITES_CARM:RN2000",
         transparent=True,
         opacity=0.25,
         control=True
