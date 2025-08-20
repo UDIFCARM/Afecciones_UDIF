@@ -24,6 +24,11 @@ except ImportError:
     SELENIUM_AVAILABLE = False
     st.error("No se pudo importar Selenium o webdriver-manager. Instala las dependencias con 'pip install selenium webdriver-manager'.")
 import time
+import logging
+
+# Configurar logging para diagnósticos
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Diccionario con los nombres de municipios y sus nombres base de archivo
 shp_urls = {
@@ -251,6 +256,7 @@ def crear_mapa(lon, lat, afecciones=[], parcela_gdf=None):
 
 # Función para generar la imagen estática del mapa usando py-staticmaps (retroceso)
 def generar_imagen_estatica_mapa_fallback(x, y, zoom=16, size=(800, 600)):
+    logger.info("Usando py-staticmaps como retroceso para generar el mapa.")
     lon, lat = transformar_coordenadas(x, y)
     m = StaticMap(size[0], size[1], url_template='http://a.tile.openstreetmap.org/{z}/{x}/{y}.png')
     marker = CircleMarker((lon, lat), 'red', 12)
@@ -265,6 +271,7 @@ def generar_imagen_estatica_mapa_fallback(x, y, zoom=16, size=(800, 600)):
 def generar_imagen_estatica_mapa(x, y, mapa_html, zoom=16, size=(800, 600)):
     if not SELENIUM_AVAILABLE:
         st.warning("Selenium no está disponible. Usando mapa estático sin capas WMS.")
+        logger.warning("Selenium no disponible, usando retroceso.")
         return generar_imagen_estatica_mapa_fallback(x, y, zoom, size)
     
     # Transformar coordenadas de ETRS89 a WGS84
@@ -272,33 +279,46 @@ def generar_imagen_estatica_mapa(x, y, mapa_html, zoom=16, size=(800, 600)):
     
     # Configurar Selenium con Chrome en modo headless
     options = webdriver.ChromeOptions()
-    options.add_argument('--headless=new')  # Nueva bandera para mejor compatibilidad
+    options.add_argument('--headless=new')
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
     options.add_argument('--disable-gpu')
     options.add_argument(f'--window-size={size[0]},{size[1]}')
     options.add_argument('--disable-extensions')
     options.add_argument('--disable-infobars')
+    options.add_argument('--disable-browser-side-navigation')
+    options.add_argument('--disable-features=TranslateUI')
     
     try:
-        # Iniciar el navegador
-        service = Service(ChromeDriverManager().install())
+        # Especificar la ruta de chromedriver en Streamlit Cloud
+        chromedriver_path = "/usr/bin/chromedriver"
+        if os.path.exists(chromedriver_path):
+            logger.info(f"Usando chromedriver en {chromedriver_path}")
+            service = Service(chromedriver_path)
+        else:
+            logger.info("Instalando chromedriver con ChromeDriverManager")
+            service = Service(ChromeDriverManager().install())
+        
         driver = webdriver.Chrome(service=service, options=options)
         
         # Cargar el archivo HTML del mapa
-        driver.get(f"file://{os.path.abspath(mapa_html)}")
+        mapa_path = f"file://{os.path.abspath(mapa_html)}"
+        logger.info(f"Cargando mapa HTML: {mapa_path}")
+        driver.get(mapa_path)
         
         # Esperar a que el mapa se renderice completamente
-        time.sleep(7)  # Aumentado para asegurar que las capas WMS se carguen
+        time.sleep(10)  # Aumentado para asegurar la carga de capas WMS
         
         # Generar la captura de pantalla
         temp_dir = tempfile.mkdtemp()
         output_path = os.path.join(temp_dir, "mapa.png")
         driver.save_screenshot(output_path)
+        logger.info(f"Imagen guardada en: {output_path}")
         
         return output_path
     except Exception as e:
         st.warning(f"Error al generar la imagen con Selenium: {e}. Usando mapa estático sin capas WMS.")
+        logger.error(f"Error en Selenium: {e}")
         return generar_imagen_estatica_mapa_fallback(x, y, zoom, size)
     finally:
         if 'driver' in locals():
