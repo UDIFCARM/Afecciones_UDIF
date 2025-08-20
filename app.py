@@ -169,7 +169,7 @@ def crear_mapa(lon, lat, afecciones=[], parcela_gdf=None):
     ).add_to(m)
 
     folium.raster_layers.WmsTileLayer(
-        url="https://mapas-gis-inter.carm.es/geoserver/ows?service=WMS&version=1.3.0&request=GetLegendGraphic&format=image%2Fpng&width=20&height=20&layer=SIG_LUP_SITES_CARM%3ARN2000",
+        url="https://mapas-gis-inter.carm.es/geoserver/ows?SERVICE=WMS&?",
         name="SIG_LUP_SITES_CARM:RN2000",
         fmt="image/png",
         layers="SIG_LUP_SITES_CARM:RN2000",
