@@ -14,8 +14,8 @@ from datetime import datetime
 from docx import Document
 from branca.element import Template, MacroElement
 from io import BytesIO
-from staticmap import StaticMap, CircleMarker
-from PIL import Image, ImageDraw
+from staticmap import StaticMap, CircleMarker, Line
+from PIL import Image, ImageDraw, ImageFont
 import math
 import logging
 from requests.adapters import HTTPAdapter
@@ -256,17 +256,17 @@ def generar_imagen_estatica_mapa(x, y, parcela_gdf=None, zoom=16, size=(800, 600
     
     # Calcular BBOX con mayor precisión
     meters_per_pixel = 156543.03392 * math.cos(math.radians(lat)) / (2 ** zoom)
-    delta_lon = (size[0] * meters_per_pixel) / (111319.9 * math.cos(math.radians(lat))) * 1.5  # Aumentar en 50%
-    delta_lat = (size[1] * meters_per_pixel) / 111319.9 * 1.5  # Aumentar en 50%
+    delta_lon = (size[0] * meters_per_pixel) / (111319.9 * math.cos(math.radians(lat))) * 2.0  # Aumentar en 100%
+    delta_lat = (size[1] * meters_per_pixel) / 111319.9 * 2.0  # Aumentar en 100%
     bbox = (lon - delta_lon / 2, lat - delta_lat / 2, lon + delta_lon / 2, lat + delta_lat / 2)
     bbox_str = f"{bbox[0]},{bbox[1]},{bbox[2]},{bbox[3]}"
     logger.info(f"BBOX calculado: {bbox_str}")
     
     # Validar que el BBOX esté dentro de los límites de la Región de Murcia
-    if not (-1.5 <= lon <= 0.5 and 37.0 <= lat <= 38.5):
+    if not (-2.0 <= lon <= 0.0 and 37.0 <= lat <= 38.5):
         logger.warning(f"Coordenadas fuera de rango: lon={lon}, lat={lat}")
         st.warning("Las coordenadas están fuera del área cubierta por los servidores WMS. Usando mapa estático de retroceso.")
-        return generar_imagen_estatica_mapa_fallback(x, y, zoom, size)
+        return generar_imagen_estatica_mapa_fallback(x, y, parcela_gdf, zoom, size)
     
     # Configurar reintentos para solicitudes HTTP
     session = requests.Session()
@@ -316,10 +316,11 @@ def generar_imagen_estatica_mapa(x, y, parcela_gdf=None, zoom=16, size=(800, 600
                 with open(error_file, 'wb') as f:
                     f.write(response.content)
                 logger.info(f"Respuesta de error guardada en: {error_file}")
+                st.warning(f"Respuesta de error guardada en: {error_file}")
                 
                 try:
                     # Intentar parsear la respuesta como XML para extraer el mensaje de error
-                    xml_content = response.content.decode('utf-8')
+                    xml_content = response.content.decode('utf-8', errors='ignore')
                     if '<ServiceException' in xml_content:
                         root = ET.fromstring(xml_content)
                         error_message = root.text.strip()
@@ -333,7 +334,7 @@ def generar_imagen_estatica_mapa(x, y, parcela_gdf=None, zoom=16, size=(800, 600
     
     if not images:
         st.error("No se pudieron descargar las capas WMS. Usando mapa estático de retroceso.")
-        return generar_imagen_estatica_mapa_fallback(x, y, zoom, size)
+        return generar_imagen_estatica_mapa_fallback(x, y, parcela_gdf, zoom, size)
     
     # Combinar imágenes
     base_img = Image.new("RGBA", size, (255, 255, 255, 255))  # Fondo blanco
@@ -411,7 +412,11 @@ def generar_imagen_estatica_mapa(x, y, parcela_gdf=None, zoom=16, size=(800, 600
         total_legend_height = sum(img.height for img, _ in legend_images) + 30  # Espacio para título
         legend_img = Image.new("RGBA", (max_legend_width + 20, total_legend_height + 20), (255, 255, 255, 255))
         draw = ImageDraw.Draw(legend_img)
-        draw.text((10, 10), "Leyenda", fill=(0, 0, 0, 255), font_size=12)
+        try:
+            font = ImageFont.load_default()
+        except:
+            font = None
+        draw.text((10, 10), "Leyenda", fill=(0, 0, 0, 255), font=font)
         
         y_offset = 30
         for img, _ in legend_images:
@@ -430,15 +435,45 @@ def generar_imagen_estatica_mapa(x, y, parcela_gdf=None, zoom=16, size=(800, 600
     return output_path
 
 # Función para generar la imagen estática del mapa usando py-staticmaps (retroceso)
-def generar_imagen_estatica_mapa_fallback(x, y, zoom=16, size=(800, 600)):
+def generar_imagen_estatica_mapa_fallback(x, y, parcela_gdf=None, zoom=16, size=(800, 600)):
     logger.info("Usando py-staticmaps como retroceso para generar el mapa.")
     lon, lat = transformar_coordenadas(x, y)
     m = StaticMap(size[0], size[1], url_template='http://a.tile.openstreetmap.org/{z}/{x}/{y}.png')
+    
+    # Añadir marcador para las coordenadas
     marker = CircleMarker((lon, lat), 'red', 12)
     m.add_marker(marker)
+    
+    # Añadir contorno de la parcela si está disponible
+    if parcela_gdf is not None:
+        try:
+            parcela_4326 = parcela_gdf.to_crs("EPSG:4326")
+            geom = parcela_4326.geometry.iloc[0]
+            if geom.geom_type == 'Polygon':
+                coords = list(geom.exterior.coords)
+                m.add_line(Line(coords, 'blue', 2))
+            elif geom.geom_type == 'MultiPolygon':
+                for poly in geom.geoms:
+                    coords = list(poly.exterior.coords)
+                    m.add_line(Line(coords, 'blue', 2))
+            logger.info("Parcela añadida al mapa de retroceso")
+        except Exception as e:
+            logger.warning(f"Error al añadir parcela al mapa de retroceso: {e}")
+            st.warning(f"Error al añadir parcela al mapa de retroceso: {e}")
+    
+    # Renderizar la imagen
+    image = m.render(zoom=zoom)
+    
+    # Añadir texto indicando que es un mapa de retroceso
+    draw = ImageDraw.Draw(image)
+    try:
+        font = ImageFont.load_default()
+    except:
+        font = None
+    draw.text((10, 10), "Mapa de retroceso (OpenStreetMap) - Capas WMS no disponibles", fill=(255, 0, 0, 255), font=font)
+    
     temp_dir = tempfile.mkdtemp()
     output_path = os.path.join(temp_dir, "mapa_fallback.png")
-    image = m.render(zoom=zoom)
     image.save(output_path)
     logger.info(f"Mapa de retroceso guardado en: {output_path}")
     return output_path
@@ -554,7 +589,7 @@ def generar_pdf(datos, x, y, filename, parcela=None):
 st.image("https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/logos.jpg", use_container_width=True)
 st.title("Informe básico de Afecciones al Medio Natural")
 
-modo = st.radio("Seleccione el modo de búsqueda. Recuerde que la busqueda por parcela analiza afecciones al total de la superficie de la parcela, por el contrario la busqueda por coodenadas analiza las afecciones del punto", ["Por coordenadas", "Por parcela"])
+modo = st.radio("Seleccione el modo de búsqueda. Recuerde que la búsqueda por parcela analiza afecciones al total de la superficie de la parcela, por el contrario la búsqueda por coordenadas analiza las afecciones del punto", ["Por coordenadas", "Por parcela"])
 
 x = 0.0
 y = 0.0
