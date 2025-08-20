@@ -325,9 +325,9 @@ def generar_pdf(datos, x, y, filename):
     if vp_valor and not vp_valor.startswith("No se encuentra") and not vp_valor.startswith("Error"):
         nombres_vp = vp_valor.replace("Dentro de VP: ", "").split(", ")
         vp_detectado = [(nombre.strip(), "N/A", "N/A", "N/A") for nombre in nombres_vp]
-        vp_valor = ""  # No incluir en otras afecciones si hay detecciones
+        vp_valor = ""  # Evitamos poner "No se encuentra" si hay tabla
     else:
-        vp_valor = "No se encuentra en ninguna VP"  # Mensaje para otras afecciones si no hay detecciones
+        vp_valor = "No se encuentra en ninguna VP" if not vp_detectado else ""
 
     # Procesar afecciones MUP
     mup_valor = datos.get(mup_key, "").strip()
@@ -342,9 +342,9 @@ def generar_pdf(datos, x, y, filename):
                 municipio = lines[2].replace("Municipio: ", "").strip() if len(lines) > 2 else "N/A"
                 propiedad = lines[3].replace("Propiedad: ", "").strip() if len(lines) > 3 else "N/A"
                 mup_detectado.append((id_monte, nombre, municipio, propiedad))
-        mup_valor = ""  # No incluir en otras afecciones si hay detecciones
+        mup_valor = ""  # Evitamos poner "No se encuentra" si hay tabla
     else:
-        mup_valor = "No se encuentra en ningún MUP"  # Mensaje para otras afecciones si no hay detecciones
+        mup_valor = "No se encuentra en ningún MUP" if not mup_detectado else ""
 
     # Procesar otras afecciones como texto
     otras_afecciones = []
