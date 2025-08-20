@@ -250,6 +250,7 @@ def generar_imagen_estatica_mapa(x, y, zoom=16, size=(800, 600)):
     return output_path
 
 # Función para generar el PDF con los datos de la solicitud
+# Función para generar el PDF con los datos de la solicitud (modificada para negrita en otras afecciones, inclusión de VP y espacio adicional)
 def generar_pdf(datos, x, y, filename):
     pdf = FPDF()
     pdf.add_page()
@@ -323,15 +324,18 @@ def generar_pdf(datos, x, y, filename):
         valor = datos.get(key, "").strip()
         if valor and not valor.startswith("No se encuentra") and not valor.startswith("Error"):
             nombre_afeccion = valor.replace(f"Dentro de {key.replace('afección ', '').strip()}: ", "").strip()
-            otras_afecciones.append(f"{key.capitalize()}: {nombre_afeccion}")
+            otras_afecciones.append((key.capitalize(), nombre_afeccion))
 
-    # Mostrar otras afecciones
+    # Mostrar otras afecciones con títulos en negrita
     if otras_afecciones:
         pdf.set_font("Arial", "B", 12)
         pdf.cell(0, 8, "Otras afecciones:", ln=True)
-        pdf.set_font("Arial", "", 12)
-        for afeccion in otras_afecciones:
-            pdf.multi_cell(0, 8, afeccion)
+        pdf.ln(2)
+        for titulo, valor in otras_afecciones:
+            pdf.set_font("Arial", "B", 12)
+            pdf.cell(60, 8, f"{titulo}:", ln=0)
+            pdf.set_font("Arial", "", 12)
+            pdf.multi_cell(0, 8, valor)
         pdf.ln(2)
 
     # Procesar MUP para tabla
@@ -367,16 +371,16 @@ def generar_pdf(datos, x, y, filename):
         # Agregar filas a la tabla
         pdf.set_font("Arial", "", 10)
         for id_monte, nombre, municipio, propiedad in mup_detectado:
-            # Usar cell para cada columna, asumiendo que el texto cabe en una línea
             pdf.cell(col_widths[0], row_height, id_monte, border=1)
             pdf.cell(col_widths[1], row_height, nombre, border=1)
             pdf.cell(col_widths[2], row_height, municipio, border=1)
             pdf.cell(col_widths[3], row_height, propiedad, border=1)
             pdf.ln()
+        pdf.ln(10)  # Espacio adicional después de la tabla
     elif not otras_afecciones:
         pdf.set_font("Arial", "", 12)
         pdf.cell(0, 8, "No se han detectado afecciones.", ln=True)
-        pdf.multi_cell(0, 8, objeto if objeto else "No especificado")
+        pdf.ln(10)  # Espacio si no hay tabla
 
     seccion_titulo("3. Localización")
     for campo in ["municipio", "polígono", "parcela"]:
