@@ -250,6 +250,7 @@ def generar_imagen_estatica_mapa(x, y, zoom=16, size=(800, 600)):
     return output_path
 
 # Función para generar el PDF con los datos de la solicitud
+# Función para generar el PDF con los datos de la solicitud (modificada para incluir afecciones en tabla)
 def generar_pdf(datos, x, y, filename):
     pdf = FPDF()
     pdf.add_page()
@@ -276,8 +277,14 @@ def generar_pdf(datos, x, y, filename):
     azul_rgb = (141, 179, 226)
 
     campos_orden = [
-        "Fecha solicitud", "Fecha informe", "Nombre", "Apellidos", "Dni", "Dirección",
-        "Teléfono", "Email", "Objeto de la solicitud"
+        ("Fecha solicitud", datos.get("fecha_solicitud", "").strip()),
+        ("Fecha informe", datos.get("fecha_informe", "").strip()),
+        ("Nombre", datos.get("nombre", "").strip()),
+        ("Apellidos", datos.get("apellidos", "").strip()),
+        ("DNI", datos.get("dni", "").strip()),
+        ("Dirección", datos.get("dirección", "").strip()),
+        ("Teléfono", datos.get("teléfono", "").strip()),
+        ("Email", datos.get("email", "").strip()),
     ]
 
     campos_localizacion = ["Municipio", "Polígono", "Parcela"]
@@ -294,18 +301,8 @@ def generar_pdf(datos, x, y, filename):
         pdf.cell(50, 8, f"{titulo}:", ln=0)
         pdf.set_font("Arial", "", 12)
         pdf.multi_cell(0, 8, valor if valor else "No especificado")
- 
+
     seccion_titulo("1. Datos del solicitante")
-    campos_orden = [
-        ("Fecha solicitud", datos.get("fecha_solicitud", "").strip()),
-        ("Fecha informe", datos.get("fecha_informe", "").strip()),
-        ("Nombre", datos.get("nombre", "").strip()),
-        ("Apellidos", datos.get("apellidos", "").strip()),
-        ("DNI", datos.get("dni", "").strip()),
-        ("Dirección", datos.get("dirección", "").strip()),
-        ("Teléfono", datos.get("teléfono", "").strip()),
-        ("Email", datos.get("email", "").strip()),
-    ]
     for titulo, valor in campos_orden:
         campo_orden(titulo, valor)
 
@@ -317,26 +314,29 @@ def generar_pdf(datos, x, y, filename):
     pdf.multi_cell(0, 8, objeto if objeto else "No especificado")
 
     seccion_titulo("2. Afecciones detectadas")
-    afecciones_keys = [k for k in datos if k.lower().startswith("afección")]
+    afecciones_keys = ["afección MUP", "afección VP", "afección ENP", "afección ZEPA", "afección LIC", "afección TM"]
 
-    if afecciones_keys:
-        for key in afecciones_keys:
-            valor = datos[key].strip()
-            pdf.set_font("Arial", "B", 12)
-            pdf.cell(0, 8, f"{key.capitalize()}:", ln=True)
-            pdf.set_font("Arial", "", 12)
-            pdf.multi_cell(0, 8, valor)
+    # Verificar si hay afecciones detectadas
+    afecciones_detectadas = [(key, datos.get(key, "").strip()) for key in afecciones_keys if datos.get(key, "").strip() and not datos.get(key, "").strip().startswith("No se encuentra") and not datos.get(key, "").strip().startswith("Error")]
+
+    if afecciones_detectadas:
+        # Configurar la tabla
+        col_widths = [60, 130]  # Ancho de las columnas: Afección y Detalle
+        row_height = 8
+        pdf.set_font("Arial", "B", 12)
+        pdf.set_fill_color(*azul_rgb)
+        pdf.cell(col_widths[0], row_height, "Afección", border=1, fill=True)
+        pdf.cell(col_widths[1], row_height, "Detalle", border=1, fill=True)
+        pdf.ln()
+
+        # Agregar filas a la tabla
+        pdf.set_font("Arial", "", 11)
+        for key, valor in afecciones_detectadas:
+            pdf.cell(col_widths[0], row_height, key.capitalize(), border=1)
+            pdf.multi_cell(col_widths[1], row_height, valor, border=1)
     else:
         pdf.set_font("Arial", "", 12)
         pdf.cell(0, 8, "No se han detectado afecciones.", ln=True)
-
-    for key in ["afección vp", "afección enp", "afección zepa", "afección lic", "afección tm"]:
-        valor = datos.get(key, "").strip()
-        if valor:
-            pdf.set_font("Arial", "B", 12)
-            pdf.cell(0, 8, f"{key.capitalize()}:", ln=True)
-            pdf.set_font("Arial", "", 12)
-            pdf.multi_cell(0, 8, valor)
 
     seccion_titulo("3. Localización")
     for campo in ["municipio", "polígono", "parcela"]:
