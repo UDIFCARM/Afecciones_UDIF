@@ -315,7 +315,7 @@ def generar_pdf(datos, x, y, filename):
 
     seccion_titulo("2. Afecciones detectadas")
 
-    afecciones_keys = ["afección ENP", "afección ZEPA", "afección LIC", "afección TM", "afección VP", "afección MUP"]
+    afecciones_keys = ["afección ENP", "afección ZEPA", "afección LIC", "afección TM"]
     vp_key = "afección VP"
     mup_key = "afección MUP"
 
@@ -324,11 +324,10 @@ def generar_pdf(datos, x, y, filename):
     vp_detectado = []
     if vp_valor and not vp_valor.startswith("No se encuentra") and not vp_valor.startswith("Error"):
         nombres_vp = vp_valor.replace("Dentro de VP: ", "").split(", ")
-        if len(nombres_vp) > 1:  # Si hay más de una vía pecuaria
-            vp_detectado = [(nombre.strip(), "N/A", "N/A", "N/A") for nombre in nombres_vp]
-        # Si solo hay una VP, se incluye en otras_afecciones
+        vp_detectado = [(nombre.strip(), "N/A", "N/A", "N/A") for nombre in nombres_vp]
+        vp_valor = ""  # No incluir en otras afecciones si hay detecciones
     else:
-        vp_valor = "No se encuentra en ninguna VP"  # Mensaje explícito si no hay afecciones VP
+        vp_valor = "No se encuentra en ninguna VP"  # Mensaje para otras afecciones si no hay detecciones
 
     # Procesar afecciones MUP
     mup_valor = datos.get(mup_key, "").strip()
@@ -343,20 +342,20 @@ def generar_pdf(datos, x, y, filename):
                 municipio = lines[2].replace("Municipio: ", "").strip() if len(lines) > 2 else "N/A"
                 propiedad = lines[3].replace("Propiedad: ", "").strip() if len(lines) > 3 else "N/A"
                 mup_detectado.append((id_monte, nombre, municipio, propiedad))
+        mup_valor = ""  # No incluir en otras afecciones si hay detecciones
     else:
-        mup_valor = "No se encuentra en ningún MUP"  # Mensaje explícito si no hay afecciones MUP
+        mup_valor = "No se encuentra en ningún MUP"  # Mensaje para otras afecciones si no hay detecciones
 
-    # Procesar otras afecciones como texto, incluyendo VP y MUP
+    # Procesar otras afecciones como texto
     otras_afecciones = []
-    for key in afecciones_keys:
+    for key in afecciones_keys + [vp_key, mup_key]:
         valor = datos.get(key, "").strip()
         if key == vp_key:
-            valor = vp_valor  # Usar el valor modificado para VP
+            valor = vp_valor
         elif key == mup_key:
-            valor = mup_valor  # Usar el valor modificado para MUP
+            valor = mup_valor
         if valor and not valor.startswith("Error"):
-            nombre_afeccion = valor.replace(f"Dentro de {key.replace('afección ', '').strip()}: ", "").strip()
-            otras_afecciones.append((key.capitalize(), nombre_afeccion))
+            otras_afecciones.append((key.capitalize(), valor))
         else:
             otras_afecciones.append((key.capitalize(), valor if valor else "No se encuentra"))
 
@@ -366,13 +365,14 @@ def generar_pdf(datos, x, y, filename):
         pdf.cell(0, 8, "Otras afecciones:", ln=True)
         pdf.ln(2)
         for titulo, valor in otras_afecciones:
-            pdf.set_font("Arial", "B", 12)
-            pdf.cell(60, 8, f"{titulo}:", ln=0)
-            pdf.set_font("Arial", "", 12)
-            pdf.multi_cell(0, 8, valor)
+            if valor:  # Solo mostrar si el valor no está vacío
+                pdf.set_font("Arial", "B", 12)
+                pdf.cell(60, 8, f"{titulo}:", ln=0)
+                pdf.set_font("Arial", "", 12)
+                pdf.multi_cell(0, 8, valor)
         pdf.ln(2)
 
-    # Procesar VP para tabla si hay múltiples
+    # Procesar VP para tabla si hay detecciones
     if vp_detectado:
         pdf.set_font("Arial", "B", 12)
         pdf.cell(0, 8, "Afecciones de Vías Pecuarias (VP):", ln=True)
@@ -399,7 +399,7 @@ def generar_pdf(datos, x, y, filename):
             pdf.ln()
         pdf.ln(10)  # Espacio adicional después de la tabla
 
-    # Procesar MUP para tabla
+    # Procesar MUP para tabla si hay detecciones
     if mup_detectado:
         pdf.set_font("Arial", "B", 12)
         pdf.cell(0, 8, "Afecciones de Montes (MUP):", ln=True)
@@ -425,9 +425,9 @@ def generar_pdf(datos, x, y, filename):
             pdf.cell(col_widths[3], row_height, propiedad, border=1)
             pdf.ln()
         pdf.ln(10)  # Espacio adicional después de la tabla
-    elif not any(valor != "No se encuentra" and valor != "No se encuentra en ninguna VP" and valor != "No se encuentra en ningún MUP" for _, valor in otras_afecciones) and not vp_detectado:
+    elif not any(valor != "No se encuentra" and valor != "No se encuentra en ninguna VP" and valor != "No se encuentra en ningún MUP" for _, valor in otras_afecciones):
         pdf.set_font("Arial", "", 12)
-        pdf.cell(0, 8, "No se encuentra en ENP, ZEPA, LIC, VP, MUP", ln=True)
+        pdf.cell(0, 8, " willpower se encuentra en ENP, ZEPA, LIC, VP, MUP", ln=True)
         pdf.ln(10)  # Espacio si no hay tabla
 
     seccion_titulo("3. Localización")
