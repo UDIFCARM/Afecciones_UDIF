@@ -250,11 +250,11 @@ def generar_imagen_estatica_mapa(x, y, zoom=16, size=(800, 600)):
     return output_path
 
 # Función para generar el PDF con los datos de la solicitud
+# Función para generar el PDF con los datos de la solicitud
 def generar_pdf(datos, x, y, filename):
     pdf = FPDF()
     pdf.add_page()
 
-    # --- Logo ---
     logo_url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/logos.jpg"
     response = requests.get(logo_url)
     if response.status_code == 200:
@@ -270,14 +270,28 @@ def generar_pdf(datos, x, y, filename):
         pdf.set_y(10 + logo_height + 5)
 
     pdf.set_font("Arial", "B", size=16)
+    pdf.set_text_color(0, 0, 0)
     pdf.cell(0, 10, "Informe de Afecciones Ambientales", ln=True, align="C")
     pdf.ln(10)
 
     azul_rgb = (141, 179, 226)
 
-    # --- Sección datos solicitante ---
+    campos_orden = [
+        ("Fecha solicitud", datos.get("fecha_solicitud", "").strip()),
+        ("Fecha informe", datos.get("fecha_informe", "").strip()),
+        ("Nombre", datos.get("nombre", "").strip()),
+        ("Apellidos", datos.get("apellidos", "").strip()),
+        ("DNI", datos.get("dni", "").strip()),
+        ("Dirección", datos.get("dirección", "").strip()),
+        ("Teléfono", datos.get("teléfono", "").strip()),
+        ("Email", datos.get("email", "").strip()),
+    ]
+
+    campos_localizacion = ["Municipio", "Polígono", "Parcela"]
+    
     def seccion_titulo(texto):
         pdf.set_fill_color(*azul_rgb)
+        pdf.set_text_color(0, 0, 0)
         pdf.set_font("Arial", "B", 13)
         pdf.cell(0, 10, texto, ln=True, fill=True)
         pdf.ln(2)
@@ -289,66 +303,83 @@ def generar_pdf(datos, x, y, filename):
         pdf.multi_cell(0, 8, valor if valor else "No especificado")
 
     seccion_titulo("1. Datos del solicitante")
-    campos_orden = [
-        ("Fecha solicitud", datos.get("fecha_solicitud", "")),
-        ("Fecha informe", datos.get("fecha_informe", "")),
-        ("Nombre", datos.get("nombre", "")),
-        ("Apellidos", datos.get("apellidos", "")),
-        ("DNI", datos.get("dni", "")),
-        ("Dirección", datos.get("dirección", "")),
-        ("Teléfono", datos.get("teléfono", "")),
-        ("Email", datos.get("email", "")),
-    ]
     for titulo, valor in campos_orden:
         campo_orden(titulo, valor)
 
+    objeto = datos.get("objeto de la solicitud", "").strip()
     pdf.ln(2)
     pdf.set_font("Arial", "B", 12)
     pdf.cell(0, 8, "Objeto de la solicitud:", ln=True)
     pdf.set_font("Arial", "", 12)
-    pdf.multi_cell(0, 8, datos.get("objeto de la solicitud", "No especificado"))
+    pdf.multi_cell(0, 8, objeto if objeto else "No especificado")
 
-    # --- Afecciones ---
     seccion_titulo("2. Afecciones detectadas")
 
-    # Recuperar valores
-    vp_valor = datos.get("afección VP", "").strip()
-    mup_valor = datos.get("afección MUP", "").strip()
+    afecciones_keys = ["afección ENP", "afección ZEPA", "afección LIC", "afección TM"]
+    vp_key = "afección VP"
+    mup_key = "afección MUP"
 
-    # --- VP ---
+    # Procesar afecciones VP
+    vp_valor = datos.get(vp_key, "").strip()
+    vp_detectado = []
     if vp_valor and not vp_valor.startswith("No se encuentra") and not vp_valor.startswith("Error"):
-        # Crear tabla VP
+        nombres_vp = vp_valor.replace("Dentro de VP: ", "").split(", ")
+        vp_detectado = [(nombre.strip(), "N/A", "N/A", "N/A") for nombre in nombres_vp]
+        vp_valor = ""  # No incluir en otras afecciones si hay detecciones
+    else:
+        vp_valor = "No se encuentra en ninguna VP"  # Mensaje para otras afecciones si no hay detecciones
+
+    # Procesar afecciones MUP
+    mup_valor = datos.get(mup_key, "").strip()
+    mup_detectado = []
+    if mup_valor and not mup_valor.startswith("No se encuentra") and not mup_valor.startswith("Error"):
+        entries = mup_valor.replace("Dentro de MUP:\n", "").split("\n\n")
+        for entry in entries:
+            lines = entry.split("\n")
+            if lines:
+                id_monte = lines[0].replace("ID: ", "").strip() if len(lines) > 0 else "N/A"
+                nombre = lines[1].replace("Nombre: ", "").strip() if len(lines) > 1 else "N/A"
+                municipio = lines[2].replace("Municipio: ", "").strip() if len(lines) > 2 else "N/A"
+                propiedad = lines[3].replace("Propiedad: ", "").strip() if len(lines) > 3 else "N/A"
+                mup_detectado.append((id_monte, nombre, municipio, propiedad))
+        mup_valor = ""  # No incluir en otras afecciones si hay detecciones
+    else:
+        mup_valor = "No se encuentra en ningún MUP"  # Mensaje para otras afecciones si no hay detecciones
+
+    # Procesar otras afecciones como texto
+    otras_afecciones = []
+    for key in afecciones_keys + [vp_key, mup_key]:
+        valor = datos.get(key, "").strip()
+        if key == vp_key:
+            valor = vp_valor
+        elif key == mup_key:
+            valor = mup_valor
+        if valor and not valor.startswith("Error"):
+            otras_afecciones.append((key.capitalize(), valor))
+        else:
+            otras_afecciones.append((key.capitalize(), valor if valor else "No se encuentra"))
+
+    # Mostrar otras afecciones con títulos en negrita
+    if otras_afecciones:
+        pdf.set_font("Arial", "B", 12)
+        pdf.cell(0, 8, "Otras afecciones:", ln=True)
+        pdf.ln(2)
+        for titulo, valor in otras_afecciones:
+            if valor:  # Solo mostrar si el valor no está vacío
+                pdf.set_font("Arial", "B", 12)
+                pdf.cell(60, 8, f"{titulo}:", ln=0)
+                pdf.set_font("Arial", "", 12)
+                pdf.multi_cell(0, 8, valor)
+        pdf.ln(2)
+
+    # Procesar VP para tabla si hay detecciones
+    if vp_detectado:
         pdf.set_font("Arial", "B", 12)
         pdf.cell(0, 8, "Afecciones de Vías Pecuarias (VP):", ln=True)
         pdf.ln(2)
 
-        col_widths = [30, 120]  # ID ficticio + nombre
-        row_height = 8
-        pdf.set_font("Arial", "B", 11)
-        pdf.set_fill_color(*azul_rgb)
-        pdf.cell(col_widths[0], row_height, "ID", border=1, fill=True)
-        pdf.cell(col_widths[1], row_height, "Nombre", border=1, fill=True)
-        pdf.ln()
-
-        pdf.set_font("Arial", "", 10)
-        nombres_vp = vp_valor.replace("Dentro de VP: ", "").split(", ")
-        for i, nombre in enumerate(nombres_vp, start=1):
-            pdf.cell(col_widths[0], row_height, str(i), border=1)
-            pdf.cell(col_widths[1], row_height, nombre.strip(), border=1)
-            pdf.ln()
-        pdf.ln(10)
-    else:
-        pdf.set_font("Arial", "", 12)
-        pdf.cell(0, 8, "No se encuentra en ninguna VP", ln=True)
-        pdf.ln(5)
-
-    # --- MUP ---
-    if mup_valor and not mup_valor.startswith("No se encuentra") and not mup_valor.startswith("Error"):
-        pdf.set_font("Arial", "B", 12)
-        pdf.cell(0, 8, "Afecciones de Montes (MUP):", ln=True)
-        pdf.ln(2)
-
-        col_widths = [30, 70, 40, 40]
+        # Configurar la tabla para VP
+        col_widths = [30, 80, 40, 40]  # ID, Nombre, Municipio, Propiedad
         row_height = 8
         pdf.set_font("Arial", "B", 11)
         pdf.set_fill_color(*azul_rgb)
@@ -358,40 +389,66 @@ def generar_pdf(datos, x, y, filename):
         pdf.cell(col_widths[3], row_height, "Propiedad", border=1, fill=True)
         pdf.ln()
 
+        # Agregar filas a la tabla
         pdf.set_font("Arial", "", 10)
-        entries = mup_valor.replace("Dentro de MUP:\n", "").split("\n\n")
-        for entry in entries:
-            lines = entry.split("\n")
-            id_monte = lines[0].replace("ID: ", "").strip() if len(lines) > 0 else "N/A"
-            nombre = lines[1].replace("Nombre: ", "").strip() if len(lines) > 1 else "N/A"
-            municipio = lines[2].replace("Municipio: ", "").strip() if len(lines) > 2 else "N/A"
-            propiedad = lines[3].replace("Propiedad: ", "").strip() if len(lines) > 3 else "N/A"
+        for nombre, id_vp, municipio, propiedad in vp_detectado:
+            pdf.cell(col_widths[0], row_height, id_vp, border=1)
+            pdf.cell(col_widths[1], row_height, nombre, border=1)
+            pdf.cell(col_widths[2], row_height, municipio, border=1)
+            pdf.cell(col_widths[3], row_height, propiedad, border=1)
+            pdf.ln()
+        pdf.ln(10)  # Espacio adicional después de la tabla
+
+    # Procesar MUP para tabla si hay detecciones
+    if mup_detectado:
+        pdf.set_font("Arial", "B", 12)
+        pdf.cell(0, 8, "Afecciones de Montes (MUP):", ln=True)
+        pdf.ln(2)
+
+        # Configurar la tabla para MUP
+        col_widths = [30, 80, 40, 40]  # ID, Nombre, Municipio, Propiedad
+        row_height = 8
+        pdf.set_font("Arial", "B", 11)
+        pdf.set_fill_color(*azul_rgb)
+        pdf.cell(col_widths[0], row_height, "ID", border=1, fill=True)
+        pdf.cell(col_widths[1], row_height, "Nombre", border=1, fill=True)
+        pdf.cell(col_widths[2], row_height, "Municipio", border=1, fill=True)
+        pdf.cell(col_widths[3], row_height, "Propiedad", border=1, fill=True)
+        pdf.ln()
+
+        # Agregar filas a la tabla
+        pdf.set_font("Arial", "", 10)
+        for id_monte, nombre, municipio, propiedad in mup_detectado:
             pdf.cell(col_widths[0], row_height, id_monte, border=1)
             pdf.cell(col_widths[1], row_height, nombre, border=1)
             pdf.cell(col_widths[2], row_height, municipio, border=1)
             pdf.cell(col_widths[3], row_height, propiedad, border=1)
             pdf.ln()
-        pdf.ln(10)
-    else:
+        pdf.ln(10)  # Espacio adicional después de la tabla
+    elif not any(valor != "No se encuentra" and valor != "No se encuentra en ninguna VP" and valor != "No se encuentra en ningún MUP" for _, valor in otras_afecciones):
         pdf.set_font("Arial", "", 12)
-        pdf.cell(0, 8, "No se encuentra en ningún MUP", ln=True)
-        pdf.ln(5)
+        pdf.cell(0, 8, " willpower se encuentra en ENP, ZEPA, LIC, VP, MUP", ln=True)
+        pdf.ln(10)  # Espacio si no hay tabla
 
-    # --- Localización ---
     seccion_titulo("3. Localización")
     for campo in ["municipio", "polígono", "parcela"]:
-        campo_orden(campo.capitalize(), datos.get(campo, "No disponible"))
+        valor = datos.get(campo, "").strip()
+        campo_orden(campo.capitalize(), valor if valor else "No disponible")
 
+    pdf.set_font("Arial", "B", 12)
     pdf.cell(0, 10, f"Coordenadas ETRS89: X = {x}, Y = {y}", ln=True)
 
-    # Insertar mapa
     imagen_mapa_path = generar_imagen_estatica_mapa(x, y)
+
     if imagen_mapa_path and os.path.exists(imagen_mapa_path):
         epw = pdf.w - 2 * pdf.l_margin
         pdf.ln(5)
         pdf.set_font("Arial", "B", 12)
         pdf.cell(0, 8, "Mapa de localización:", ln=True)
         pdf.image(imagen_mapa_path, x=pdf.l_margin, w=epw)
+    else:
+        pdf.set_font("Arial", "", 12)
+        pdf.cell(0, 8, "No se pudo generar el mapa de localización.", ln=True)
 
     pdf.output(filename)
     return filename
