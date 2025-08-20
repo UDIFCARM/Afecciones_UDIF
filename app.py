@@ -443,7 +443,7 @@ def generar_pdf(datos, x, y, filename):
         pdf.cell(0, 8, "No se pudo generar el mapa de localización.", ln=True)
 
     pdf.output(filename)
-    return filename
+    return filename 
     
 # Interfaz de Streamlit  
 st.image("https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/logos.jpg", use_container_width=True)
