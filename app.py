@@ -18,6 +18,8 @@ from staticmap import StaticMap, CircleMarker
 from PIL import Image, ImageDraw
 import math
 import logging
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 # Configurar logging para diagnósticos
 logging.basicConfig(level=logging.INFO)
@@ -176,7 +178,7 @@ def crear_mapa(lon, lat, afecciones=[], parcela_gdf=None):
     ).add_to(m)
 
     folium.raster_layers.WmsTileLayer(
-        url="https://mapas-gis-inter.carm.es/geoserver/ows?SERVICE=WMS&?",
+        url="https://mapas-gis-inter.carm.es/geoserver/ows?SERVICE=WMS&",
         name="Red Natura 2000",
         fmt="image/png",
         layers="SIG_LUP_SITES_CARM:RN2000",
@@ -186,7 +188,7 @@ def crear_mapa(lon, lat, afecciones=[], parcela_gdf=None):
     ).add_to(m)
 
     folium.raster_layers.WmsTileLayer(
-        url="https://mapas-gis-inter.carm.es/geoserver/ows?SERVICE=WMS&?",
+        url="https://mapas-gis-inter.carm.es/geoserver/ows?SERVICE=WMS&",
         name="Montes",
         fmt="image/png",
         layers="PFO_ZOR_DMVP_CARM:MONTES",
@@ -196,7 +198,7 @@ def crear_mapa(lon, lat, afecciones=[], parcela_gdf=None):
     ).add_to(m)
 
     folium.raster_layers.WmsTileLayer(
-        url="https://mapas-gis-inter.carm.es/geoserver/ows?SERVICE=WMS&?",
+        url="https://mapas-gis-inter.carm.es/geoserver/ows?SERVICE=WMS&",
         name="Vias Pecuarias",
         fmt="image/png",
         layers="PFO_ZOR_DMVP_CARM:VP_CARM",
@@ -252,32 +254,62 @@ def generar_imagen_estatica_mapa(x, y, parcela_gdf=None, zoom=16, size=(800, 600
     logger.info("Generando imagen estática con solicitudes WMS y Pillow")
     lon, lat = transformar_coordenadas(x, y)
     
-    # Calcular BBOX basado en el zoom y las coordenadas
-    meters_per_pixel = 156543.03392 * math.cos(lat * math.pi / 180) / (2 ** zoom)
-    delta_lon = (size[0] / 2) * meters_per_pixel / 111319.9
-    delta_lat = (size[1] / 2) * meters_per_pixel / 111319.9
-    bbox = f"{lon - delta_lon},{lat - delta_lat},{lon + delta_lon},{lat + delta_lat}"
+    # Calcular BBOX con mayor precisión
+    # Convertir zoom a metros por píxel
+    meters_per_pixel = 156543.03392 * math.cos(math.radians(lat)) / (2 ** zoom)
+    # Calcular el ancho y alto en grados
+    delta_lon = (size[0] * meters_per_pixel) / (111319.9 * math.cos(math.radians(lat)))
+    delta_lat = (size[1] * meters_per_pixel) / 111319.9
+    bbox = (lon - delta_lon / 2, lat - delta_lat / 2, lon + delta_lon / 2, lat + delta_lat / 2)
+    bbox_str = f"{bbox[0]},{bbox[1]},{bbox[2]},{bbox[3]}"
+    logger.info(f"BBOX calculado: {bbox_str}")
+    
+    # Configurar reintentos para solicitudes HTTP
+    session = requests.Session()
+    retries = Retry(total=3, backoff_factor=1, status_forcelist=[429, 500, 502, 503, 504])
+    session.mount('https://', HTTPAdapter(max_retries=retries))
     
     # URLs de las capas WMS
     wms_urls = [
-        f"https://ovc.catastro.meh.es/Cartografia/WMS/ServidorWMS.aspx?service=WMS&version=1.3.0&request=GetMap&layers=Catastro&format=image/png&width={size[0]}&height={size[1]}&crs=EPSG:4326&bbox={bbox}",
-        f"https://mapas-gis-inter.carm.es/geoserver/ows?service=WMS&version=1.3.0&request=GetMap&layers=SIG_LUP_SITES_CARM:RN2000&format=image/png&width={size[0]}&height={size[1]}&crs=EPSG:4326&bbox={bbox}&transparent=true",
-        f"https://mapas-gis-inter.carm.es/geoserver/ows?service=WMS&version=1.3.0&request=GetMap&layers=PFO_ZOR_DMVP_CARM:MONTES&format=image/png&width={size[0]}&height={size[1]}&crs=EPSG:4326&bbox={bbox}&transparent=true",
-        f"https://mapas-gis-inter.carm.es/geoserver/ows?service=WMS&version=1.3.0&request=GetMap&layers=PFO_ZOR_DMVP_CARM:VP_CARM&format=image/png&width={size[0]}&height={size[1]}&crs=EPSG:4326&bbox={bbox}&transparent=true",
+        {
+            "url": f"https://ovc.catastro.meh.es/Cartografia/WMS/ServidorWMS.aspx?service=WMS&version=1.3.0&request=GetMap&layers=Catastro&format=image/png&width={size[0]}&height={size[1]}&crs=EPSG:4326&bbox={bbox_str}",
+            "name": "Catastro"
+        },
+        {
+            "url": f"https://mapas-gis-inter.carm.es/geoserver/ows?service=WMS&version=1.3.0&request=GetMap&layers=SIG_LUP_SITES_CARM:RN2000&format=image/png&width={size[0]}&height={size[1]}&crs=EPSG:4326&bbox={bbox_str}&transparent=true",
+            "name": "Red Natura 2000"
+        },
+        {
+            "url": f"https://mapas-gis-inter.carm.es/geoserver/ows?service=WMS&version=1.3.0&request=GetMap&layers=PFO_ZOR_DMVP_CARM:MONTES&format=image/png&width={size[0]}&height={size[1]}&crs=EPSG:4326&bbox={bbox_str}&transparent=true",
+            "name": "Montes"
+        },
+        {
+            "url": f"https://mapas-gis-inter.carm.es/geoserver/ows?service=WMS&version=1.3.0&request=GetMap&layers=PFO_ZOR_DMVP_CARM:VP_CARM&format=image/png&width={size[0]}&height={size[1]}&crs=EPSG:4326&bbox={bbox_str}&transparent=true",
+            "name": "Vias Pecuarias"
+        },
     ]
     
     # Descargar y combinar imágenes
     images = []
-    for url in wms_urls:
+    for wms in wms_urls:
         try:
-            response = requests.get(url, timeout=10)
+            logger.info(f"Descargando capa WMS: {wms['name']} ({wms['url']})")
+            response = session.get(wms['url'], timeout=10)
             if response.status_code == 200:
+                content_type = response.headers.get('content-type', '')
+                if 'image' not in content_type:
+                    logger.error(f"La respuesta de {wms['name']} no es una imagen: {content_type}")
+                    st.warning(f"No se pudo descargar {wms['name']}: Respuesta no es una imagen")
+                    continue
                 img = Image.open(BytesIO(response.content)).convert("RGBA")
                 images.append(img)
+                logger.info(f"Capa {wms['name']} descargada correctamente")
             else:
-                logger.warning(f"Fallo al descargar capa WMS: {url} (status: {response.status_code})")
+                logger.error(f"Fallo al descargar {wms['name']}: HTTP {response.status_code}")
+                st.warning(f"No se pudo descargar {wms['name']}: HTTP {response.status_code}")
         except Exception as e:
-            logger.warning(f"Error al descargar capa WMS {url}: {e}")
+            logger.error(f"Error al descargar {wms['name']}: {str(e)}")
+            st.warning(f"Error al descargar {wms['name']}: {str(e)}")
     
     if not images:
         st.error("No se pudieron descargar las capas WMS. Usando mapa estático de retroceso.")
@@ -288,6 +320,7 @@ def generar_imagen_estatica_mapa(x, y, parcela_gdf=None, zoom=16, size=(800, 600
         output_path = os.path.join(temp_dir, "mapa_fallback.png")
         image = m.render(zoom=zoom)
         image.save(output_path)
+        logger.info(f"Mapa de retroceso guardado en: {output_path}")
         return output_path
     
     # Combinar imágenes
@@ -312,15 +345,17 @@ def generar_imagen_estatica_mapa(x, y, parcela_gdf=None, zoom=16, size=(800, 600
             geom = parcela_4326.geometry.iloc[0]
             if geom.geom_type == 'Polygon':
                 coords = list(geom.exterior.coords)
-                pixel_coords = [lonlat_to_pixel(lon, lat, (lon - delta_lon, lat - delta_lat, lon + delta_lon, lat + delta_lat), size) for lon, lat in coords]
+                pixel_coords = [lonlat_to_pixel(lon, lat, bbox, size) for lon, lat in coords]
                 draw.polygon(pixel_coords, outline=(0, 0, 255, 255), width=2)
             elif geom.geom_type == 'MultiPolygon':
                 for poly in geom.geoms:
                     coords = list(poly.exterior.coords)
-                    pixel_coords = [lonlat_to_pixel(lon, lat, (lon - delta_lon, lat - delta_lat, lon + delta_lon, lat + delta_lat), size) for lon, lat in coords]
+                    pixel_coords = [lonlat_to_pixel(lon, lat, bbox, size) for lon, lat in coords]
                     draw.polygon(pixel_coords, outline=(0, 0, 255, 255), width=2)
+            logger.info("Parcela dibujada correctamente")
         except Exception as e:
             logger.warning(f"Error al dibujar la parcela: {e}")
+            st.warning(f"Error al dibujar la parcela: {e}")
     
     # Añadir marcador en el centro
     draw = ImageDraw.Draw(base_img)
@@ -333,33 +368,45 @@ def generar_imagen_estatica_mapa(x, y, parcela_gdf=None, zoom=16, size=(800, 600
     
     # Añadir leyenda
     legend_urls = [
-        "https://mapas-gis-inter.carm.es/geoserver/ows?service=WMS&version=1.3.0&request=GetLegendGraphic&format=image%2Fpng&width=20&height=20&layer=SIG_LUP_SITES_CARM%3ARN2000",
-        "https://mapas-gis-inter.carm.es/geoserver/ows?service=WMS&version=1.3.0&request=GetLegendGraphic&format=image%2Fpng&width=20&height=20&layer=PFO_ZOR_DMVP_CARM%3AMONTES",
-        "https://mapas-gis-inter.carm.es/geoserver/ows?service=WMS&version=1.3.0&request=GetLegendGraphic&format=image%2Fpng&width=20&height=20&layer=PFO_ZOR_DMVP_CARM%3AVP_CARM",
+        {
+            "url": "https://mapas-gis-inter.carm.es/geoserver/ows?service=WMS&version=1.3.0&request=GetLegendGraphic&format=image%2Fpng&width=20&height=20&layer=SIG_LUP_SITES_CARM%3ARN2000",
+            "name": "Red Natura"
+        },
+        {
+            "url": "https://mapas-gis-inter.carm.es/geoserver/ows?service=WMS&version=1.3.0&request=GetLegendGraphic&format=image%2Fpng&width=20&height=20&layer=PFO_ZOR_DMVP_CARM%3AMONTES",
+            "name": "Montes"
+        },
+        {
+            "url": "https://mapas-gis-inter.carm.es/geoserver/ows?service=WMS&version=1.3.0&request=GetLegendGraphic&format=image%2Fpng&width=20&height=20&layer=PFO_ZOR_DMVP_CARM%3AVP_CARM",
+            "name": "Vias Pecuarias"
+        },
     ]
     legend_images = []
-    for url in legend_urls:
+    for legend in legend_urls:
         try:
-            response = requests.get(url, timeout=5)
+            response = session.get(legend['url'], timeout=5)
             if response.status_code == 200:
                 img = Image.open(BytesIO(response.content)).convert("RGBA")
-                legend_images.append(img)
+                legend_images.append((img, legend['name']))
+                logger.info(f"Leyenda {legend['name']} descargada correctamente")
+            else:
+                logger.warning(f"Fallo al descargar leyenda {legend['name']}: HTTP {response.status_code}")
         except Exception as e:
-            logger.warning(f"Error al descargar leyenda WMS {url}: {e}")
+            logger.warning(f"Error al descargar leyenda {legend['name']}: {e}")
     
     if legend_images:
-        max_legend_width = max(img.width for img in legend_images)
-        total_legend_height = sum(img.height for img in legend_images) + 30  # Espacio para título
+        max_legend_width = max(img.width for img, _ in legend_images)
+        total_legend_height = sum(img.height for img, _ in legend_images) + 30  # Espacio para título
         legend_img = Image.new("RGBA", (max_legend_width + 20, total_legend_height + 20), (255, 255, 255, 255))
         draw = ImageDraw.Draw(legend_img)
         draw.text((10, 10), "Leyenda", fill=(0, 0, 0, 255), font_size=12)
         
         y_offset = 30
-        for img in legend_images:
+        for img, _ in legend_images:
             legend_img.paste(img, (10, y_offset), img)
             y_offset += img.height
         
-        # Redimensionar leyenda si es necesario
+        # Redimensionar leyenda
         legend_img = legend_img.resize((int(max_legend_width * 0.75), int(total_legend_height * 0.75)))
         
         # Pegar leyenda en la esquina inferior izquierda
