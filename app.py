@@ -250,7 +250,7 @@ def generar_imagen_estatica_mapa(x, y, zoom=16, size=(800, 600)):
     return output_path
 
 # Función para generar el PDF con los datos de la solicitud
-# Función para generar el PDF con los datos de la solicitud (modificada para mensaje específico si no hay afecciones)
+# Función para generar el PDF con los datos de la solicitud (modificada para especificar "No se encuentra" en todas las afecciones no detectadas)
 def generar_pdf(datos, x, y, filename):
     pdf = FPDF()
     pdf.add_page()
@@ -318,25 +318,26 @@ def generar_pdf(datos, x, y, filename):
     afecciones_keys = ["afección VP", "afección ENP", "afección ZEPA", "afección LIC", "afección TM"]
     mup_key = "afección MUP"
 
-    # Procesar otras afecciones como texto
+    # Procesar otras afecciones como texto, incluyendo "No se encuentra" para las no detectadas
     otras_afecciones = []
     for key in afecciones_keys:
         valor = datos.get(key, "").strip()
         if valor and not valor.startswith("No se encuentra") and not valor.startswith("Error"):
             nombre_afeccion = valor.replace(f"Dentro de {key.replace('afección ', '').strip()}: ", "").strip()
             otras_afecciones.append((key.capitalize(), nombre_afeccion))
+        else:
+            otras_afecciones.append((key.capitalize(), "No se encuentra"))
 
     # Mostrar otras afecciones con títulos en negrita
-    if otras_afecciones:
+    pdf.set_font("Arial", "B", 12)
+    pdf.cell(0, 8, "Otras afecciones:", ln=True)
+    pdf.ln(2)
+    for titulo, valor in otras_afecciones:
         pdf.set_font("Arial", "B", 12)
-        pdf.cell(0, 8, "Otras afecciones:", ln=True)
-        pdf.ln(2)
-        for titulo, valor in otras_afecciones:
-            pdf.set_font("Arial", "B", 12)
-            pdf.cell(60, 8, f"{titulo}:", ln=0)
-            pdf.set_font("Arial", "", 12)
-            pdf.multi_cell(0, 8, valor)
-        pdf.ln(2)
+        pdf.cell(60, 8, f"{titulo}:", ln=0)
+        pdf.set_font("Arial", "", 12)
+        pdf.multi_cell(0, 8, valor)
+    pdf.ln(2)
 
     # Procesar MUP para tabla
     mup_valor = datos.get(mup_key, "").strip()
@@ -377,7 +378,7 @@ def generar_pdf(datos, x, y, filename):
             pdf.cell(col_widths[3], row_height, propiedad, border=1)
             pdf.ln()
         pdf.ln(10)  # Espacio adicional después de la tabla
-    elif not otras_afecciones:
+    elif not any(valor != "No se encuentra" for _, valor in otras_afecciones):
         pdf.set_font("Arial", "", 12)
         pdf.cell(0, 8, "No se encuentra en ENP, ZEPA, LIC, VP, MUP", ln=True)
         pdf.ln(10)  # Espacio si no hay tabla
