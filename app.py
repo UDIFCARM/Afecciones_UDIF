@@ -250,7 +250,7 @@ def generar_imagen_estatica_mapa(x, y, zoom=16, size=(800, 600)):
     return output_path
 
 # Función para generar el PDF con los datos de la solicitud
-# Función para generar el PDF con los datos de la solicitud (modificada para incluir mensaje "No se encuentra" cuando no hay afecciones)
+# Función para generar el PDF con los datos de la solicitud (modificada para incluir "No se encuentra" en VP y MUP)
 def generar_pdf(datos, x, y, filename):
     pdf = FPDF()
     pdf.add_page()
@@ -292,7 +292,7 @@ def generar_pdf(datos, x, y, filename):
     def seccion_titulo(texto):
         pdf.set_fill_color(*azul_rgb)
         pdf.set_text_color(0, 0, 0)
-        pdf.set_font("Arial", "B", 13)
+        pdf.set_font("Arial",10
         pdf.cell(0, 10, texto, ln=True, fill=True)
         pdf.ln(2)
 
@@ -315,25 +315,22 @@ def generar_pdf(datos, x, y, filename):
 
     seccion_titulo("2. Afecciones detectadas")
 
-    afecciones_keys = ["afección ENP", "afección ZEPA", "afección LIC", "afección TM"]
-    vp_key = "afección VP"
-    mup_key = "afección MUP"
+    afecciones_keys = ["afección VP", "afección ENP", "afección ZEPA", "afección LIC", "afección TM", "afección MUP"]
 
     # Procesar afecciones VP
-    vp_valor = datos.get(vp_key, "").strip()
+    vp_valor = datos.get("afección VP", "").strip()
     vp_detectado = []
     if vp_valor and not vp_valor.startswith("No se encuentra") and not vp_valor.startswith("Error"):
         nombres_vp = vp_valor.replace("Dentro de VP: ", "").split(", ")
         if len(nombres_vp) > 1:  # Si hay más de una vía pecuaria
             vp_detectado = [(nombre.strip(), "N/A", "N/A", "N/A") for nombre in nombres_vp]
-        else:
-            # Si solo hay una VP, incluir en otras afecciones
-            afecciones_keys.insert(0, vp_key)
 
     # Procesar otras afecciones como texto, incluyendo "No se encuentra" para las no detectadas
     otras_afecciones = []
     for key in afecciones_keys:
         valor = datos.get(key, "").strip()
+        if key == "afección VP" and len(vp_detectado) > 1:
+            continue  # No incluir VP en "Otras afecciones" si hay tabla de VP
         if valor and not valor.startswith("No se encuentra") and not valor.startswith("Error"):
             nombre_afeccion = valor.replace(f"Dentro de {key.replace('afección ', '').strip()}: ", "").strip()
             otras_afecciones.append((key.capitalize(), nombre_afeccion))
@@ -380,7 +377,7 @@ def generar_pdf(datos, x, y, filename):
         pdf.ln(10)  # Espacio adicional después de la tabla
 
     # Procesar MUP para tabla
-    mup_valor = datos.get(mup_key, "").strip()
+    mup_valor = datos.get("afección MUP", "").strip()
     mup_detectado = []
     if mup_valor and not mup_valor.startswith("No se encuentra") and not mup_valor.startswith("Error"):
         entries = mup_valor.replace("Dentro de MUP:\n", "").split("\n\n")
@@ -420,7 +417,7 @@ def generar_pdf(datos, x, y, filename):
         pdf.ln(10)  # Espacio adicional después de la tabla
 
     # Mostrar mensaje si no hay ninguna afección detectada
-    if not mup_detectado and not vp_detectado and not any(valor != "No se encuentra" for _, valor in otras_afecciones):
+    if not mup_detectado and not vp_detectado and all(valor == "No se encuentra" for _, valor in otras_afecciones):
         pdf.set_font("Arial", "", 12)
         pdf.cell(0, 8, "No se encuentra en ENP, ZEPA, LIC, VP, MUP", ln=True)
         pdf.ln(10)  # Espacio si no hay tabla
