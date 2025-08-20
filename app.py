@@ -15,9 +15,14 @@ from docx import Document
 from branca.element import Template, MacroElement
 from io import BytesIO
 from staticmap import StaticMap, CircleMarker
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
+try:
+    from selenium import webdriver
+    from selenium.webdriver.chrome.service import Service
+    from webdriver_manager.chrome import ChromeDriverManager
+    SELENIUM_AVAILABLE = True
+except ImportError:
+    SELENIUM_AVAILABLE = False
+    st.error("No se pudo importar Selenium o webdriver-manager. Instala las dependencias con 'pip install selenium webdriver-manager'.")
 import time
 
 # Diccionario con los nombres de municipios y sus nombres base de archivo
@@ -244,27 +249,47 @@ def crear_mapa(lon, lat, afecciones=[], parcela_gdf=None):
 
     return mapa_html, afecciones
 
+# Función para generar la imagen estática del mapa usando py-staticmaps (retroceso)
+def generar_imagen_estatica_mapa_fallback(x, y, zoom=16, size=(800, 600)):
+    lon, lat = transformar_coordenadas(x, y)
+    m = StaticMap(size[0], size[1], url_template='http://a.tile.openstreetmap.org/{z}/{x}/{y}.png')
+    marker = CircleMarker((lon, lat), 'red', 12)
+    m.add_marker(marker)
+    temp_dir = tempfile.mkdtemp()
+    output_path = os.path.join(temp_dir, "mapa_fallback.png")
+    image = m.render(zoom=zoom)
+    image.save(output_path)
+    return output_path
+
 # Función modificada para generar la imagen estática del mapa capturando el HTML de Folium con Selenium
 def generar_imagen_estatica_mapa(x, y, mapa_html, zoom=16, size=(800, 600)):
+    if not SELENIUM_AVAILABLE:
+        st.warning("Selenium no está disponible. Usando mapa estático sin capas WMS.")
+        return generar_imagen_estatica_mapa_fallback(x, y, zoom, size)
+    
     # Transformar coordenadas de ETRS89 a WGS84
     lon, lat = transformar_coordenadas(x, y)
     
     # Configurar Selenium con Chrome en modo headless
     options = webdriver.ChromeOptions()
-    options.add_argument('--headless')  # Ejecutar sin interfaz gráfica
+    options.add_argument('--headless=new')  # Nueva bandera para mejor compatibilidad
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
+    options.add_argument('--disable-gpu')
     options.add_argument(f'--window-size={size[0]},{size[1]}')
-    
-    # Iniciar el navegador
-    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+    options.add_argument('--disable-extensions')
+    options.add_argument('--disable-infobars')
     
     try:
+        # Iniciar el navegador
+        service = Service(ChromeDriverManager().install())
+        driver = webdriver.Chrome(service=service, options=options)
+        
         # Cargar el archivo HTML del mapa
         driver.get(f"file://{os.path.abspath(mapa_html)}")
         
-        # Esperar a que el mapa se renderice completamente (ajusta si es necesario)
-        time.sleep(5)
+        # Esperar a que el mapa se renderice completamente
+        time.sleep(7)  # Aumentado para asegurar que las capas WMS se carguen
         
         # Generar la captura de pantalla
         temp_dir = tempfile.mkdtemp()
@@ -272,11 +297,15 @@ def generar_imagen_estatica_mapa(x, y, mapa_html, zoom=16, size=(800, 600)):
         driver.save_screenshot(output_path)
         
         return output_path
+    except Exception as e:
+        st.warning(f"Error al generar la imagen con Selenium: {e}. Usando mapa estático sin capas WMS.")
+        return generar_imagen_estatica_mapa_fallback(x, y, zoom, size)
     finally:
-        driver.quit()
+        if 'driver' in locals():
+            driver.quit()
 
 # Función para generar el PDF con los datos de la solicitud
-def generar_pdf(datos, x, y, filename):
+def generar_pdf(datos, x, y, filename, parcela=None):
     pdf = FPDF()
     pdf.add_page()
 
@@ -301,13 +330,6 @@ def generar_pdf(datos, x, y, filename):
 
     azul_rgb = (141, 179, 226)
 
-    campos_orden = [
-        "Fecha solicitud", "Fecha informe", "Nombre", "Apellidos", "Dni", "Dirección",
-        "Teléfono", "Email", "Objeto de la solicitud"
-    ]
-
-    campos_localizacion = ["Municipio", "Polígono", "Parcela"]
-    
     def seccion_titulo(texto):
         pdf.set_fill_color(*azul_rgb)
         pdf.set_text_color(0, 0, 0)
@@ -372,10 +394,10 @@ def generar_pdf(datos, x, y, filename):
     pdf.set_font("Arial", "B", 12)
     pdf.cell(0, 10, f"Coordenadas ETRS89: X = {x}, Y = {y}", ln=True)
 
-    # Modificación: Generar el mapa HTML y capturarlo con Selenium
+    # Generar el mapa HTML y capturarlo con Selenium
     lon, lat = transformar_coordenadas(x, y)
-    afecciones = datos.get("afecciones", [])  # Asume que afecciones están en datos, ajusta si es necesario
-    parcela_gdf = datos.get("parcela_gdf", None)  # Asume que parcela_gdf está disponible, ajusta según el contexto
+    afecciones = datos.get("afecciones", [])
+    parcela_gdf = datos.get("parcela_gdf", parcela)
     mapa_html, _ = crear_mapa(lon, lat, afecciones, parcela_gdf)
     imagen_mapa_path = generar_imagen_estatica_mapa(x, y, mapa_html)
 
@@ -510,8 +532,8 @@ if submitted:
             "municipio": municipio_sel,
             "polígono": masa_sel,
             "parcela": parcela_sel,
-            "afecciones": afecciones,  # Agregado para pasar a generar_pdf
-            "parcela_gdf": parcela  # Agregado para pasar a generar_pdf
+            "afecciones": afecciones,
+            "parcela_gdf": parcela
         }
         
         mapa_html, afecciones = crear_mapa(lon, lat, afecciones, parcela_gdf=parcela)
@@ -527,7 +549,7 @@ if submitted:
             html(f.read(), height=500)
 
         pdf_filename = f"informe_{uuid.uuid4().hex[:8]}.pdf"
-        generar_pdf(datos, x, y, pdf_filename)
+        generar_pdf(datos, x, y, pdf_filename, parcela=parcela)
         st.session_state['pdf_file'] = pdf_filename
 
 if st.session_state['mapa_html'] and st.session_state['pdf_file']:
