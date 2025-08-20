@@ -15,15 +15,8 @@ from docx import Document
 from branca.element import Template, MacroElement
 from io import BytesIO
 from staticmap import StaticMap, CircleMarker
-try:
-    from selenium import webdriver
-    from selenium.webdriver.chrome.service import Service
-    from webdriver_manager.chrome import ChromeDriverManager
-    SELENIUM_AVAILABLE = True
-except ImportError:
-    SELENIUM_AVAILABLE = False
-    st.error("No se pudo importar Selenium o webdriver-manager. Instala las dependencias con 'pip install selenium webdriver-manager'.")
-import time
+from PIL import Image, ImageDraw
+import math
 import logging
 
 # Configurar logging para diagnósticos
@@ -160,7 +153,7 @@ def consultar_mup(geom, geojson_url):
         st.error(f"Error al consultar MUP: {e}")
         return "Error al consultar MUP"
 
-# Función para crear el mapa con afecciones específicas
+# Función para crear el mapa con afecciones específicas (para visualización en Streamlit)
 def crear_mapa(lon, lat, afecciones=[], parcela_gdf=None):
     m = folium.Map(location=[lat, lon], zoom_start=16)
     folium.Marker([lat, lon], popup=f"Coordenadas transformadas: {lon}, {lat}").add_to(m)
@@ -254,75 +247,129 @@ def crear_mapa(lon, lat, afecciones=[], parcela_gdf=None):
 
     return mapa_html, afecciones
 
-# Función para generar la imagen estática del mapa usando py-staticmaps (retroceso)
-def generar_imagen_estatica_mapa_fallback(x, y, zoom=16, size=(800, 600)):
-    logger.info("Usando py-staticmaps como retroceso para generar el mapa.")
-    lon, lat = transformar_coordenadas(x, y)
-    m = StaticMap(size[0], size[1], url_template='http://a.tile.openstreetmap.org/{z}/{x}/{y}.png')
-    marker = CircleMarker((lon, lat), 'red', 12)
-    m.add_marker(marker)
-    temp_dir = tempfile.mkdtemp()
-    output_path = os.path.join(temp_dir, "mapa_fallback.png")
-    image = m.render(zoom=zoom)
-    image.save(output_path)
-    return output_path
-
-# Función modificada para generar la imagen estática del mapa capturando el HTML de Folium con Selenium
-def generar_imagen_estatica_mapa(x, y, mapa_html, zoom=16, size=(800, 600)):
-    if not SELENIUM_AVAILABLE:
-        st.warning("Selenium no está disponible. Usando mapa estático sin capas WMS.")
-        logger.warning("Selenium no disponible, usando retroceso.")
-        return generar_imagen_estatica_mapa_fallback(x, y, zoom, size)
-    
-    # Transformar coordenadas de ETRS89 a WGS84
+# Función para generar la imagen estática del mapa usando Pillow
+def generar_imagen_estatica_mapa(x, y, parcela_gdf=None, zoom=16, size=(800, 600)):
+    logger.info("Generando imagen estática con solicitudes WMS y Pillow")
     lon, lat = transformar_coordenadas(x, y)
     
-    # Configurar Selenium con Chrome en modo headless
-    options = webdriver.ChromeOptions()
-    options.add_argument('--headless=new')
-    options.add_argument('--no-sandbox')
-    options.add_argument('--disable-dev-shm-usage')
-    options.add_argument('--disable-gpu')
-    options.add_argument(f'--window-size={size[0]},{size[1]}')
-    options.add_argument('--disable-extensions')
-    options.add_argument('--disable-infobars')
-    options.add_argument('--disable-browser-side-navigation')
-    options.add_argument('--disable-features=TranslateUI')
+    # Calcular BBOX basado en el zoom y las coordenadas
+    meters_per_pixel = 156543.03392 * math.cos(lat * math.pi / 180) / (2 ** zoom)
+    delta_lon = (size[0] / 2) * meters_per_pixel / 111319.9
+    delta_lat = (size[1] / 2) * meters_per_pixel / 111319.9
+    bbox = f"{lon - delta_lon},{lat - delta_lat},{lon + delta_lon},{lat + delta_lat}"
     
-    try:
-        # Especificar la ruta de chromedriver en Streamlit Cloud
-        chromedriver_path = "/usr/bin/chromedriver"
-        if os.path.exists(chromedriver_path):
-            logger.info(f"Usando chromedriver en {chromedriver_path}")
-            service = Service(chromedriver_path)
-        else:
-            logger.info("Instalando chromedriver con ChromeDriverManager")
-            service = Service(ChromeDriverManager().install())
-        
-        driver = webdriver.Chrome(service=service, options=options)
-        
-        # Cargar el archivo HTML del mapa
-        mapa_path = f"file://{os.path.abspath(mapa_html)}"
-        logger.info(f"Cargando mapa HTML: {mapa_path}")
-        driver.get(mapa_path)
-        
-        # Esperar a que el mapa se renderice completamente
-        time.sleep(10)  # Aumentado para asegurar la carga de capas WMS
-        
-        # Generar la captura de pantalla
+    # URLs de las capas WMS
+    wms_urls = [
+        f"https://ovc.catastro.meh.es/Cartografia/WMS/ServidorWMS.aspx?service=WMS&version=1.3.0&request=GetMap&layers=Catastro&format=image/png&width={size[0]}&height={size[1]}&crs=EPSG:4326&bbox={bbox}",
+        f"https://mapas-gis-inter.carm.es/geoserver/ows?service=WMS&version=1.3.0&request=GetMap&layers=SIG_LUP_SITES_CARM:RN2000&format=image/png&width={size[0]}&height={size[1]}&crs=EPSG:4326&bbox={bbox}&transparent=true",
+        f"https://mapas-gis-inter.carm.es/geoserver/ows?service=WMS&version=1.3.0&request=GetMap&layers=PFO_ZOR_DMVP_CARM:MONTES&format=image/png&width={size[0]}&height={size[1]}&crs=EPSG:4326&bbox={bbox}&transparent=true",
+        f"https://mapas-gis-inter.carm.es/geoserver/ows?service=WMS&version=1.3.0&request=GetMap&layers=PFO_ZOR_DMVP_CARM:VP_CARM&format=image/png&width={size[0]}&height={size[1]}&crs=EPSG:4326&bbox={bbox}&transparent=true",
+    ]
+    
+    # Descargar y combinar imágenes
+    images = []
+    for url in wms_urls:
+        try:
+            response = requests.get(url, timeout=10)
+            if response.status_code == 200:
+                img = Image.open(BytesIO(response.content)).convert("RGBA")
+                images.append(img)
+            else:
+                logger.warning(f"Fallo al descargar capa WMS: {url} (status: {response.status_code})")
+        except Exception as e:
+            logger.warning(f"Error al descargar capa WMS {url}: {e}")
+    
+    if not images:
+        st.error("No se pudieron descargar las capas WMS. Usando mapa estático de retroceso.")
+        m = StaticMap(size[0], size[1], url_template='http://a.tile.openstreetmap.org/{z}/{x}/{y}.png')
+        marker = CircleMarker((lon, lat), 'red', 12)
+        m.add_marker(marker)
         temp_dir = tempfile.mkdtemp()
-        output_path = os.path.join(temp_dir, "mapa.png")
-        driver.save_screenshot(output_path)
-        logger.info(f"Imagen guardada en: {output_path}")
-        
+        output_path = os.path.join(temp_dir, "mapa_fallback.png")
+        image = m.render(zoom=zoom)
+        image.save(output_path)
         return output_path
-    except Exception as e:
-        st.warning(f"Error al generar la imagen con Selenium: {e}. Usando mapa estático sin capas WMS.")
-        logger.error(f"Error en Selenium: {e}")
-        return generar_imagen_estatica_mapa_fallback(x, y, zoom, size)
-    finally:
-        if 'driver' in locals():
-            driver.quit()
+    
+    # Combinar imágenes
+    base_img = Image.new("RGBA", size, (255, 255, 255, 255))  # Fondo blanco
+    for img in images:
+        base_img.paste(img, (0, 0), img)
+    
+    # Dibujar la parcela si está disponible
+    if parcela_gdf is not None:
+        try:
+            parcela_4326 = parcela_gdf.to_crs("EPSG:4326")
+            bounds = parcela_4326.bounds.iloc[0]
+            minx, miny, maxx, maxy = bounds['minx'], bounds['miny'], bounds['maxx'], bounds['maxy']
+            
+            # Convertir coordenadas de la parcela a píxeles
+            def lonlat_to_pixel(lon, lat, bbox, size):
+                x = int((lon - bbox[0]) / (bbox[2] - bbox[0]) * size[0])
+                y = int((bbox[3] - lat) / (bbox[3] - bbox[1]) * size[1])
+                return x, y
+            
+            draw = ImageDraw.Draw(base_img)
+            geom = parcela_4326.geometry.iloc[0]
+            if geom.geom_type == 'Polygon':
+                coords = list(geom.exterior.coords)
+                pixel_coords = [lonlat_to_pixel(lon, lat, (lon - delta_lon, lat - delta_lat, lon + delta_lon, lat + delta_lat), size) for lon, lat in coords]
+                draw.polygon(pixel_coords, outline=(0, 0, 255, 255), width=2)
+            elif geom.geom_type == 'MultiPolygon':
+                for poly in geom.geoms:
+                    coords = list(poly.exterior.coords)
+                    pixel_coords = [lonlat_to_pixel(lon, lat, (lon - delta_lon, lat - delta_lat, lon + delta_lon, lat + delta_lat), size) for lon, lat in coords]
+                    draw.polygon(pixel_coords, outline=(0, 0, 255, 255), width=2)
+        except Exception as e:
+            logger.warning(f"Error al dibujar la parcela: {e}")
+    
+    # Añadir marcador en el centro
+    draw = ImageDraw.Draw(base_img)
+    marker_size = 12
+    center_x, center_y = size[0] // 2, size[1] // 2
+    draw.ellipse(
+        [center_x - marker_size, center_y - marker_size, center_x + marker_size, center_y + marker_size],
+        fill=(255, 0, 0, 255)
+    )
+    
+    # Añadir leyenda
+    legend_urls = [
+        "https://mapas-gis-inter.carm.es/geoserver/ows?service=WMS&version=1.3.0&request=GetLegendGraphic&format=image%2Fpng&width=20&height=20&layer=SIG_LUP_SITES_CARM%3ARN2000",
+        "https://mapas-gis-inter.carm.es/geoserver/ows?service=WMS&version=1.3.0&request=GetLegendGraphic&format=image%2Fpng&width=20&height=20&layer=PFO_ZOR_DMVP_CARM%3AMONTES",
+        "https://mapas-gis-inter.carm.es/geoserver/ows?service=WMS&version=1.3.0&request=GetLegendGraphic&format=image%2Fpng&width=20&height=20&layer=PFO_ZOR_DMVP_CARM%3AVP_CARM",
+    ]
+    legend_images = []
+    for url in legend_urls:
+        try:
+            response = requests.get(url, timeout=5)
+            if response.status_code == 200:
+                img = Image.open(BytesIO(response.content)).convert("RGBA")
+                legend_images.append(img)
+        except Exception as e:
+            logger.warning(f"Error al descargar leyenda WMS {url}: {e}")
+    
+    if legend_images:
+        max_legend_width = max(img.width for img in legend_images)
+        total_legend_height = sum(img.height for img in legend_images) + 30  # Espacio para título
+        legend_img = Image.new("RGBA", (max_legend_width + 20, total_legend_height + 20), (255, 255, 255, 255))
+        draw = ImageDraw.Draw(legend_img)
+        draw.text((10, 10), "Leyenda", fill=(0, 0, 0, 255), font_size=12)
+        
+        y_offset = 30
+        for img in legend_images:
+            legend_img.paste(img, (10, y_offset), img)
+            y_offset += img.height
+        
+        # Redimensionar leyenda si es necesario
+        legend_img = legend_img.resize((int(max_legend_width * 0.75), int(total_legend_height * 0.75)))
+        
+        # Pegar leyenda en la esquina inferior izquierda
+        base_img.paste(legend_img, (10, size[1] - legend_img.height - 10), legend_img)
+    
+    temp_dir = tempfile.mkdtemp()
+    output_path = os.path.join(temp_dir, "mapa.png")
+    base_img.save(output_path, "PNG")
+    logger.info(f"Imagen WMS guardada en: {output_path}")
+    return output_path
 
 # Función para generar el PDF con los datos de la solicitud
 def generar_pdf(datos, x, y, filename, parcela=None):
@@ -414,12 +461,9 @@ def generar_pdf(datos, x, y, filename, parcela=None):
     pdf.set_font("Arial", "B", 12)
     pdf.cell(0, 10, f"Coordenadas ETRS89: X = {x}, Y = {y}", ln=True)
 
-    # Generar el mapa HTML y capturarlo con Selenium
-    lon, lat = transformar_coordenadas(x, y)
-    afecciones = datos.get("afecciones", [])
+    # Generar el mapa con capas WMS
     parcela_gdf = datos.get("parcela_gdf", parcela)
-    mapa_html, _ = crear_mapa(lon, lat, afecciones, parcela_gdf)
-    imagen_mapa_path = generar_imagen_estatica_mapa(x, y, mapa_html)
+    imagen_mapa_path = generar_imagen_estatica_mapa(x, y, parcela_gdf=parcela_gdf)
 
     if imagen_mapa_path and os.path.exists(imagen_mapa_path):
         epw = pdf.w - 2 * pdf.l_margin
