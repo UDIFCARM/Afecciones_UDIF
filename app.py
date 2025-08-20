@@ -347,6 +347,25 @@ def generar_pdf(datos, x, y, filename):
             pdf.set_font("Arial", "", 12)
             pdf.multi_cell(0, 8, valor)
 
+        # Afección MUP en tabla
+    pdf.ln(2)
+    pdf.set_font("Arial", "B", 12)
+    pdf.cell(0, 8, "Afección MUP:", ln=True)
+    afeccion_mup = datos.get("afección MUP", [])
+    if afeccion_mup:
+        crear_tabla_mup(afeccion_mup)
+    else:
+        pdf.set_font("Arial", "", 12)
+        pdf.cell(0, 8, "No se encuentra en ningún MUP", ln=True)
+
+    seccion_titulo("3. Localización")
+    for campo in ["municipio", "polígono", "parcela"]:
+        valor = datos.get(campo, "").strip()
+        campo_orden(campo.capitalize(), valor if valor else "No disponible")
+
+    pdf.set_font("Arial", "B", 12)
+    pdf.cell(0, 10, f"Coordenadas ETRS89: X = {x}, Y = {y}", ln=True)
+
     seccion_titulo("3. Localización")
     for campo in ["municipio", "polígono", "parcela"]:
         valor = datos.get(campo, "").strip()
