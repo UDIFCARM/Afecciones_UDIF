@@ -346,7 +346,8 @@ def generar_pdf(datos, x, y, filename):
     afecciones_keys = ["afección ENP", "afección ZEPA", "afección LIC", "afección TM"]
     vp_key = "afección VP"
     mup_key = "afección MUP"
-
+    
+    # Procesar afecciones VP
     vp_valor = datos.get(vp_key, "").strip()
     vp_detectado = []
     if vp_valor and not vp_valor.startswith("No se encuentra") and not vp_valor.startswith("Error"):
@@ -354,6 +355,7 @@ def generar_pdf(datos, x, y, filename):
         vp_detectado = [(nombre.strip(), "N/A", "N/A", "N/A") for nombre in nombres_vp]
         vp_valor = ""
 
+    # Procesar afecciones MUP
     mup_valor = datos.get(mup_key, "").strip()
     mup_detectado = []
     if mup_valor and not mup_valor.startswith("No se encuentra") and not mup_valor.startswith("Error"):
@@ -368,6 +370,7 @@ def generar_pdf(datos, x, y, filename):
                 mup_detectado.append((id_monte, nombre, municipio, propiedad))
         mup_valor = ""
 
+    # Procesar otras afecciones como texto
     otras_afecciones = []
     for key in afecciones_keys:
         valor = datos.get(key, "").strip()
@@ -376,11 +379,13 @@ def generar_pdf(datos, x, y, filename):
         else:
             otras_afecciones.append((key.capitalize(), valor if valor else "No se encuentra"))
 
+    # Solo incluir MUP o VP en "otras afecciones" si NO tienen detecciones
     if not vp_detectado:
         otras_afecciones.append(("Afección VP", vp_valor if vp_valor else "No se encuentra"))
     if not mup_detectado:
         otras_afecciones.append(("Afección MUP", mup_valor if mup_valor else "No se encuentra"))
 
+    # Mostrar otras afecciones con títulos en negrita    
     if otras_afecciones:
         pdf.set_font("Arial", "B", 12)
         pdf.cell(0, 8, "Otras afecciones:", ln=True)
@@ -395,11 +400,13 @@ def generar_pdf(datos, x, y, filename):
                     pdf.cell(0, 8, line, ln=1)
         pdf.ln(2)
 
+    # Procesar VP para tabla si hay detecciones
     if vp_detectado:
         pdf.set_font("Arial", "B", 12)
         pdf.cell(0, 8, "Afecciones de Vías Pecuarias (VP):", ln=True)
         pdf.ln(2)
 
+        # Configurar la tabla para VP
         col_widths = [30, 80, 40, 40]
         row_height = 8
         pdf.set_font("Arial", "B", 11)
@@ -410,6 +417,7 @@ def generar_pdf(datos, x, y, filename):
         pdf.cell(col_widths[3], row_height, "Propiedad", border=1, fill=True)
         pdf.ln()
 
+        # Agregar filas a la tabla
         pdf.set_font("Arial", "", 10)
         for nombre, id_vp, municipio, propiedad in vp_detectado:
             pdf.cell(col_widths[0], row_height, id_vp, border=1)
@@ -419,11 +427,13 @@ def generar_pdf(datos, x, y, filename):
             pdf.ln()
         pdf.ln(10)
 
+    # Procesar MUP para tabla si hay detecciones
     if mup_detectado:
         pdf.set_font("Arial", "B", 12)
         pdf.cell(0, 8, "Afecciones de Montes (MUP):", ln=True)
         pdf.ln(2)
 
+        # Configurar la tabla para MUP
         col_widths = [30, 80, 40, 40]
         row_height = 8
         pdf.set_font("Arial", "B", 11)
@@ -434,6 +444,7 @@ def generar_pdf(datos, x, y, filename):
         pdf.cell(col_widths[3], row_height, "Propiedad", border=1, fill=True)
         pdf.ln()
 
+        # Agregar filas a la tabla
         pdf.set_font("Arial", "", 10)
         for id_monte, nombre, municipio, propiedad in mup_detectado:
             pdf.cell(col_widths[0], row_height, id_monte, border=1)
@@ -466,6 +477,7 @@ def generar_pdf(datos, x, y, filename):
         pdf.set_font("Arial", "", 12)
         pdf.cell(0, 8, "No se pudo generar el mapa de localización.", ln=True)
 
+    # Nueva sección para el texto en cuadro
     pdf.ln(10)
     pdf.set_font("Arial", "B", 12)
     pdf.set_text_color(255, 0, 0)
