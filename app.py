@@ -300,7 +300,15 @@ def generar_pdf(datos, x, y, filename):
         pdf.set_font("Arial", "B", 12)
         pdf.cell(50, 8, f"{titulo}:", ln=0)
         pdf.set_font("Arial", "", 12)
-        pdf.multi_cell(0, 8, valor if valor else "No especificado")
+        # Truncar texto largo
+        valor = (valor[:100] + "...") if valor and len(valor) > 100 else valor if valor else "No especificado"
+        # Usar un ancho máximo para respetar márgenes
+        max_width = pdf.w - pdf.l_margin - pdf.r_margin - 50
+        try:
+            pdf.multi_cell(max_width, 8, valor)
+        except Exception as e:
+            print(f"Error al renderizar campo {titulo} con valor {valor}: {e}")
+            pdf.multi_cell(max_width, 8, "Error en el contenido")
 
     seccion_titulo("1. Datos del solicitante")
     for titulo, valor in campos_orden:
