@@ -328,12 +328,12 @@ def generar_pdf(datos, x, y, filename):
             seleccion = gdf[gdf.intersects(query_geom)]  # Filtrar geometrías que intersectan
             if not seleccion.empty:
                 for _, props in seleccion.iterrows():
-                    codigo_vp = props.get("VP_COD", "N/A")  # Código de la vía
+                    codigo_vp = props.get("VP_COD", "N/A")  # Código de la vía desde el GeoJSON
                     nombre = props.get("VP_NB", "N/A")  # Nombre de la vía
-                    municipio = props.get("VP_MUN", "N/A")  # Término municipal
-                    situacion_legal = props.get("VP_SIT_LEG", "N/A")  # Situación legal
-                    ancho_legal = props.get("VP_ANCH_LG", "N/A")  # Ancho legal
-                    vp_detectado.append((str(codigo_vp), str(nombre), str(municipio), str(situacion_legal), str(ancho_legal)))
+                    municipio = props.get("MUNICIPIO", "N/A")  # Término municipal
+                    situacion_legal = props.get("SITUACION", "N/A")  # Situación legal
+                    ancho_legal = props.get("ANCHO", "N/A")  # Ancho legal
+                    vp_detectado.append((codigo_vp, nombre, municipio, situacion_legal, ancho_legal))
             vp_valor = ""  # Evitamos poner "No se encuentra" si hay tabla
         except Exception as e:
             st.error(f"Error al procesar VP desde {vp_url}: {e}")
@@ -394,45 +394,24 @@ def generar_pdf(datos, x, y, filename):
 
         # Configurar la tabla para VP
         col_widths = [30, 70, 40, 40, 30]  # Anchos: Código, Nombre, Municipio, Situación Legal, Ancho Legal
-        base_row_height = 8  # Altura base de cada fila
+        row_height = 8  # Altura base de cada fila
         pdf.set_font("Arial", "B", 11)
         pdf.set_fill_color(*azul_rgb)
-        pdf.cell(col_widths[0], base_row_height, "Código", border=1, fill=True)
-        pdf.cell(col_widths[1], base_row_height, "Nombre", border=1, fill=True)
-        pdf.cell(col_widths[2], base_row_height, "Municipio", border=1, fill=True)
-        pdf.cell(col_widths[3], base_row_height, "Situación Legal", border=1, fill=True)
-        pdf.cell(col_widths[4], base_row_height, "Ancho Legal", border=1, fill=True)
+        pdf.cell(col_widths[0], row_height, "Código", border=1, fill=True)
+        pdf.cell(col_widths[1], row_height, "Nombre", border=1, fill=True)
+        pdf.cell(col_widths[2], row_height, "Municipio", border=1, fill=True)
+        pdf.cell(col_widths[3], row_height, "Situación Legal", border=1, fill=True)
+        pdf.cell(col_widths[4], row_height, "Ancho Legal", border=1, fill=True)
         pdf.ln()
 
         # Agregar filas a la tabla
         pdf.set_font("Arial", "", 10)
         for codigo_vp, nombre, municipio, situacion_legal, ancho_legal in vp_detectado:
-            # Calcular el número de líneas necesarias para el nombre
-            pdf.set_font("Arial", "", 10)  # Asegurar fuente para cálculo
-            nombre_lines = max(1, int(pdf.get_string_width(nombre) / col_widths[1] + 1))  # Mínimo 1 línea
-            row_height = base_row_height * nombre_lines  # Ajustar altura de la fila
-
-            # Guardar posición actual para alinear celdas
-            x_before = pdf.get_x()
-            y_before = pdf.get_y()
-
-            # Dibujar celdas
-            pdf.cell(col_widths[0], row_height, codigo_vp, border=1, align="C")
-            pdf.multi_cell(
-                col_widths[1],
-                base_row_height,
-                nombre,
-                border=1,
-                align="L",
-                new_x="RIGHT",
-                new_y="TOP"
-            )
-            # Restaurar posición para las siguientes celdas
-            pdf.set_xy(x_before + col_widths[0] + col_widths[1], y_before)
-            pdf.cell(col_widths[2], row_height, municipio, border=1, align="C")
-            pdf.cell(col_widths[3], row_height, situacion_legal, border=1, align="C")
-            pdf.cell(col_widths[4], row_height, ancho_legal, border=1, align="C")
-            pdf.ln(row_height)  # Avanzar a la siguiente fila
+            pdf.cell(col_widths[0], row_height, str(codigo_vp), border=1)  # Código de la vía (VP_COD del GeoJSON)
+            pdf.cell(col_widths[1], row_height, str(nombre), border=1)
+            pdf.cell(col_widths[2], row_height, str(municipio), border=1)
+            pdf.cell(col_widths[3], row_height, str(situacion_legal), border=1)
+            pdf.cell(col_widths[4], row_height, str(ancho_legal), border=1)
         pdf.ln(10)  # Espacio adicional después de la tabla
 
     # Procesar MUP para tabla si hay detecciones
