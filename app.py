@@ -1,7 +1,6 @@
 import streamlit as st
 import folium
 from streamlit.components.v1 import html
-from fpdf import FPDF
 from pyproj import Transformer
 import requests
 import xml.etree.ElementTree as ET
