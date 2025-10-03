@@ -388,12 +388,12 @@ def generar_pdf(datos, x, y, filename):
 
     # Procesar VP para tabla si hay detecciones
     if vp_detectado:
-        pdf.set_font("Arial", "B", 12)
+        pdf.set_font("Arial", "B", 10)
         pdf.cell(0, 8, "Afecciones de Vías Pecuarias (VP):", ln=True)
         pdf.ln(2)
 
         # Configurar la tabla para VP
-        col_widths = [30, 50, 40, 40, 30]  # Ajustar anchos: Código, Nombre, Municipio, Situación Legal, Ancho Legal
+        col_widths = [10, 50, 50, 50, 10]  # Ajustar anchos: Código, Nombre, Municipio, Situación Legal, Ancho Legal
         row_height = 8
         pdf.set_font("Arial", "B", 11)
         pdf.set_fill_color(*azul_rgb)
