@@ -1,3 +1,4 @@
+```python
 import streamlit as st
 import folium
 from streamlit.components.v1 import html
@@ -15,6 +16,7 @@ from docx import Document
 from branca.element import Template, MacroElement 
 from io import BytesIO
 from staticmap import StaticMap, CircleMarker
+import textwrap  # Nueva importación para manejar texto largo
 
 # Diccionario con los nombres de municipios y sus nombres base de archivo
 shp_urls = {
@@ -250,10 +252,12 @@ def generar_imagen_estatica_mapa(x, y, zoom=16, size=(800, 600)):
     return output_path
 
 # Función para generar el PDF con los datos de la solicitud
-# Función para generar el PDF con los datos de la solicitud
 def generar_pdf(datos, x, y, filename):
     pdf = FPDF()
     pdf.add_page()
+
+    # Configurar márgenes más seguros para evitar problemas de espacio
+    pdf.set_margins(left=10, top=10, right=10)
 
     logo_url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/logos.jpg"
     response = requests.get(logo_url)
@@ -296,22 +300,34 @@ def generar_pdf(datos, x, y, filename):
         pdf.cell(0, 10, texto, ln=True, fill=True)
         pdf.ln(2)
 
-    def campo_orden(titulo, valor):
+    def campo_orden(pdf, titulo, valor):
         pdf.set_font("Arial", "B", 12)
         pdf.cell(50, 8, f"{titulo}:", ln=0)
         pdf.set_font("Arial", "", 12)
-        pdf.multi_cell(0, 8, valor if valor else "No especificado")
+        
+        # Validar y limpiar el valor
+        valor = valor.strip() if valor else "No especificado"
+        # Dividir el texto en líneas si es demasiado largo
+        wrapped_text = textwrap.wrap(valor, width=60)  # Ajusta el ancho según el espacio disponible
+        if not wrapped_text:
+            wrapped_text = ["No especificado"]
+        
+        # Renderizar cada línea
+        for line in wrapped_text:
+            pdf.cell(0, 8, line, ln=1)
 
     seccion_titulo("1. Datos del solicitante")
     for titulo, valor in campos_orden:
-        campo_orden(titulo, valor)
+        campo_orden(pdf, titulo, valor)
 
     objeto = datos.get("objeto de la solicitud", "").strip()
     pdf.ln(2)
     pdf.set_font("Arial", "B", 12)
     pdf.cell(0, 8, "Objeto de la solicitud:", ln=True)
     pdf.set_font("Arial", "", 12)
-    pdf.multi_cell(0, 8, objeto if objeto else "No especificado")
+    wrapped_objeto = textwrap.wrap(objeto if objeto else "No especificado", width=60)
+    for line in wrapped_objeto:
+        pdf.cell(0, 8, line, ln=1)
 
     seccion_titulo("2. Afecciones detectadas")
 
@@ -371,7 +387,9 @@ def generar_pdf(datos, x, y, filename):
                 pdf.set_font("Arial", "B", 12)
                 pdf.cell(60, 8, f"{titulo}:", ln=0)
                 pdf.set_font("Arial", "", 12)
-                pdf.multi_cell(0, 8, valor)
+                wrapped_valor = textwrap.wrap(valor, width=60)
+                for line in wrapped_valor:
+                    pdf.cell(0, 8, line, ln=1)
         pdf.ln(2)
 
     # Procesar VP para tabla si hay detecciones
@@ -429,13 +447,13 @@ def generar_pdf(datos, x, y, filename):
         pdf.ln(10)  # Espacio adicional después de la tabla
     elif not any(valor != "No se encuentra" and valor != "No se encuentra en ninguna VP" and valor != "No se encuentra en ningún MUP" for _, valor in otras_afecciones):
         pdf.set_font("Arial", "", 12)
-        pdf.cell(0, 8, " willpower se encuentra en ENP, ZEPA, LIC, VP, MUP", ln=True)
+        pdf.cell(0, 8, "No se encuentra en ENP, ZEPA, LIC, VP, MUP", ln=True)
         pdf.ln(10)  # Espacio si no hay tabla
 
     seccion_titulo("3. Localización")
     for campo in ["municipio", "polígono", "parcela"]:
         valor = datos.get(campo, "").strip()
-        campo_orden(campo.capitalize(), valor if valor else "No disponible")
+        campo_orden(pdf, campo.capitalize(), valor if valor else "No disponible")
 
     pdf.set_font("Arial", "B", 12)
     pdf.cell(0, 10, f"Coordenadas ETRS89: X = {x}, Y = {y}", ln=True)
@@ -463,7 +481,8 @@ def generar_pdf(datos, x, y, filename):
         "En caso de ser detectadas afecciones a Dominio público forestal o pecuario, "
         "así como a Espacios Naturales Protegidos o RN2000, solicitar informe a la Dirección General."
     )
-    pdf.multi_cell(0, 8, texto_aviso, border=1, align="L")
+    wrapped_aviso = textwrap.wrap(texto_aviso, width=60)
+    pdf.multi_cell(0, 8, '\n'.join(wrapped_aviso), border=1, align="L")
     pdf.set_text_color(0, 0, 0)  # Restaurar color negro para el resto del documento
 
     pdf.output(filename)
@@ -611,3 +630,4 @@ if st.session_state['mapa_html'] and st.session_state['pdf_file']:
 
     with open(st.session_state['mapa_html'], "r") as f:
         st.download_button("🌍 Descargar mapa HTML", f, file_name="mapa_busqueda.html")
+```
