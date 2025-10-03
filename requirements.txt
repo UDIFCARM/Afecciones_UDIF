@@ -1,7 +1,7 @@
 streamlit>=1.39.0
 folium>=0.17.0
 geopandas>=1.0.1
-fpdf2>=2.7.9
+fpdf>=1.7.2
 pyproj>=3.7.0
 requests>=2.32.3
 lxml>=5.3.0
