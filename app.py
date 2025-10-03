@@ -319,15 +319,27 @@ def generar_pdf(datos, x, y, filename):
     vp_key = "afección VP"
     mup_key = "afección MUP"
 
-    # Procesar afecciones VP
-    vp_valor = datos.get(vp_key, "").strip()
-    vp_detectado = []
-    if vp_valor and not vp_valor.startswith("No se encuentra") and not vp_valor.startswith("Error"):
-        nombres_vp = vp_valor.replace("Dentro de VP: ", "").split(", ")
-        vp_detectado = [(nombre.strip(), "N/A", "N/A", "N/A") for nombre in nombres_vp]
+# Procesar afecciones VP
+vp_valor = datos.get(vp_key, "").strip()
+vp_detectado = []
+if vp_valor and not vp_valor.startswith("No se encuentra") and not vp_valor.startswith("Error"):
+    try:
+        gdf = gpd.read_file(vp_url)  # Cargar el GeoJSON de Vías Pecuarias
+        seleccion = gdf[gdf.intersects(query_geom)]  # Filtrar geometrías que intersectan
+        if not seleccion.empty:
+            for _, props in seleccion.iterrows():
+                codigo_vp = props.get("VP_COD", "N/A")  # Código de la vía
+                nombre = props.get("VP_NB", "N/A")  # Nombre de la vía
+                municipio = props.get("VP_MUN", "N/A")  # Término municipal
+                situacion_legal = props.get("VP_SIT_LEG", "N/A")  # Situación legal
+                ancho_legal = props.get("VP_ANCH_LG", "N/A")  # Ancho legal
+                vp_detectado.append((codigo_vp, nombre, municipio, situacion_legal, ancho_legal))
         vp_valor = ""  # Evitamos poner "No se encuentra" si hay tabla
-    else:
-        vp_valor = "No se encuentra en ninguna VP" if not vp_detectado else ""
+    except Exception as e:
+        st.error(f"Error al procesar VP: {e}")
+        vp_valor = "Error al consultar VP"
+else:
+    vp_valor = "No se encuentra en ninguna VP" if not vp_detectado else ""
 
     # Procesar afecciones MUP
     mup_valor = datos.get(mup_key, "").strip()
@@ -381,23 +393,25 @@ def generar_pdf(datos, x, y, filename):
         pdf.ln(2)
 
         # Configurar la tabla para VP
-        col_widths = [30, 80, 40, 40]  # ID, Nombre, Municipio, Propiedad
+        col_widths = [30, 50, 40, 40, 30]  # Ajustar anchos: Código, Nombre, Municipio, Situación Legal, Ancho Legal
         row_height = 8
         pdf.set_font("Arial", "B", 11)
         pdf.set_fill_color(*azul_rgb)
-        pdf.cell(col_widths[0], row_height, "ID", border=1, fill=True)
+        pdf.cell(col_widths[0], row_height, "Código", border=1, fill=True)
         pdf.cell(col_widths[1], row_height, "Nombre", border=1, fill=True)
         pdf.cell(col_widths[2], row_height, "Municipio", border=1, fill=True)
-        pdf.cell(col_widths[3], row_height, "Propiedad", border=1, fill=True)
+        pdf.cell(col_widths[3], row_height, "Situación legal", border=1, fill=True)
+        pdf.cell(col_widths[4], row_height, "Anchura legal", border=1, fill=True)
         pdf.ln()
 
         # Agregar filas a la tabla
         pdf.set_font("Arial", "", 10)
-        for nombre, id_vp, municipio, propiedad in vp_detectado:
-            pdf.cell(col_widths[0], row_height, id_vp, border=1)
-            pdf.cell(col_widths[1], row_height, nombre, border=1)
-            pdf.cell(col_widths[2], row_height, municipio, border=1)
-            pdf.cell(col_widths[3], row_height, propiedad, border=1)
+        for codigo_vp, nombre, municipio, situacion_legal, ancho_legal in vp_detectado:
+            pdf.cell(col_widths[0], row_height, str(codigo_vp), border=1)  # Código de la vía (VP_COD)
+            pdf.cell(col_widths[1], row_height, str(nombre), border=1)  # Nombre (VP_NB)
+            pdf.cell(col_widths[2], row_height, str(municipio), border=1)  # Municipio (VP_MUN)
+            pdf.cell(col_widths[3], row_height, str(situacion_legal), border=1)  # Situación Legal (VP_SIT_LEG)
+            pdf.cell(col_widths[4], row_height, str(ancho_legal), border=1)  # Ancho Legal (VP_ANCH_LG)
             pdf.ln()
         pdf.ln(10)  # Espacio adicional después de la tabla
 
