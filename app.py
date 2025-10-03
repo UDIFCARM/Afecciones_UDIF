@@ -452,6 +452,20 @@ def generar_pdf(datos, x, y, filename):
         pdf.set_font("Arial", "", 12)
         pdf.cell(0, 8, "No se pudo generar el mapa de localización.", ln=True)
 
+# Nueva sección para el texto en cuadro
+    pdf.ln(10)  # Espacio antes del cuadro
+    pdf.set_font("Arial", "B", 12)
+    pdf.set_text_color(255, 0, 0)  # Color rojo
+    pdf.set_draw_color(0, 0, 0)  # Borde negro
+    pdf.set_line_width(0.5)  # Grosor del borde
+    texto_aviso = (
+        "Este informe no tiene validez legal y sirve solo como información general. "
+        "En caso de ser detectadas afecciones a Dominio público forestal o pecuario, "
+        "así como a Espacios Naturales Protegidos o RN2000, solicitar informe a la Dirección General."
+    )
+    pdf.multi_cell(0, 8, texto_aviso, border=1, align="L")
+    pdf.set_text_color(0, 0, 0)  # Restaurar color negro para el resto del documento
+
     pdf.output(filename)
     return filename
    
