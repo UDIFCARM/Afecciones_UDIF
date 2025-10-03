@@ -1,7 +1,7 @@
 import streamlit as st
 import folium
 from streamlit.components.v1 import html
-from fpdf import FPDF
+from fpdf2 import FPDF
 from pyproj import Transformer
 import requests
 import xml.etree.ElementTree as ET
@@ -324,7 +324,7 @@ def generar_pdf(datos, x, y, filename):
     vp_detectado = []
     if vp_valor and not vp_valor.startswith("No se encuentra") and not vp_valor.startswith("Error"):
         try:
-            gdf = gpd.read_file(vp_url)  # Cargar el GeoJSON de Vías Pecuarias
+            gdf = gpd.read_file(vp_url)  # Cargar el GeoJSON de Vías Pecuarias (VP.json)
             seleccion = gdf[gdf.intersects(query_geom)]  # Filtrar geometrías que intersectan
             if not seleccion.empty:
                 for _, props in seleccion.iterrows():
@@ -333,10 +333,10 @@ def generar_pdf(datos, x, y, filename):
                     municipio = props.get("VP_MUN", "N/A")  # Término municipal
                     situacion_legal = props.get("VP_SIT_LEG", "N/A")  # Situación legal
                     ancho_legal = props.get("VP_ANCH_LG", "N/A")  # Ancho legal
-                    vp_detectado.append((codigo_vp, nombre, municipio, situacion_legal, ancho_legal))
+                    vp_detectado.append((str(codigo_vp), str(nombre), str(municipio), str(situacion_legal), str(ancho_legal)))
             vp_valor = ""  # Evitamos poner "No se encuentra" si hay tabla
         except Exception as e:
-            st.error(f"Error al procesar VP: {e}")
+            st.error(f"Error al procesar VP desde {vp_url}: {e}")
             vp_valor = "Error al consultar VP"
     else:
         vp_valor = "No se encuentra en ninguna VP" if not vp_detectado else ""
@@ -388,20 +388,20 @@ def generar_pdf(datos, x, y, filename):
 
     # Procesar VP para tabla si hay detecciones
     if vp_detectado:
-        pdf.set_font("Arial", "B", 10)
+        pdf.set_font("Arial", "B", 12)
         pdf.cell(0, 8, "Afecciones de Vías Pecuarias (VP):", ln=True)
         pdf.ln(2)
 
         # Configurar la tabla para VP
-        col_widths = [30, 70, 40, 40, 30]  # Ajustar anchos: Código, Nombre, Municipio, Situación Legal, Ancho Legal
-        base_row_height = 8
+        col_widths = [30, 70, 40, 40, 30]  # Anchos: Código, Nombre, Municipio, Situación Legal, Ancho Legal
+        base_row_height = 8  # Altura base de cada fila
         pdf.set_font("Arial", "B", 11)
         pdf.set_fill_color(*azul_rgb)
         pdf.cell(col_widths[0], base_row_height, "Código", border=1, fill=True)
         pdf.cell(col_widths[1], base_row_height, "Nombre", border=1, fill=True)
         pdf.cell(col_widths[2], base_row_height, "Municipio", border=1, fill=True)
-        pdf.cell(col_widths[3], base_row_height, "Situación legal", border=1, fill=True)
-        pdf.cell(col_widths[4], base_row_height, "Anchura legal", border=1, fill=True)
+        pdf.cell(col_widths[3], base_row_height, "Situación Legal", border=1, fill=True)
+        pdf.cell(col_widths[4], base_row_height, "Ancho Legal", border=1, fill=True)
         pdf.ln()
 
         # Agregar filas a la tabla
@@ -409,26 +409,31 @@ def generar_pdf(datos, x, y, filename):
         for codigo_vp, nombre, municipio, situacion_legal, ancho_legal in vp_detectado:
             # Calcular el número de líneas necesarias para el nombre
             pdf.set_font("Arial", "", 10)  # Asegurar fuente para cálculo
-            nombre_lines = pdf.get_string_width(str(nombre)) / col_widths[1] + 1
-            nombre_lines = int(nombre_lines)  # Redondear hacia arriba
+            nombre_lines = max(1, int(pdf.get_string_width(nombre) / col_widths[1] + 1))  # Mínimo 1 línea
             row_height = base_row_height * nombre_lines  # Ajustar altura de la fila
 
+            # Guardar posición actual para alinear celdas
+            x_before = pdf.get_x()
+            y_before = pdf.get_y()
+
             # Dibujar celdas
-            pdf.cell(col_widths[0], row_height, str(codigo_vp), border=1, align="C")
+            pdf.cell(col_widths[0], row_height, codigo_vp, border=1, align="C")
             pdf.multi_cell(
                 col_widths[1],
                 base_row_height,
-                str(nombre),
+                nombre,
                 border=1,
                 align="L",
                 new_x="RIGHT",
                 new_y="TOP"
             )
-        pdf.cell(col_widths[2], row_height, str(municipio), border=1, align="C")
-        pdf.cell(col_widths[3], row_height, str(situacion_legal), border=1, align="C")
-        pdf.cell(col_widths[4], row_height, str(ancho_legal), border=1, align="C")
-        pdf.ln(row_height)  # Avanzar a la siguiente fila
-    pdf.ln(10)  # Espacio adicional después de la tabla
+            # Restaurar posición para las siguientes celdas
+            pdf.set_xy(x_before + col_widths[0] + col_widths[1], y_before)
+            pdf.cell(col_widths[2], row_height, municipio, border=1, align="C")
+            pdf.cell(col_widths[3], row_height, situacion_legal, border=1, align="C")
+            pdf.cell(col_widths[4], row_height, ancho_legal, border=1, align="C")
+            pdf.ln(row_height)  # Avanzar a la siguiente fila
+        pdf.ln(10)  # Espacio adicional después de la tabla
 
     # Procesar MUP para tabla si hay detecciones
     if mup_detectado:
