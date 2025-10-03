@@ -393,27 +393,42 @@ def generar_pdf(datos, x, y, filename):
         pdf.ln(2)
 
         # Configurar la tabla para VP
-        col_widths = [20, 50, 50, 50, 30]  # Ajustar anchos: Código, Nombre, Municipio, Situación Legal, Ancho Legal
-        row_height = 8
+        col_widths = [30, 70, 40, 40, 30]  # Ajustar anchos: Código, Nombre, Municipio, Situación Legal, Ancho Legal
+        base_row_height = 8
         pdf.set_font("Arial", "B", 11)
         pdf.set_fill_color(*azul_rgb)
-        pdf.cell(col_widths[0], row_height, "Código", border=1, fill=True)
-        pdf.cell(col_widths[1], row_height, "Nombre", border=1, fill=True)
-        pdf.cell(col_widths[2], row_height, "Municipio", border=1, fill=True)
-        pdf.cell(col_widths[3], row_height, "Situación legal", border=1, fill=True)
-        pdf.cell(col_widths[4], row_height, "Anchura legal", border=1, fill=True)
+        pdf.cell(col_widths[0], base_row_height, "Código", border=1, fill=True)
+        pdf.cell(col_widths[1], base_row_height, "Nombre", border=1, fill=True)
+        pdf.cell(col_widths[2], base_row_height, "Municipio", border=1, fill=True)
+        pdf.cell(col_widths[3], base_row_height, "Situación legal", border=1, fill=True)
+        pdf.cell(col_widths[4], base_row_height, "Anchura legal", border=1, fill=True)
         pdf.ln()
 
         # Agregar filas a la tabla
         pdf.set_font("Arial", "", 10)
         for codigo_vp, nombre, municipio, situacion_legal, ancho_legal in vp_detectado:
-            pdf.cell(col_widths[0], row_height, str(codigo_vp), border=1)  # Código de la vía (VP_COD)
-            pdf.cell(col_widths[1], row_height, str(nombre), border=1)  # Nombre (VP_NB)
-            pdf.cell(col_widths[2], row_height, str(municipio), border=1)  # Municipio (VP_MUN)
-            pdf.cell(col_widths[3], row_height, str(situacion_legal), border=1)  # Situación Legal (VP_SIT_LEG)
-            pdf.cell(col_widths[4], row_height, str(ancho_legal), border=1)  # Ancho Legal (VP_ANCH_LG)
-            pdf.ln()
-        pdf.ln(10)  # Espacio adicional después de la tabla
+            # Calcular el número de líneas necesarias para el nombre
+            pdf.set_font("Arial", "", 10)  # Asegurar fuente para cálculo
+            nombre_lines = pdf.get_string_width(str(nombre)) / col_widths[1] + 1
+            nombre_lines = int(nombre_lines)  # Redondear hacia arriba
+            row_height = base_row_height * nombre_lines  # Ajustar altura de la fila
+
+            # Dibujar celdas
+            pdf.cell(col_widths[0], row_height, str(codigo_vp), border=1, align="C")
+            pdf.multi_cell(
+                col_widths[1],
+                base_row_height,
+                str(nombre),
+                border=1,
+                align="L",
+                new_x="RIGHT",
+                new_y="TOP"
+            )
+        pdf.cell(col_widths[2], row_height, str(municipio), border=1, align="C")
+        pdf.cell(col_widths[3], row_height, str(situacion_legal), border=1, align="C")
+        pdf.cell(col_widths[4], row_height, str(ancho_legal), border=1, align="C")
+        pdf.ln(row_height)  # Avanzar a la siguiente fila
+    pdf.ln(10)  # Espacio adicional después de la tabla
 
     # Procesar MUP para tabla si hay detecciones
     if mup_detectado:
