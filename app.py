@@ -255,6 +255,9 @@ def generar_pdf(datos, x, y, filename):
     pdf = FPDF()
     pdf.add_page()
 
+    # Configurar márgenes para asegurar suficiente espacio
+    pdf.set_margins(10, 10, 10)  # Márgenes de 10 mm en izquierda, superior, derecha
+
     logo_url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/logos.jpg"
     response = requests.get(logo_url)
     if response.status_code == 200:
