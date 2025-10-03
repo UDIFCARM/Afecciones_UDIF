@@ -12,7 +12,7 @@ from shapely.geometry import Point
 import uuid
 from datetime import datetime
 from docx import Document
-from branca.element import Template, MacroElement
+from branca.element import Template, MacroElement 
 from io import BytesIO
 from staticmap import StaticMap, CircleMarker
 
@@ -250,7 +250,7 @@ def generar_imagen_estatica_mapa(x, y, zoom=16, size=(800, 600)):
     return output_path
 
 # Función para generar el PDF con los datos de la solicitud
-# Función para generar el PDF con los datos de la solicitud (modificada para tabla de VP si hay múltiples afecciones)
+# Función para generar el PDF con los datos de la solicitud
 def generar_pdf(datos, x, y, filename):
     pdf = FPDF()
     pdf.add_page()
@@ -315,42 +315,66 @@ def generar_pdf(datos, x, y, filename):
 
     seccion_titulo("2. Afecciones detectadas")
 
-    afecciones_keys = ["afección ENP", "afección ZEPA", "afección LIC", "afección TM", "afección MUP"]
+    afecciones_keys = ["afección ENP", "afección ZEPA", "afección LIC", "afección TM"]
     vp_key = "afección VP"
+    mup_key = "afección MUP"
 
     # Procesar afecciones VP
     vp_valor = datos.get(vp_key, "").strip()
     vp_detectado = []
     if vp_valor and not vp_valor.startswith("No se encuentra") and not vp_valor.startswith("Error"):
         nombres_vp = vp_valor.replace("Dentro de VP: ", "").split(", ")
-        if len(nombres_vp) > 1:  # Si hay más de una vía pecuaria
-            vp_detectado = [(nombre.strip(), "N/A", "N/A", "N/A") for nombre in nombres_vp]
-        else:
-            # Si solo hay una VP, incluir en otras afecciones
-            afecciones_keys.insert(0, vp_key)
+        vp_detectado = [(nombre.strip(), "N/A", "N/A", "N/A") for nombre in nombres_vp]
+        vp_valor = ""  # Evitamos poner "No se encuentra" si hay tabla
+    else:
+        vp_valor = "No se encuentra en ninguna VP" if not vp_detectado else ""
 
-    # Procesar otras afecciones como texto, incluyendo "No se encuentra" para las no detectadas
+    # Procesar afecciones MUP
+    mup_valor = datos.get(mup_key, "").strip()
+    mup_detectado = []
+    if mup_valor and not mup_valor.startswith("No se encuentra") and not mup_valor.startswith("Error"):
+        entries = mup_valor.replace("Dentro de MUP:\n", "").split("\n\n")
+        for entry in entries:
+            lines = entry.split("\n")
+            if lines:
+                id_monte = lines[0].replace("ID: ", "").strip() if len(lines) > 0 else "N/A"
+                nombre = lines[1].replace("Nombre: ", "").strip() if len(lines) > 1 else "N/A"
+                municipio = lines[2].replace("Municipio: ", "").strip() if len(lines) > 2 else "N/A"
+                propiedad = lines[3].replace("Propiedad: ", "").strip() if len(lines) > 3 else "N/A"
+                mup_detectado.append((id_monte, nombre, municipio, propiedad))
+        mup_valor = ""  # Evitamos poner "No se encuentra" si hay tabla
+    else:
+        mup_valor = "No se encuentra en ningún MUP" if not mup_detectado else ""
+
+    # Procesar otras afecciones como texto
     otras_afecciones = []
     for key in afecciones_keys:
         valor = datos.get(key, "").strip()
-        if valor and not valor.startswith("No se encuentra") and not valor.startswith("Error"):
-            nombre_afeccion = valor.replace(f"Dentro de {key.replace('afección ', '').strip()}: ", "").strip()
-            otras_afecciones.append((key.capitalize(), nombre_afeccion))
+        if valor and not valor.startswith("Error"):
+            otras_afecciones.append((key.capitalize(), valor))
         else:
-            otras_afecciones.append((key.capitalize(), "No se encuentra"))
+            otras_afecciones.append((key.capitalize(), valor if valor else "No se encuentra"))
+    
+    # Solo incluir MUP o VP en "otras afecciones" si NO tienen detecciones
+    if not vp_detectado:
+        otras_afecciones.append(("Afección VP", vp_valor if vp_valor else "No se encuentra"))
+    if not mup_detectado:
+        otras_afecciones.append(("Afección MUP", mup_valor if mup_valor else "No se encuentra"))
 
     # Mostrar otras afecciones con títulos en negrita
-    pdf.set_font("Arial", "B", 12)
-    pdf.cell(0, 8, "Otras afecciones:", ln=True)
-    pdf.ln(2)
-    for titulo, valor in otras_afecciones:
+    if otras_afecciones:
         pdf.set_font("Arial", "B", 12)
-        pdf.cell(60, 8, f"{titulo}:", ln=0)
-        pdf.set_font("Arial", "", 12)
-        pdf.multi_cell(0, 8, valor)
-    pdf.ln(2)
+        pdf.cell(0, 8, "Otras afecciones:", ln=True)
+        pdf.ln(2)
+        for titulo, valor in otras_afecciones:
+            if valor:  # Solo mostrar si el valor no está vacío
+                pdf.set_font("Arial", "B", 12)
+                pdf.cell(60, 8, f"{titulo}:", ln=0)
+                pdf.set_font("Arial", "", 12)
+                pdf.multi_cell(0, 8, valor)
+        pdf.ln(2)
 
-    # Procesar VP para tabla si hay múltiples
+    # Procesar VP para tabla si hay detecciones
     if vp_detectado:
         pdf.set_font("Arial", "B", 12)
         pdf.cell(0, 8, "Afecciones de Vías Pecuarias (VP):", ln=True)
@@ -377,20 +401,7 @@ def generar_pdf(datos, x, y, filename):
             pdf.ln()
         pdf.ln(10)  # Espacio adicional después de la tabla
 
-    # Procesar MUP para tabla
-    mup_valor = datos.get("afección MUP", "").strip()
-    mup_detectado = []
-    if mup_valor and not mup_valor.startswith("No se encuentra") and not mup_valor.startswith("Error"):
-        entries = mup_valor.replace("Dentro de MUP:\n", "").split("\n\n")
-        for entry in entries:
-            lines = entry.split("\n")
-            if lines:
-                id_monte = lines[0].replace("ID: ", "").strip() if len(lines) > 0 else "N/A"
-                nombre = lines[1].replace("Nombre: ", "").strip() if len(lines) > 1 else "N/A"
-                municipio = lines[2].replace("Municipio: ", "").strip() if len(lines) > 2 else "N/A"
-                propiedad = lines[3].replace("Propiedad: ", "").strip() if len(lines) > 3 else "N/A"
-                mup_detectado.append((id_monte, nombre, municipio, propiedad))
-
+    # Procesar MUP para tabla si hay detecciones
     if mup_detectado:
         pdf.set_font("Arial", "B", 12)
         pdf.cell(0, 8, "Afecciones de Montes (MUP):", ln=True)
@@ -416,9 +427,9 @@ def generar_pdf(datos, x, y, filename):
             pdf.cell(col_widths[3], row_height, propiedad, border=1)
             pdf.ln()
         pdf.ln(10)  # Espacio adicional después de la tabla
-    elif not any(valor != "No se encuentra" for _, valor in otras_afecciones) and not vp_detectado:
+    elif not any(valor != "No se encuentra" and valor != "No se encuentra en ninguna VP" and valor != "No se encuentra en ningún MUP" for _, valor in otras_afecciones):
         pdf.set_font("Arial", "", 12)
-        pdf.cell(0, 8, "No se encuentra en ENP, ZEPA, LIC, VP, MUP", ln=True)
+        pdf.cell(0, 8, " willpower se encuentra en ENP, ZEPA, LIC, VP, MUP", ln=True)
         pdf.ln(10)  # Espacio si no hay tabla
 
     seccion_titulo("3. Localización")
@@ -441,9 +452,23 @@ def generar_pdf(datos, x, y, filename):
         pdf.set_font("Arial", "", 12)
         pdf.cell(0, 8, "No se pudo generar el mapa de localización.", ln=True)
 
+# Nueva sección para el texto en cuadro
+    pdf.ln(10)  # Espacio antes del cuadro
+    pdf.set_font("Arial", "B", 12)
+    pdf.set_text_color(255, 0, 0)  # Color rojo
+    pdf.set_draw_color(0, 0, 0)  # Borde negro
+    pdf.set_line_width(0.5)  # Grosor del borde
+    texto_aviso = (
+        "Este informe no tiene validez legal y sirve solo como información general. "
+        "En caso de ser detectadas afecciones a Dominio público forestal o pecuario, "
+        "así como a Espacios Naturales Protegidos o RN2000, solicitar informe a la Dirección General."
+    )
+    pdf.multi_cell(0, 8, texto_aviso, border=1, align="L")
+    pdf.set_text_color(0, 0, 0)  # Restaurar color negro para el resto del documento
+
     pdf.output(filename)
     return filename
-    
+   
 # Interfaz de Streamlit  
 st.image("https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/logos.jpg", use_container_width=True)
 st.title("Informe básico de Afecciones al Medio Natural")
