@@ -319,27 +319,27 @@ def generar_pdf(datos, x, y, filename):
     vp_key = "afección VP"
     mup_key = "afección MUP"
 
-# Procesar afecciones VP
-vp_valor = datos.get(vp_key, "").strip()
-vp_detectado = []
-if vp_valor and not vp_valor.startswith("No se encuentra") and not vp_valor.startswith("Error"):
-    try:
-        gdf = gpd.read_file(vp_url)  # Cargar el GeoJSON de Vías Pecuarias
-        seleccion = gdf[gdf.intersects(query_geom)]  # Filtrar geometrías que intersectan
-        if not seleccion.empty:
-            for _, props in seleccion.iterrows():
-                codigo_vp = props.get("VP_COD", "N/A")  # Código de la vía
-                nombre = props.get("VP_NB", "N/A")  # Nombre de la vía
-                municipio = props.get("VP_MUN", "N/A")  # Término municipal
-                situacion_legal = props.get("VP_SIT_LEG", "N/A")  # Situación legal
-                ancho_legal = props.get("VP_ANCH_LG", "N/A")  # Ancho legal
-                vp_detectado.append((codigo_vp, nombre, municipio, situacion_legal, ancho_legal))
-        vp_valor = ""  # Evitamos poner "No se encuentra" si hay tabla
-    except Exception as e:
-        st.error(f"Error al procesar VP: {e}")
-        vp_valor = "Error al consultar VP"
-else:
-    vp_valor = "No se encuentra en ninguna VP" if not vp_detectado else ""
+    # Procesar afecciones VP
+    vp_valor = datos.get(vp_key, "").strip()
+    vp_detectado = []
+    if vp_valor and not vp_valor.startswith("No se encuentra") and not vp_valor.startswith("Error"):
+        try:
+            gdf = gpd.read_file(vp_url)  # Cargar el GeoJSON de Vías Pecuarias
+            seleccion = gdf[gdf.intersects(query_geom)]  # Filtrar geometrías que intersectan
+            if not seleccion.empty:
+                for _, props in seleccion.iterrows():
+                    codigo_vp = props.get("VP_COD", "N/A")  # Código de la vía
+                    nombre = props.get("VP_NB", "N/A")  # Nombre de la vía
+                    municipio = props.get("VP_MUN", "N/A")  # Término municipal
+                    situacion_legal = props.get("VP_SIT_LEG", "N/A")  # Situación legal
+                    ancho_legal = props.get("VP_ANCH_LG", "N/A")  # Ancho legal
+                    vp_detectado.append((codigo_vp, nombre, municipio, situacion_legal, ancho_legal))
+            vp_valor = ""  # Evitamos poner "No se encuentra" si hay tabla
+        except Exception as e:
+            st.error(f"Error al procesar VP: {e}")
+            vp_valor = "Error al consultar VP"
+    else:
+        vp_valor = "No se encuentra en ninguna VP" if not vp_detectado else ""
 
     # Procesar afecciones MUP
     mup_valor = datos.get(mup_key, "").strip()
