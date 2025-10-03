@@ -393,7 +393,7 @@ def generar_pdf(datos, x, y, filename):
         pdf.ln(2)
 
         # Configurar la tabla para VP
-        col_widths = [16, 50, 50, 50, 25]  # Ajustar anchos: Código, Nombre, Municipio, Situación Legal, Ancho Legal
+        col_widths = [16, 50, 50, 50, 30]  # Ajustar anchos: Código, Nombre, Municipio, Situación Legal, Ancho Legal
         row_height = 8
         pdf.set_font("Arial", "B", 11)
         pdf.set_fill_color(*azul_rgb)
