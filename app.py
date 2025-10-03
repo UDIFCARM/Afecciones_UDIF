@@ -300,7 +300,11 @@ def generar_pdf(datos, x, y, filename):
         pdf.set_font("Arial", "B", 12)
         pdf.cell(50, 8, f"{titulo}:", ln=0)
         pdf.set_font("Arial", "", 12)
-        pdf.multi_cell(0, 8, valor if valor else "No especificado")
+        # Limpiar el texto para eliminar caracteres no válidos
+        valor = valor.encode('latin-1', errors='ignore').decode('latin-1') if valor else "No especificado"
+        # Usar un ancho explícito para multi_cell, respetando márgenes
+        page_width = pdf.w - 2 * pdf.l_margin
+        pdf.multi_cell(page_width - 50, 8, valor)
 
     seccion_titulo("1. Datos del solicitante")
     for titulo, valor in campos_orden:
