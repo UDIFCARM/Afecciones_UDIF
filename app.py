@@ -323,8 +323,15 @@ def generar_pdf(datos, x, y, filename):
     vp_valor = datos.get(vp_key, "").strip()
     vp_detectado = []
     if vp_valor and not vp_valor.startswith("No se encuentra") and not vp_valor.startswith("Error"):
-        nombres_vp = vp_valor.replace("Dentro de VP: ", "").split(", ")
-        vp_detectado = [(nombre.strip(), "N/A", "N/A", "N/A") for nombre in nombres_vp]
+        entries = vp_valor.replace("Dentro de VP:\n", "").split("\n\n")
+        for entry in entries:
+            lines = entry.split("\n")
+            if lines:
+                VP_COD = lines[0].replace("VP_COD: ", "").strip() if len(lines) > 0 else "N/A"
+                VP_NB = lines[1].replace("VP_NB: ", "").strip() if len(lines) > 1 else "N/A"
+                VP_MUN = lines[2].replace("VP_MUN: ", "").strip() if len(lines) > 2 else "N/A"
+                VP_SIT_LEG = lines[3].replace("VP_SIT_LEG: ", "").strip() if len(lines) > 3 else "N/A"
+                vp_detectado.append((VP_COD, VP_NB, VP_MUN, VP_SIT_LEG))
         vp_valor = ""  # Evitamos poner "No se encuentra" si hay tabla
     else:
         vp_valor = "No se encuentra en ninguna VP" if not vp_detectado else ""
@@ -381,23 +388,23 @@ def generar_pdf(datos, x, y, filename):
         pdf.ln(2)
 
         # Configurar la tabla para VP
-        col_widths = [30, 80, 40, 40]  # ID, Nombre, Municipio, Propiedad
+        col_widths = [30, 80, 40, 40]  # VP_COD, Nombre, Municipio, Estado Legal
         row_height = 8
         pdf.set_font("Arial", "B", 11)
         pdf.set_fill_color(*azul_rgb)
-        pdf.cell(col_widths[0], row_height, "ID", border=1, fill=True)
-        pdf.cell(col_widths[1], row_height, "Nombre", border=1, fill=True)
-        pdf.cell(col_widths[2], row_height, "Municipio", border=1, fill=True)
-        pdf.cell(col_widths[3], row_height, "Propiedad", border=1, fill=True)
+        pdf.cell(col_widths[0], row_height, "VP_COD", border=1, fill=True)
+        pdf.cell(col_widths[1], row_height, "VP_NB", border=1, fill=True)
+        pdf.cell(col_widths[2], row_height, "VP_MUN", border=1, fill=True)
+        pdf.cell(col_widths[3], row_height, "VP_SIT_LEG", border=1, fill=True)
         pdf.ln()
 
         # Agregar filas a la tabla
         pdf.set_font("Arial", "", 10)
         for nombre, id_vp, municipio, propiedad in vp_detectado:
-            pdf.cell(col_widths[0], row_height, id_vp, border=1)
-            pdf.cell(col_widths[1], row_height, nombre, border=1)
-            pdf.cell(col_widths[2], row_height, municipio, border=1)
-            pdf.cell(col_widths[3], row_height, propiedad, border=1)
+            pdf.cell(col_widths[0], row_height, VP_COD, border=1)
+            pdf.cell(col_widths[1], row_height, VP_NB, border=1)
+            pdf.cell(col_widths[2], row_height, VP_MUN, border=1)
+            pdf.cell(col_widths[3], row_height, VP_SIT_LEG, border=1)
             pdf.ln()
         pdf.ln(10)  # Espacio adicional después de la tabla
 
