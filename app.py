@@ -1,6 +1,7 @@
 import streamlit as st
 import folium
 from streamlit.components.v1 import html
+from fpdf import FPDF
 from pyproj import Transformer
 import requests
 import xml.etree.ElementTree as ET
@@ -14,7 +15,6 @@ from docx import Document
 from branca.element import Template, MacroElement 
 from io import BytesIO
 from staticmap import StaticMap, CircleMarker
-from fpdf import FPDF
 
 # Diccionario con los nombres de municipios y sus nombres base de archivo
 shp_urls = {
