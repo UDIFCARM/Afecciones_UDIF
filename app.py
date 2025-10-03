@@ -250,10 +250,11 @@ def generar_imagen_estatica_mapa(x, y, zoom=16, size=(800, 600)):
     return output_path
 
 # Función para generar el PDF con los datos de la solicitud
-# Función para generar el PDF con los datos de la solicitud
 def generar_pdf(datos, x, y, filename):
     pdf = FPDF()
     pdf.add_page()
+    pdf.set_left_margin(10)  # Establecer márgenes explícitos
+    pdf.set_right_margin(10)
 
     logo_url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/logos.jpg"
     response = requests.get(logo_url)
@@ -300,7 +301,10 @@ def generar_pdf(datos, x, y, filename):
         pdf.set_font("Arial", "B", 12)
         pdf.cell(50, 8, f"{titulo}:", ln=0)
         pdf.set_font("Arial", "", 12)
-        pdf.multi_cell(0, 8, valor if valor else "No especificado")
+        pdf.set_x(pdf.l_margin + 50)  # Restablecer posición X
+        available_width = pdf.w - pdf.l_margin - pdf.r_margin - 50
+        clean_valor = ''.join(c for c in str(valor) if c.isprintable()) if valor else "No especificado"
+        pdf.multi_cell(available_width, 8, clean_valor)
 
     seccion_titulo("1. Datos del solicitante")
     for titulo, valor in campos_orden:
