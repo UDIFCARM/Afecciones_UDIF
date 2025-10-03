@@ -476,9 +476,8 @@ def generar_pdf(datos, x, y, filename):
         "En caso de ser detectadas afecciones a Dominio público forestal o pecuario, "
         "así como a Espacios Naturales Protegidos o RN2000, solicitar informe a la Dirección General."
     )
-    wrapped_aviso = textwrap.wrap(texto_aviso, width=60)
-    pdf.multi_cell(0, 8, '\n'.join(wrapped_aviso), border=1, align="L")
-    pdf.set_text_color(0, 0, 0)
+    pdf.multi_cell(0, 8, texto_aviso, border=1, align="L")
+    pdf.set_text_color(0, 0, 0)  # Restaurar color negro para el resto del documento
 
     pdf.output(filename)
     return filename
