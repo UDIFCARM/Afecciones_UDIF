@@ -1,7 +1,7 @@
 import streamlit as st
 import folium
 from streamlit.components.v1 import html
-from fpdf2 import FPDF  # Cambiado a fpdf2
+from fpdf import FPDF
 from pyproj import Transformer
 import requests
 import xml.etree.ElementTree as ET
@@ -12,7 +12,7 @@ from shapely.geometry import Point
 import uuid
 from datetime import datetime
 from docx import Document
-from branca.element import Template, MacroElement 
+from branca.element import Template, MacroElement
 from io import BytesIO
 from staticmap import StaticMap, CircleMarker
 import textwrap
@@ -245,7 +245,7 @@ def crear_mapa(lon, lat, afecciones=[], parcela_gdf=None):
 
     return mapa_html, afecciones
 
-# Función corregida para generar la imagen estática del mapa usando py-staticmaps
+# Función para generar la imagen estática del mapa usando py-staticmaps
 def generar_imagen_estatica_mapa(x, y, zoom=16, size=(800, 600)):
     lon, lat = transformar_coordenadas(x, y)
     if lon is None or lat is None:
