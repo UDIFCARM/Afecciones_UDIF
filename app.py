@@ -15,6 +15,7 @@ from docx import Document
 from branca.element import Template, MacroElement 
 from io import BytesIO
 from staticmap import StaticMap, CircleMarker
+from fpdf2 import FPDF
 
 # Diccionario con los nombres de municipios y sus nombres base de archivo
 shp_urls = {
