@@ -296,11 +296,25 @@ def generar_pdf(datos, x, y, filename):
         pdf.cell(0, 10, texto, ln=True, fill=True)
         pdf.ln(2)
 
+    import re
+
+    def limpiar_texto(texto):
+        if not isinstance(texto, str):
+            texto = str(texto)
+        texto_limpio = re.sub(r'[^\x20-\x7EáéíóúÁÉÍÓÚñÑ]', '', texto)
+        return texto_limpio.strip() or "No especificado"
+
     def campo_orden(titulo, valor):
         pdf.set_font("Arial", "B", 12)
         pdf.cell(50, 8, f"{titulo}:", ln=0)
         pdf.set_font("Arial", "", 12)
-        pdf.multi_cell(0, 8, valor if valor else "No especificado")
+        valor_limpio = limpiar_texto(valor)
+        page_width = pdf.w - 2 * pdf.l_margin - 50  # Ajustar ancho disponible
+        try:
+            pdf.multi_cell(page_width, 8, valor_limpio)
+        except Exception as e:
+            st.error(f"Error al renderizar el campo {titulo}: {e}")
+            pdf.multi_cell(page_width, 8, "No especificado")
 
     seccion_titulo("1. Datos del solicitante")
     for titulo, valor in campos_orden:
