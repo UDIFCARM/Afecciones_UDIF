@@ -500,9 +500,10 @@ def generar_pdf(datos, x, y, filename):
     pdf.set_draw_color(0, 0, 0)
     pdf.set_line_width(0.5)
     texto_aviso = (
-        "Este informe no tiene validez legal y sirve solo como información general. "
-        "En caso de ser detectadas afecciones a Dominio público forestal o pecuario, "
-        "así como a Espacios Naturales Protegidos o RN2000, solicitar informe a la Dirección General."
+        "Este informe no tiene caracter de borrador sin validez legal y sirve solo "
+        "como avance de las posibles afecciones del lugar indicado. "
+        "Para obtener un certificado de las mismas debe solicitar por el "
+        "procedimiento correspondiente informe a éste centro directivo."
     )
     pdf.multi_cell(0, 8, texto_aviso, border=1, align="L")
     pdf.set_text_color(0, 0, 0)  # Restaurar color negro para el resto del documento
