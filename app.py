@@ -358,7 +358,7 @@ def generar_pdf(datos, x, y, filename):
         pdf.image(imagen_mapa_path, x=pdf.l_margin, w=epw)
     else:
         pdf.set_font("Arial", "", 12)
-        pdf.cell(0, 8, "No se pudo generar el mapa de localización.", ln=True)C
+        pdf.cell(0, 8, "No se pudo generar el mapa de localización.", ln=True)
 
     seccion_titulo("3. Afecciones detectadas")
 
