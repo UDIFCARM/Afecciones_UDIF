@@ -341,7 +341,26 @@ def generar_pdf(datos, x, y, filename):
     for line in wrapped_objeto:
         pdf.cell(0, 8, line, ln=1)
 
-    seccion_titulo("2. Afecciones detectadas")
+    seccion_titulo("2. Localización")
+    for campo in ["municipio", "polígono", "parcela"]:
+        valor = datos.get(campo, "").strip()
+        campo_orden(pdf, campo.capitalize(), valor if valor else "No disponible")
+
+    pdf.set_font("Arial", "B", 12)
+    pdf.cell(0, 10, f"Coordenadas ETRS89: X = {x}, Y = {y}", ln=True)
+
+    imagen_mapa_path = generar_imagen_estatica_mapa(x, y)
+    if imagen_mapa_path and os.path.exists(imagen_mapa_path):
+        epw = pdf.w - 2 * pdf.l_margin
+        pdf.ln(5)
+        pdf.set_font("Arial", "B", 12)
+        pdf.cell(0, 8, "Mapa de localización:", ln=True)
+        pdf.image(imagen_mapa_path, x=pdf.l_margin, w=epw)
+    else:
+        pdf.set_font("Arial", "", 12)
+        pdf.cell(0, 8, "No se pudo generar el mapa de localización.", ln=True)C
+
+    seccion_titulo("3. Afecciones detectadas")
 
     afecciones_keys = ["afección ENP", "afección ZEPA", "afección LIC", "afección TM"]
     vp_key = "afección VP"
@@ -473,25 +492,6 @@ def generar_pdf(datos, x, y, filename):
         pdf.set_font("Arial", "", 12)
         pdf.cell(0, 8, "No se encuentra en ENP, ZEPA, LIC, VP, MUP", ln=True)
         pdf.ln(10)
-
-    seccion_titulo("3. Localización")
-    for campo in ["municipio", "polígono", "parcela"]:
-        valor = datos.get(campo, "").strip()
-        campo_orden(pdf, campo.capitalize(), valor if valor else "No disponible")
-
-    pdf.set_font("Arial", "B", 12)
-    pdf.cell(0, 10, f"Coordenadas ETRS89: X = {x}, Y = {y}", ln=True)
-
-    imagen_mapa_path = generar_imagen_estatica_mapa(x, y)
-    if imagen_mapa_path and os.path.exists(imagen_mapa_path):
-        epw = pdf.w - 2 * pdf.l_margin
-        pdf.ln(5)
-        pdf.set_font("Arial", "B", 12)
-        pdf.cell(0, 8, "Mapa de localización:", ln=True)
-        pdf.image(imagen_mapa_path, x=pdf.l_margin, w=epw)
-    else:
-        pdf.set_font("Arial", "", 12)
-        pdf.cell(0, 8, "No se pudo generar el mapa de localización.", ln=True)
 
     # Nueva sección para el texto en cuadro
     pdf.ln(10)
