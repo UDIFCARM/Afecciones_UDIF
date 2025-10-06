@@ -292,7 +292,7 @@ def generar_pdf(datos, x, y, filename):
 
     pdf.set_font("Arial", "B", size=16)
     pdf.set_text_color(0, 0, 0)
-    pdf.cell(0, 10, "Informe de Afecciones Ambientales", ln=True, align="C")
+    pdf.cell(0, 10, "Informe preliminar de Afecciones Forestales", ln=True, align="C")
     pdf.ln(10)
 
     azul_rgb = (141, 179, 226)
