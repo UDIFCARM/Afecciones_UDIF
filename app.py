@@ -513,7 +513,7 @@ def generar_pdf(datos, x, y, filename):
 
 # Interfaz de Streamlit
 st.image("https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/logos.jpg", use_container_width=True)
-st.title("Informe básico de Afecciones al Medio Natural")
+st.title("Informe preliminar de Afecciones Forestales")
 
 modo = st.radio("Seleccione el modo de búsqueda. Recuerde que la busqueda por parcela analiza afecciones al total de la superficie de la parcela, por el contrario la busqueda por coodenadas analiza las afecciones del punto", ["Por coordenadas", "Por parcela"])
 
