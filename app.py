@@ -275,7 +275,7 @@ def generar_pdf(datos, x, y, filename):
 
     try:
         logo_url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/logos.jpg"
-        response = requests.get(logo_url, timeout=10)
+        response = requests.get(logo_url, timeout=8)
         response.raise_for_status()
         with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp_img:
             tmp_img.write(response.content)
