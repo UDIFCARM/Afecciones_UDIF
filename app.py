@@ -246,7 +246,7 @@ def crear_mapa(lon, lat, afecciones=[], parcela_gdf=None):
     return mapa_html, afecciones
 
 # Función para generar la imagen estática del mapa usando py-staticmaps
-def generar_imagen_estatica_mapa(x, y, zoom=16, size=(200, 200)):
+def generar_imagen_estatica_mapa(x, y, zoom=16, size=(800, 600)):
     lon, lat = transformar_coordenadas(x, y)
     if lon is None or lat is None:
         return None
