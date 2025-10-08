@@ -340,7 +340,8 @@ def generar_pdf(datos, x, y, filename):
     wrapped_objeto = textwrap.wrap(objeto if objeto else "No especificado", width=60)
     for line in wrapped_objeto:
         pdf.cell(0, 8, line, ln=1)
-
+        
+    pdf.add_page()
     seccion_titulo("2. Localización")
     for campo in ["municipio", "polígono", "parcela"]:
         valor = datos.get(campo, "").strip()
