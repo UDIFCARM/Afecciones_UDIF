@@ -282,7 +282,7 @@ def generar_pdf(datos, x, y, filename):
             tmp_img_path = tmp_img.name
 
         page_width = pdf.w - 2 * pdf.l_margin
-        logo_width = page_width
+        logo_width = page_width *0.5
         pdf.image(tmp_img_path, x=pdf.l_margin, y=10, w=logo_width)
         logo_height = logo_width * 0.2
         pdf.set_y(10 + logo_height + 2)
