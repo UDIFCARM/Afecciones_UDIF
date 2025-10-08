@@ -500,7 +500,7 @@ def generar_pdf(datos, x, y, filename):
     pdf.set_draw_color(0, 0, 0)
     pdf.set_line_width(0.5)
     texto_aviso = (
-        "Este informe no tiene caracter de borrador sin validez legal y sirve solo "
+        "Este informe tiene caracter de borrador sin validez legal y sirve solo "
         "como avance de las posibles afecciones del lugar indicado. "
         "Para obtener un certificado de las mismas debe solicitar por el "
         "procedimiento correspondiente informe a éste centro directivo."
