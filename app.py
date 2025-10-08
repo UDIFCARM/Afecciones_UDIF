@@ -354,12 +354,15 @@ def generar_pdf(datos, x, y, filename):
         epw = pdf.w - 2 * pdf.l_margin
         pdf.ln(5)
         pdf.set_font("Arial", "B", 12)
-        pdf.cell(0, 7, "Mapa de localización:", ln=True)
-        pdf.image(imagen_mapa_path, x=pdf.l_margin, w=epw*0.5)
+        pdf.cell(0, 7, "Mapa de localización:", ln=True, align="C")
+        image_width = epw * 0.5
+        x_centered = pdf.l_margin + (epw - image_width) / 2  # Calcular posición x para centrar
+        pdf.image(imagen_mapa_path, x=x_centered, w=image_width)
     else:
         pdf.set_font("Arial", "", 12)
         pdf.cell(0, 7, "No se pudo generar el mapa de localización.", ln=True)
 
+    pdf.add_page()
     seccion_titulo("3. Afecciones detectadas")
 
     afecciones_keys = ["afección ENP", "afección ZEPA", "afección LIC", "afección TM"]
