@@ -355,7 +355,7 @@ def generar_pdf(datos, x, y, filename):
         pdf.ln(5)
         pdf.set_font("Arial", "B", 12)
         pdf.cell(0, 7, "Mapa de localización:", ln=True)
-        pdf.image(imagen_mapa_path, x=pdf.l_margin, w=epw*0.7)
+        pdf.image(imagen_mapa_path, x=pdf.l_margin, w=epw*0.5)
     else:
         pdf.set_font("Arial", "", 12)
         pdf.cell(0, 7, "No se pudo generar el mapa de localización.", ln=True)
