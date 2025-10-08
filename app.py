@@ -246,7 +246,7 @@ def crear_mapa(lon, lat, afecciones=[], parcela_gdf=None):
     return mapa_html, afecciones
 
 # Función para generar la imagen estática del mapa usando py-staticmaps
-def generar_imagen_estatica_mapa(x, y, zoom=16, size=(400, 300)):
+def generar_imagen_estatica_mapa(x, y, zoom=16, size=(200, 200)):
     lon, lat = transformar_coordenadas(x, y)
     if lon is None or lat is None:
         return None
@@ -341,7 +341,6 @@ def generar_pdf(datos, x, y, filename):
     for line in wrapped_objeto:
         pdf.cell(0, 8, line, ln=1)
         
-    pdf.add_page()
     seccion_titulo("2. Localización")
     for campo in ["municipio", "polígono", "parcela"]:
         valor = datos.get(campo, "").strip()
