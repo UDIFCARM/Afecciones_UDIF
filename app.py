@@ -285,7 +285,7 @@ def generar_pdf(datos, x, y, filename):
         logo_width = page_width
         pdf.image(tmp_img_path, x=pdf.l_margin, y=10, w=logo_width)
         logo_height = logo_width * 0.2
-        pdf.set_y(10 + logo_height + 5)
+        pdf.set_y(10 + logo_height + 2)
     except Exception as e:
         st.error(f"Error al descargar el logo: {str(e)}")
         pdf.set_y(10)
@@ -293,7 +293,7 @@ def generar_pdf(datos, x, y, filename):
     pdf.set_font("Arial", "B", size=16)
     pdf.set_text_color(0, 0, 0)
     pdf.cell(0, 10, "Informe preliminar de Afecciones Forestales", ln=True, align="C")
-    pdf.ln(10)
+    pdf.ln(5)
 
     azul_rgb = (141, 179, 226)
 
@@ -317,7 +317,7 @@ def generar_pdf(datos, x, y, filename):
 
     def campo_orden(pdf, titulo, valor):
         pdf.set_font("Arial", "B", 12)
-        pdf.cell(50, 8, f"{titulo}:", ln=0)
+        pdf.cell(50, 7, f"{titulo}:", ln=0)
         pdf.set_font("Arial", "", 12)
         
         valor = valor.strip() if valor else "No especificado"
@@ -326,7 +326,7 @@ def generar_pdf(datos, x, y, filename):
             wrapped_text = ["No especificado"]
         
         for line in wrapped_text:
-            pdf.cell(0, 8, line, ln=1)
+            pdf.cell(0, 7, line, ln=1)
 
     seccion_titulo("1. Datos del solicitante")
     for titulo, valor in campos_orden:
@@ -335,11 +335,11 @@ def generar_pdf(datos, x, y, filename):
     objeto = datos.get("objeto de la solicitud", "").strip()
     pdf.ln(2)
     pdf.set_font("Arial", "B", 12)
-    pdf.cell(0, 8, "Objeto de la solicitud:", ln=True)
+    pdf.cell(0, 7, "Objeto de la solicitud:", ln=True)
     pdf.set_font("Arial", "", 12)
     wrapped_objeto = textwrap.wrap(objeto if objeto else "No especificado", width=60)
     for line in wrapped_objeto:
-        pdf.cell(0, 8, line, ln=1)
+        pdf.cell(0, 7, line, ln=1)
         
     seccion_titulo("2. Localización")
     for campo in ["municipio", "polígono", "parcela"]:
@@ -354,11 +354,11 @@ def generar_pdf(datos, x, y, filename):
         epw = pdf.w - 2 * pdf.l_margin
         pdf.ln(5)
         pdf.set_font("Arial", "B", 12)
-        pdf.cell(0, 8, "Mapa de localización:", ln=True)
-        pdf.image(imagen_mapa_path, x=pdf.l_margin, w=epw)
+        pdf.cell(0, 7, "Mapa de localización:", ln=True)
+        pdf.image(imagen_mapa_path, x=pdf.l_margin, w=epw*0.7)
     else:
         pdf.set_font("Arial", "", 12)
-        pdf.cell(0, 8, "No se pudo generar el mapa de localización.", ln=True)
+        pdf.cell(0, 7, "No se pudo generar el mapa de localización.", ln=True)
 
     seccion_titulo("3. Afecciones detectadas")
 
