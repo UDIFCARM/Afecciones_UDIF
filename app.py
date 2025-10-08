@@ -458,8 +458,7 @@ def generar_pdf(datos, x, y, filename):
         pdf.set_font("Arial", "", 10)
         for codigo_vp, nombre, municipio, situacion_legal, ancho_legal in vp_detectado:
             pdf.cell(col_widths[0], row_height, str(codigo_vp), border=1)  # Código de la vía (VP_COD)
-            pdf.multi_cell(col_widths[1], row_height / 2, str(nombre), border=1) # Nombre (VP_NB)
-            pdf.set_xy(x_start + col_widths[0] + col_widths[1], y_start)
+            pdf.cell(col_widths[1], row_height, str(nombre), border=1)  # Nombre (VP_NB)
             pdf.cell(col_widths[2], row_height, str(municipio), border=1)  # Municipio (VP_MUN)
             pdf.cell(col_widths[3], row_height, str(situacion_legal), border=1)  # Situación Legal (VP_SIT_LEG)
             pdf.cell(col_widths[4], row_height, str(ancho_legal), border=1)  # Ancho Legal (VP_ANCH_LG)
