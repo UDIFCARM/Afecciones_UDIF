@@ -559,7 +559,6 @@ def generar_pdf(datos, x, y, filename):
             pdf.ln(2)
     
     # Cerrar el cuadro con borde
-    pdf.multi_cell(170, 8, border=1, align="J")  # Cuadro con borde para el resto
     pdf.set_text_color(0, 0, 0)  # Restaurar color negro para el resto del documento
     pdf.output(filename)
     return filename
