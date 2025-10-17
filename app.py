@@ -513,8 +513,17 @@ def generar_pdf(datos, x, y, filename):
 
     # Parte 2: Texto en negrita (sin rojo) para el resto del documento
     pdf.set_text_color(0, 0, 0)  # Color negro
+    pdf.set_font("Arial", "B", 12)  # Fuente en negrita para el texto general
     texto_resto = (
-        "En caso de ser detectadas afecciones a Dominio público forestal o pecuario, así como a Espacios Naturales Protegidos o RN2000, debe solicitar informe oficial a la D. G. de Patrimonio Natural y Acción Climática, a través de los procedimientos establecidos en sede electrónica:\n"
+    "En caso de ser detectadas afecciones a Dominio público forestal o pecuario, así como a Espacios Naturales Protegidos o RN2000, debe solicitar informe oficial a la D. G. de Patrimonio Natural y Acción Climática, a través de los procedimientos establecidos en sede electrónica:\n"
+    )
+    # Añadir el texto inicial en negrita
+    pdf.multi_cell(170, 8, texto_resto, border=0, align="J")  # Sin borde aún
+    pdf.ln(2)
+
+    # Procedimientos sin negrita
+    pdf.set_font("Arial", "", 12)  # Fuente normal para los procedimientos
+    procedimientos = (
         "- 1609 Solicitudes, escritos y comunicaciones que no disponen de un procedimiento específico en la Guía de Procedimientos y Servicios.\n"
         "- 1802 Emisión de certificación sobre delimitación vías pecuarias con respecto a fincas particulares para inscripción registral.\n"
         "- 3482 Emisión de Informe en el ejercicio de los derechos de adquisición preferente (tanteo y retracto) en transmisiones onerosas de fincas forestales.\n"
@@ -528,8 +537,15 @@ def generar_pdf(datos, x, y, filename):
         "- 7186 Ocupación renovable de carácter temporal de vías pecuarias con concesión demanial.\n"
         "- 7202 Modificación de trazados en vías pecuarias.\n"
         "- 7222 Concesión para la utilización privativa y aprovechamiento especial del dominio público.\n"
-        "- 7242 Autorización de permutas en montes públicos.\n\n"
-        "De acuerdo con lo establecido en el artículo 22 de la ley 43/2003 de 21 de noviembre de Montes, toda inmatriculación o inscripción de exceso de cabida en el Registro de la Propiedad de un monte o de una finca colindante con monte demanial o ubicado en un término municipal en el que existan montes demaniales requerirá el previo informe favorable de los titulares de dichos montes y, para los montes catalogados, el del órgano forestal de la comunidad autónoma.\n\n"
+        "- 7242 Autorización de permutas en montes públicos.\n"
+    )
+    pdf.multi_cell(170, 8, procedimientos, border=0, align="J")  # Sin borde aún
+    pdf.ln(2)
+
+    # Volver a negrita para el resto del texto
+    pdf.set_font("Arial", "B", 12)  # Restaurar negrita
+    texto_final = (
+        "\nDe acuerdo con lo establecido en el artículo 22 de la ley 43/2003 de 21 de noviembre de Montes, toda inmatriculación o inscripción de exceso de cabida en el Registro de la Propiedad de un monte o de una finca colindante con monte demanial o ubicado en un término municipal en el que existan montes demaniales requerirá el previo informe favorable de los titulares de dichos montes y, para los montes catalogados, el del órgano forestal de la comunidad autónoma.\n\n"
         "En cuanto a vías pecuarias, salvaguardando lo que pudiera resultar de los futuros deslindes, en las parcelas objeto este informe-borrador, cualquier construcción, plantación, vallado, obras, instalaciones, etc., no deberían realizarse dentro del área delimitada como dominio público pecuario provisional para evitar invadir éste.\n\n"
         "En todo caso, no podrá interrumpirse el tránsito por las Vías Pecuarias, dejando siempre el paso adecuado para el tránsito ganadero y otros usos legalmente establecidos en la Ley 3/1995, de 23 de marzo, de Vías Pecuarias."
     )
