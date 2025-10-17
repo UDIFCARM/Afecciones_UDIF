@@ -500,17 +500,41 @@ def generar_pdf(datos, x, y, filename):
     pdf.ln(10)
     pdf.set_font("Arial", "B", 12)
     pdf.set_text_color(255, 0, 0)
-    pdf.set_draw_color(0, 0, 0)
+    pdf.set_draw_color(0, 0, 0) # Borde negro  
     pdf.set_line_width(0.5)
-    texto_aviso = (
-        "Este informe tiene caracter de borrador sin validez legal y sirve solo "
-        "como avance de las posibles afecciones del lugar indicado. "
-        "Para obtener un certificado de las mismas debe solicitar por el "
-        "procedimiento correspondiente informe a éste centro directivo."
+    
+    # Parte 1: Texto en rojo y negrita
+    pdf.set_text_color(255, 0, 0)  # Color rojo
+    texto_rojo = (
+        "Este borrador preliminar de afecciones no tiene el valor de una certificación oficial y por tanto carece de validez legal y solo sirve como información general con carácter orientativo."
     )
-    pdf.multi_cell(0, 8, texto_aviso, border=1, align="L")
-    pdf.set_text_color(0, 0, 0)  # Restaurar color negro para el resto del documento
+    pdf.multi_cell(170, 8, texto_rojo, border=0, align="J")  # Sin borde individual
+    pdf.ln(2)
 
+    # Parte 2: Texto en negrita (sin rojo) para el resto del documento
+    pdf.set_text_color(0, 0, 0)  # Color negro
+    texto_resto = (
+        "En caso de ser detectadas afecciones a Dominio público forestal o pecuario, así como a Espacios Naturales Protegidos o RN2000, debe solicitar informe oficial a la D. G. de Patrimonio Natural y Acción Climática, a través de los procedimientos establecidos en sede electrónica:\n"
+        "- 1609 Solicitudes, escritos y comunicaciones que no disponen de un procedimiento específico en la Guía de Procedimientos y Servicios.\n"
+        "- 1802 Emisión de certificación sobre delimitación vías pecuarias con respecto a fincas particulares para inscripción registral.\n"
+        "- 3482 Emisión de Informe en el ejercicio de los derechos de adquisición preferente (tanteo y retracto) en transmisiones onerosas de fincas forestales.\n"
+        "- 3483 Autorización de proyectos o actuaciones materiales en dominio público forestal que no conlleven concesión administrativa.\n"
+        "- 3485 Deslinde y amojonamiento de montes a instancia de parte.\n"
+        "- 3487 Clasificación, deslinde, desafectación y amojonamiento de vías pecuarias.\n"
+        "- 3488 Emisión de certificaciones de colindancia de fincas particulares respecto a montes incluidos en el Catálogo de Utilidad Pública.\n"
+        "- 3489 Autorizaciones en dominio público pecuario sin uso privativo.\n"
+        "- 3490 Emisión de certificación o informe de colindancia de finca particular respecto de vía pecuaria.\n"
+        "- 5883 (INM) Emisión de certificación o informe para inmatriculación o inscripción registral de fincas colindantes con monte incluido en el Catálogo de Montes de Utilidad Pública.\n"
+        "- 7186 Ocupación renovable de carácter temporal de vías pecuarias con concesión demanial.\n"
+        "- 7202 Modificación de trazados en vías pecuarias.\n"
+        "- 7222 Concesión para la utilización privativa y aprovechamiento especial del dominio público.\n"
+        "- 7242 Autorización de permutas en montes públicos.\n\n"
+        "De acuerdo con lo establecido en el artículo 22 de la ley 43/2003 de 21 de noviembre de Montes, toda inmatriculación o inscripción de exceso de cabida en el Registro de la Propiedad de un monte o de una finca colindante con monte demanial o ubicado en un término municipal en el que existan montes demaniales requerirá el previo informe favorable de los titulares de dichos montes y, para los montes catalogados, el del órgano forestal de la comunidad autónoma.\n\n"
+        "En cuanto a vías pecuarias, salvaguardando lo que pudiera resultar de los futuros deslindes, en las parcelas objeto este informe-borrador, cualquier construcción, plantación, vallado, obras, instalaciones, etc., no deberían realizarse dentro del área delimitada como dominio público pecuario provisional para evitar invadir éste.\n\n"
+        "En todo caso, no podrá interrumpirse el tránsito por las Vías Pecuarias, dejando siempre el paso adecuado para el tránsito ganadero y otros usos legalmente establecidos en la Ley 3/1995, de 23 de marzo, de Vías Pecuarias."
+    )
+    pdf.multi_cell(170, 8, texto_resto, border=1, align="J")  # Cuadro con borde para el resto
+    pdf.set_text_color(0, 0, 0)  # Restaurar color negro para el resto del documento
     pdf.output(filename)
     return filename
 
