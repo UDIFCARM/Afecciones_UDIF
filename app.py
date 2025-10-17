@@ -549,6 +549,16 @@ def generar_pdf(datos, x, y, filename):
         "En cuanto a vías pecuarias, salvaguardando lo que pudiera resultar de los futuros deslindes, en las parcelas objeto este informe-borrador, cualquier construcción, plantación, vallado, obras, instalaciones, etc., no deberían realizarse dentro del área delimitada como dominio público pecuario provisional para evitar invadir éste.\n\n"
         "En todo caso, no podrá interrumpirse el tránsito por las Vías Pecuarias, dejando siempre el paso adecuado para el tránsito ganadero y otros usos legalmente establecidos en la Ley 3/1995, de 23 de marzo, de Vías Pecuarias."
     )
+    # Asegurar que el texto final se muestre, manejando múltiples páginas
+    lines = texto_final.split('\n')
+    for line in lines:
+        if pdf.get_y() + 8 > pdf.h - pdf.b_margin:  # Si no cabe, nueva página
+            pdf.add_page()
+        if line.strip():  # Solo procesar líneas no vacías
+            pdf.multi_cell(170, 8, line, border=0, align="J")
+            pdf.ln(2)
+    
+    # Cerrar el cuadro con borde
     pdf.multi_cell(170, 8, texto_resto, border=1, align="J")  # Cuadro con borde para el resto
     pdf.set_text_color(0, 0, 0)  # Restaurar color negro para el resto del documento
     pdf.output(filename)
