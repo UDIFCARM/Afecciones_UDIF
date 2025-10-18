@@ -540,7 +540,7 @@ def generar_pdf(datos, x, y, filename):
         "- 7222 Concesión para la utilización privativa y aprovechamiento especial del dominio público.\n"
         "- 7242 Autorización de permutas en montes públicos.\n"
     )
-    pdf.multi_cell(170, 8, procedimientos, border=0, align="J")  # Sin borde aún
+    pdf.multi_cell(pdf.w - 2 * pdf.l_margin, 8, procedimientos, border=0, align="J")
     pdf.ln(2)
 
     # Volver a negrita para el resto del texto
