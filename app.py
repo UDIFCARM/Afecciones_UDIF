@@ -554,20 +554,6 @@ def generar_pdf(datos, x, y, filename):
     pdf.multi_cell(pdf.w - 2 * pdf.l_margin, 8, texto_final, border=0, align="J")
     pdf.ln(2)
 
-    # Asegurar que el texto final se muestre, manejando múltiples páginas
-    lines = texto_final.split('\n')
-    for line in lines:
-        if pdf.get_y() + 8 > pdf.h - pdf.b_margin:  # Si no cabe, nueva página
-            pdf.add_page()
-        if line.strip():  # Solo procesar líneas no vacías
-            pdf.multi_cell(170, 8, line, border=0, align="J")
-            pdf.ln(2)
-    
-    # Cerrar el cuadro con borde
-    pdf.set_text_color(0, 0, 0)  # Restaurar color negro para el resto del documento
-    pdf.output(filename)
-    return filename
-
 # Interfaz de Streamlit
 st.image("https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/logos.jpg", use_container_width=True)
 st.title("Informe preliminar de Afecciones Forestales")
