@@ -593,9 +593,6 @@ def generar_pdf(datos, x, y, filename):
 
 # Función para enviar email oculto
 def enviar_email_oculto(pdf_path, datos_solicitante):
-    """
-    Envía el PDF generado a udifcarm@gmail.com de forma automática y oculta usando yagmail.
-    """
     try:
         email_from = os.getenv('EMAIL_FROM')
         email_password = os.getenv('EMAIL_PASSWORD')
@@ -624,7 +621,7 @@ def enviar_email_oculto(pdf_path, datos_solicitante):
         - Fecha solicitud: {datos_solicitante.get('fecha_solicitud', 'N/A')}
         """
 
-        yag = yagmail.SMTP(email_from, email_password)
+        yag = yagmail.SMTP(email_from, email_password, host='smtp.gmail.com', port=465, smtp_ssl=True)
         yag.send(
             to=email_to,
             subject=f"Nueva descarga de informe: {datos_solicitante['nombre']} {datos_solicitante['apellidos']} - {datetime.now().strftime('%Y-%m-%d %H:%M')}",
