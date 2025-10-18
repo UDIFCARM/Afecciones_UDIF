@@ -267,29 +267,35 @@ def generar_imagen_estatica_mapa(x, y, zoom=16, size=(800, 600)):
 
 # Función para generar el PDF con los datos de la solicitud
 def generar_pdf(datos, x, y, filename):
-    pdf = FPDF()
-    pdf.add_page()
+    class CustomPDF(FPDF):
+        def header(self):
+            try:
+                logo_url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/logos.jpg"
+                response = requests.get(logo_url, timeout=10)
+                response.raise_for_status()
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp_img:
+                    tmp_img.write(response.content)
+                    tmp_img_path = tmp_img.name
+                page_width = self.w - 2 * self.l_margin
+                logo_width = page_width * 0.5
+                self.image(tmp_img_path, x=self.l_margin, y=10, w=logo_width)
+                logo_height = logo_width * 0.2
+                self.set_y(10 + logo_height + 2)
+            except Exception as e:
+                st.error(f"Error al descargar el logo: {str(e)}")
+                self.set_y(10)
+
+        def footer(self):
+            self.set_y(-15)
+            self.set_draw_color(0, 0, 0)
+            self.line(10, self.h - 20, self.w - 10, self.h - 20)
+            self.set_font("Arial", "", 10)
+            self.cell(0, 10, f"Página {self.page_no()}", align="R")
+
+    pdf = CustomPDF()
 
     # Configurar márgenes más seguros
     pdf.set_margins(left=10, top=10, right=10)
-
-    try:
-        logo_url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/logos.jpg"
-        response = requests.get(logo_url, timeout=10)
-        response.raise_for_status()
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp_img:
-            tmp_img.write(response.content)
-            tmp_img_path = tmp_img.name
-
-        page_width = pdf.w - 2 * pdf.l_margin
-        logo_width = page_width *0.5
-        pdf.image(tmp_img_path, x=pdf.l_margin, y=10, w=logo_width)
-        logo_height = logo_width * 0.2
-        pdf.set_y(10 + logo_height + 2)
-    except Exception as e:
-        st.error(f"Error al descargar el logo: {str(e)}")
-        pdf.set_y(10)
-
     pdf.set_font("Arial", "B", size=16)
     pdf.set_text_color(0, 0, 0)
     pdf.cell(0, 10, "Informe preliminar de Afecciones Forestales", ln=True, align="C")
