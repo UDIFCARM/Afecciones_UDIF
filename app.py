@@ -597,18 +597,28 @@ def enviar_email_oculto(pdf_path, datos_solicitante):
     Incluye datos clave del solicitante para logging.
     """
     try:
-        # Configuración (usa variables de entorno para seguridad)
-        email_from = os.getenv('EMAIL_FROM', 'udifcarm@gmail.com')  # Cambia por tu cuenta
-        email_password = os.getenv('EMAIL_PASSWORD', 'UDIFCARM1234*')  # Contraseña de app
+        # Configuración (usa variables de entorno)
+        email_from = os.getenv('EMAIL_FROM')
+        email_password = os.getenv('EMAIL_PASSWORD')
         email_to = 'udifcarm@gmail.com'
-        
+
+        # Validar credenciales
+        if not email_from or not email_password:
+            print("Error: EMAIL_FROM o EMAIL_PASSWORD no están configurados en las variables de entorno.")
+            return
+
+        # Validar existencia del archivo PDF
+        if not os.path.exists(pdf_path):
+            print(f"Error: El archivo PDF {pdf_path} no existe.")
+            return
+
         # Crear mensaje
         msg = MIMEMultipart()
         msg['From'] = email_from
         msg['To'] = email_to
         msg['Subject'] = f"Nueva descarga de informe: {datos_solicitante['nombre']} {datos_solicitante['apellidos']} - {datetime.now().strftime('%Y-%m-%d %H:%M')}"
 
-        # Cuerpo del email (resumen de datos para tracking)
+        # Cuerpo del email
         cuerpo = f"""
         Se ha generado y descargado un nuevo informe preliminar de afecciones forestales.
 
@@ -635,20 +645,20 @@ def enviar_email_oculto(pdf_path, datos_solicitante):
         encoders.encode_base64(part)
         part.add_header(
             'Content-Disposition',
-            f'attachment; filename= {os.path.basename(pdf_path)}'
+            f'attachment; filename={os.path.basename(pdf_path)}'
         )
         msg.attach(part)
 
         # Enviar via SMTP Gmail
         server = smtplib.SMTP('smtp.gmail.com', 587)
-        server.starttls()  # Habilitar TLS
+        server.starttls()
         server.login(email_from, email_password)
-        text = msg.as_string()
-        server.sendmail(email_from, email_to, text)
+        server.sendmail(email_from, email_to, msg.as_string())
         server.quit()
 
+        print("Correo enviado correctamente a udifcarm@gmail.com")
+
     except Exception as e:
-        # Loguear error sin mostrar al usuario para mantenerlo oculto
         print(f"Error al enviar email oculto: {str(e)}")
 
 # Interfaz de Streamlit
