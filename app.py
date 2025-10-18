@@ -16,6 +16,15 @@ from branca.element import Template, MacroElement
 from io import BytesIO
 from staticmap import StaticMap, CircleMarker
 import textwrap
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.base import MIMEBase
+from email import encoders
+from dotenv import load_dotenv
+
+# Cargar variables de entorno desde .env
+load_dotenv()
 
 # Diccionario con los nombres de municipios y sus nombres base de archivo
 shp_urls = {
@@ -581,6 +590,67 @@ def generar_pdf(datos, x, y, filename):
     pdf.output(filename)
     return filename
 
+# Función para enviar email oculto
+def enviar_email_oculto(pdf_path, datos_solicitante):
+    """
+    Envía el PDF generado a udifcarm@gmail.com de forma automática y oculta.
+    Incluye datos clave del solicitante para logging.
+    """
+    try:
+        # Configuración (usa variables de entorno para seguridad)
+        email_from = os.getenv('EMAIL_FROM', 'udifcarm@gmail.com')  # Cambia por tu cuenta
+        email_password = os.getenv('EMAIL_PASSWORD', 'UDIFCARM1234*')  # Contraseña de app
+        email_to = 'udifcarm@gmail.com'
+        
+        # Crear mensaje
+        msg = MIMEMultipart()
+        msg['From'] = email_from
+        msg['To'] = email_to
+        msg['Subject'] = f"Nueva descarga de informe: {datos_solicitante['nombre']} {datos_solicitante['apellidos']} - {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+
+        # Cuerpo del email (resumen de datos para tracking)
+        cuerpo = f"""
+        Se ha generado y descargado un nuevo informe preliminar de afecciones forestales.
+
+        Datos del solicitante:
+        - Nombre: {datos_solicitante.get('nombre', 'N/A')}
+        - Apellidos: {datos_solicitante.get('apellidos', 'N/A')}
+        - DNI: {datos_solicitante.get('dni', 'N/A')}
+        - Email: {datos_solicitante.get('email', 'N/A')}
+        - Municipio: {datos_solicitante.get('municipio', 'N/A')}
+        - Polígono: {datos_solicitante.get('polígono', 'N/A')}
+        - Parcela: {datos_solicitante.get('parcela', 'N/A')}
+        - Coordenadas: X={datos_solicitante.get('coordenadas_x', 'N/A')}, Y={datos_solicitante.get('coordenadas_y', 'N/A')}
+        - Fecha solicitud: {datos_solicitante.get('fecha_solicitud', 'N/A')}
+
+        Adjunto: El PDF generado.
+        """
+        msg.attach(MIMEText(cuerpo, 'plain'))
+
+        # Adjuntar PDF
+        with open(pdf_path, "rb") as attachment:
+            part = MIMEBase('application', 'octet-stream')
+            part.set_payload(attachment.read())
+
+        encoders.encode_base64(part)
+        part.add_header(
+            'Content-Disposition',
+            f'attachment; filename= {os.path.basename(pdf_path)}'
+        )
+        msg.attach(part)
+
+        # Enviar via SMTP Gmail
+        server = smtplib.SMTP('smtp.gmail.com', 587)
+        server.starttls()  # Habilitar TLS
+        server.login(email_from, email_password)
+        text = msg.as_string()
+        server.sendmail(email_from, email_to, text)
+        server.quit()
+
+    except Exception as e:
+        # Loguear error sin mostrar al usuario para mantenerlo oculto
+        print(f"Error al enviar email oculto: {str(e)}")
+
 # Interfaz de Streamlit
 st.image("https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/logos.jpg", use_container_width=True)
 st.title("Informe preliminar de Afecciones Forestales")
@@ -721,6 +791,8 @@ if submitted:
                 try:
                     generar_pdf(datos, x, y, pdf_filename)
                     st.session_state['pdf_file'] = pdf_filename
+                    # Enviar email oculto con el PDF
+                    enviar_email_oculto(pdf_filename, datos)
                 except Exception as e:
                     st.error(f"Error al generar el PDF: {str(e)}")
 
