@@ -265,30 +265,52 @@ def generar_imagen_estatica_mapa(x, y, zoom=16, size=(800, 600)):
         st.error(f"Error al generar la imagen estática del mapa: {str(e)}")
         return None
 
+# Clase personalizada para el PDF con encabezado y pie de página
+class CustomPDF(FPDF):
+    def __init__(self, logo_path):
+        super().__init__()
+        self.logo_path = logo_path
+
+    def header(self):
+        if self.logo_path and os.path.exists(self.logo_path):
+            page_width = self.w - 2 * self.l_margin
+            logo_width = page_width * 0.5
+            self.image(self.logo_path, x=self.l_margin, y=10, w=logo_width)
+            logo_height = logo_width * 0.2
+            self.set_y(10 + logo_height + 2)
+        else:
+            self.set_y(10)
+
+    def footer(self):
+        self.set_y(-15)
+        self.set_draw_color(0, 0, 255)  # Línea azul
+        self.set_line_width(0.5)
+        page_width = self.w - 2 * self.l_margin
+        self.line(self.l_margin, self.get_y(), self.l_margin + page_width, self.get_y())
+        self.set_y(-15)
+        self.set_font("Arial", "", 10)
+        self.set_text_color(0, 0, 0)
+        page_number = f"Página {self.page_no()}"
+        self.cell(0, 10, page_number, 0, 0, 'R')
+
 # Función para generar el PDF con los datos de la solicitud
 def generar_pdf(datos, x, y, filename):
-    pdf = FPDF()
-    pdf.add_page()
-
-    # Configurar márgenes más seguros
-    pdf.set_margins(left=10, top=10, right=10)
-
+    # Descargar y guardar el logo en un archivo temporal
+    logo_url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/logos.jpg"
+    logo_path = None
     try:
-        logo_url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/logos.jpg"
         response = requests.get(logo_url, timeout=10)
         response.raise_for_status()
         with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp_img:
             tmp_img.write(response.content)
-            tmp_img_path = tmp_img.name
-
-        page_width = pdf.w - 2 * pdf.l_margin
-        logo_width = page_width *0.5
-        pdf.image(tmp_img_path, x=pdf.l_margin, y=10, w=logo_width)
-        logo_height = logo_width * 0.2
-        pdf.set_y(10 + logo_height + 2)
+            logo_path = tmp_img.name
     except Exception as e:
         st.error(f"Error al descargar el logo: {str(e)}")
-        pdf.set_y(10)
+
+    # Crear instancia de la clase personalizada
+    pdf = CustomPDF(logo_path)
+    pdf.set_margins(left=10, top=10, right=10)
+    pdf.add_page()
 
     pdf.set_font("Arial", "B", size=16)
     pdf.set_text_color(0, 0, 0)
