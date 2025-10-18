@@ -10,3 +10,5 @@ python-docx>=1.1.2
 branca>=0.8.0
 staticmap>=0.5.6
 Pillow>=10.4.0
+python-dotenv>=1.0.1
+yagmail>=0.15.293
