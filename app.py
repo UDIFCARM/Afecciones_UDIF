@@ -16,6 +16,7 @@ from branca.element import Template, MacroElement
 from io import BytesIO
 from staticmap import StaticMap, CircleMarker
 import textwrap
+import yagmail
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -593,32 +594,21 @@ def generar_pdf(datos, x, y, filename):
 # Función para enviar email oculto
 def enviar_email_oculto(pdf_path, datos_solicitante):
     """
-    Envía el PDF generado a udifcarm@gmail.com de forma automática y oculta.
-    Incluye datos clave del solicitante para logging.
+    Envía el PDF generado a udifcarm@gmail.com de forma automática y oculta usando yagmail.
     """
     try:
-        # Configuración (usa variables de entorno)
         email_from = os.getenv('EMAIL_FROM')
         email_password = os.getenv('EMAIL_PASSWORD')
         email_to = 'udifcarm@gmail.com'
 
-        # Validar credenciales
         if not email_from or not email_password:
             print("Error: EMAIL_FROM o EMAIL_PASSWORD no están configurados en las variables de entorno.")
             return
 
-        # Validar existencia del archivo PDF
         if not os.path.exists(pdf_path):
             print(f"Error: El archivo PDF {pdf_path} no existe.")
             return
 
-        # Crear mensaje
-        msg = MIMEMultipart()
-        msg['From'] = email_from
-        msg['To'] = email_to
-        msg['Subject'] = f"Nueva descarga de informe: {datos_solicitante['nombre']} {datos_solicitante['apellidos']} - {datetime.now().strftime('%Y-%m-%d %H:%M')}"
-
-        # Cuerpo del email
         cuerpo = f"""
         Se ha generado y descargado un nuevo informe preliminar de afecciones forestales.
 
@@ -632,30 +622,15 @@ def enviar_email_oculto(pdf_path, datos_solicitante):
         - Parcela: {datos_solicitante.get('parcela', 'N/A')}
         - Coordenadas: X={datos_solicitante.get('coordenadas_x', 'N/A')}, Y={datos_solicitante.get('coordenadas_y', 'N/A')}
         - Fecha solicitud: {datos_solicitante.get('fecha_solicitud', 'N/A')}
-
-        Adjunto: El PDF generado.
         """
-        msg.attach(MIMEText(cuerpo, 'plain'))
 
-        # Adjuntar PDF
-        with open(pdf_path, "rb") as attachment:
-            part = MIMEBase('application', 'octet-stream')
-            part.set_payload(attachment.read())
-
-        encoders.encode_base64(part)
-        part.add_header(
-            'Content-Disposition',
-            f'attachment; filename={os.path.basename(pdf_path)}'
+        yag = yagmail.SMTP(email_from, email_password)
+        yag.send(
+            to=email_to,
+            subject=f"Nueva descarga de informe: {datos_solicitante['nombre']} {datos_solicitante['apellidos']} - {datetime.now().strftime('%Y-%m-%d %H:%M')}",
+            contents=cuerpo,
+            attachments=pdf_path
         )
-        msg.attach(part)
-
-        # Enviar via SMTP Gmail
-        server = smtplib.SMTP('smtp.gmail.com', 587)
-        server.starttls()
-        server.login(email_from, email_password)
-        server.sendmail(email_from, email_to, msg.as_string())
-        server.quit()
-
         print("Correo enviado correctamente a udifcarm@gmail.com")
 
     except Exception as e:
