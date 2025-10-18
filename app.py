@@ -509,7 +509,7 @@ def generar_pdf(datos, x, y, filename):
     texto_rojo = (
         "Este borrador preliminar de afecciones no tiene el valor de una certificación oficial y por tanto carece de validez legal y solo sirve como información general con carácter orientativo."
     )
-    pdf.multi_cell(170, 8, texto_rojo, border=1, align="J", fill=True)  # Con borde, fondo gris y texto justificado
+    pdf.multi_cell(170, 8, texto_rojo, border=1, align="R", fill=True)  # Con borde, fondo gris y texto justificado
     pdf.ln(2)
 
     # Parte 2: Texto en negrita (sin rojo) para el resto del documento
