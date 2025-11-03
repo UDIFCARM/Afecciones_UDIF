@@ -520,7 +520,7 @@ def generar_pdf(datos, x, y, filename):
 
     # Nueva sección para el texto en cuadro
     pdf.ln(10)
-    pdf.set_font("Arial", "B", 12)
+    pdf.set_font("Arial", "B", 8)
     pdf.set_text_color(255, 0, 0)
     pdf.set_draw_color(0, 0, 0) # Borde negro  
     pdf.set_line_width(0.5)
@@ -536,7 +536,7 @@ def generar_pdf(datos, x, y, filename):
 
     # Parte 2: Texto en negrita (sin rojo) para el resto del documento
     pdf.set_text_color(0, 0, 0)  # Color negro
-    pdf.set_font("Arial", "B", 12)  # Fuente en negrita para el texto general
+    pdf.set_font("Arial", "B", 8)  # Fuente en negrita para el texto general
     texto_resto = (
     "En caso de ser detectadas afecciones a Dominio público forestal o pecuario, así como a Espacios Naturales Protegidos o RN2000, debe solicitar informe oficial a la D. G. de Patrimonio Natural y Acción Climática, a través de los procedimientos establecidos en sede electrónica:\n"
     )
@@ -545,7 +545,7 @@ def generar_pdf(datos, x, y, filename):
     pdf.ln(2)
 
     # Procedimientos sin negrita
-    pdf.set_font("Arial", "", 12)  # Fuente normal para los procedimientos
+    pdf.set_font("Arial", "", 8)  # Fuente normal para los procedimientos
     procedimientos = (
         "- 1609 Solicitudes, escritos y comunicaciones que no disponen de un procedimiento específico en la Guía de Procedimientos y Servicios.\n"
         "- 1802 Emisión de certificación sobre delimitación vías pecuarias con respecto a fincas particulares para inscripción registral.\n"
