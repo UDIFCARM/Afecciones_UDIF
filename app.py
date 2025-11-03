@@ -78,7 +78,7 @@ def cargar_shapefile_desde_github(base_name):
             filename = base_name + ext
             url = base_url + filename
             try:
-                response = requests.get(url, timeout=10)
+                response = requests.get(url, timeout=100)
                 response.raise_for_status()
             except requests.exceptions.RequestException as e:
                 st.error(f"Error al descargar {url}: {str(e)}")
