@@ -26,43 +26,43 @@ shp_urls = {
     "ALCANTARILLA": "ALCANTARILLA",
     "ALEDO": "ALEDO",
     "ALGUAZAS": "ALGUAZAS",
-    "ALHAMA_DE_MURCIA": "ALHAMA_DE_MURCIA",
+    "ALHAMA DE MURCIA": "ALHAMA_DE_MURCIA",
     "ARCHENA": "ARCHENA",
     "BENIEL": "BENIEL",
     "BLANCA": "BLANCA",
     "BULLAS": "BULLAS",
     "CALASPARRA": "CALASPARRA",
-    "CAMPOS_DEL_RIO": "CAMPOS_DEL_RIO",
-    "CARAVACA_DE_LA_CRUZ": "CARAVACA_DE_LA_CRUZ",
+    "CAMPOS DEL RIO": "CAMPOS_DEL_RIO",
+    "CARAVACA DE LA CRUZ": "CARAVACA_DE_LA_CRUZ",
     "CARTAGENA": "CARTAGENA",
     "CEHEGIN": "CEHEGIN",
     "CEUTI": "CEUTI",
     "CIEZA": "CIEZA",
     "FORTUNA": "FORTUNA",
-    "FUENTE_ALAMO_DE_MURCIA": "FUENTE_ALAMO_DE_MURCIA",
+    "FUENTE ALAMO DE MURCIA": "FUENTE_ALAMO_DE_MURCIA",
     "JUMILLA": "JUMILLA",
-    "LAS_TORRES_DE_COTILLAS": "LAS_TORRES_DE_COTILLAS",
+    "LAS TORRES DE COTILLAS": "LAS_TORRES_DE_COTILLAS",
     "LA_UNION": "LA_UNION",
     "LIBRILLA": "LIBRILLA",
     "LORCA": "LORCA",
     "LORQUI": "LORQUI",
-    "LOS_ALCAZARES": "LOS_ALCAZARES",
+    "LOS ALCAZARES": "LOS_ALCAZARES",
     "MAZARRON": "MAZARRON",
-    "MOLINA_DE_SEGURA": "MOLINA_DE_SEGURA",
+    "MOLINA DE SEGURA": "MOLINA_DE_SEGURA",
     "MORATALLA": "MORATALLA",
     "MULA": "MULA",
     "MURCIA": "MURCIA",
     "OJOS": "OJOS",
     "PLIEGO": "PLIEGO",
-    "PUERTO_LUMBRERAS": "PUERTO_LUMBRERAS",
+    "PUERTO LUMBRERAS": "PUERTO_LUMBRERAS",
     "RICOTE": "RICOTE",
     "SANTOMERA": "SANTOMERA",
-    "SAN_JAVIER": "SAN_JAVIER",
-    "SAN_PEDRO_DEL_PINATAR": "SAN_PEDRO_DEL_PINATAR",
-    "TORRE_PACHECO": "TORRE_PACHECO",
+    "SAN JAVIER": "SAN_JAVIER",
+    "SAN PEDRO DEL PINATAR": "SAN_PEDRO_DEL_PINATAR",
+    "TORRE PACHECO": "TORRE_PACHECO",
     "TOTANA": "TOTANA",
     "ULEA": "ULEA",
-    "VILLANUEVA_DEL_RIO_SEGURA": "VILLANUEVA_DEL_RIO_SEGURA",
+    "VILLANUEVA DEL RIO SEGURA": "VILLANUEVA_DEL_RIO_SEGURA",
     "YECLA": "YECLA",
 }
 
@@ -666,12 +666,12 @@ if submitted:
             st.write(f"Polígono seleccionado: {masa_sel}")
             st.write(f"Parcela seleccionada: {parcela_sel}")
 
-            enp_url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/GeoJSON/ENP.json"
-            zepa_url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/GeoJSON/ZEPA.json"
-            lic_url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/GeoJSON/LIC.json"
-            vp_url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/GeoJSON/VP.json"
-            tm_url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/GeoJSON/TM.json"
-            mup_url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/GeoJSON/MUP.json"
+            enp_url = "https://mapas-gis-inter.carm.es/geoserver/SIG_LUP_SITES_CARM/wfs?service=WFS&version=1.1.0&request=GetFeature&typeName=SIG_LUP_SITES_CARM:ENP&outputFormat=application/json"
+            zepa_url = "https://mapas-gis-inter.carm.es/geoserver/SIG_LUP_SITES_CARM/wfs?service=WFS&version=1.1.0&request=GetFeature&typeName=SIG_LUP_SITES_CARM:ZEPA&outputFormat=application/json"
+            lic_url = "https://mapas-gis-inter.carm.es/geoserver/SIG_LUP_SITES_CARM/wfs?service=WFS&version=1.1.0&request=GetFeature&typeName=SIG_LUP_SITES_CARM:LIC-ZEC&outputFormat=application/json"
+            vp_url = "https://mapas-gis-inter.carm.es/geoserver/PFO_ZOR_DMVP_CARM/wfs?service=WFS&version=1.1.0&request=GetFeature&typeName=PFO_ZOR_DMVP_CARM:VP_CARM&outputFormat=application/json"
+            tm_url = "ttps://mapas-gis-inter.carm.es/geoserver/MAP_UAD_DIVISION-ADMINISTRATIVA_CARM/wfs?service=WFS&version=1.1.0&request=GetFeature&typeName=MAP_UAD_DIVISION-ADMINISTRATIVA_CARM:recintos_municipales_inspire_carm_etrs89&outputFormat=application/json"
+            mup_url = "https://mapas-gis-inter.carm.es/geoserver/PFO_ZOR_DMVP_CARM/wfs?service=WFS&version=1.1.0&request=GetFeature&typeName=PFO_ZOR_DMVP_CARM:MONTES&outputFormat=application/json"
 
             afeccion_enp = consultar_geojson(query_geom, enp_url, "ENP", campo_nombre="nombre")
             afeccion_zepa = consultar_geojson(query_geom, zepa_url, "ZEPA", campo_nombre="SITE_NAME")
