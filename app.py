@@ -632,7 +632,6 @@ with st.form("formulario"):
     else:
         st.info(f"Coordenadas obtenidas del centroide de la parcela: X = {x}, Y = {y}")
         
-    fecha_solicitud = st.date_input("Fecha de la solicitud")
     nombre = st.text_input("Nombre")
     apellidos = st.text_input("Apellidos")
     dni = st.text_input("DNI")
