@@ -1614,7 +1614,6 @@ if submitted:
             afecciones = [afeccion_flora, afeccion_garbancillo, afeccion_malvasia, afeccion_fartet, afeccion_nutria, afeccion_perdicera, afeccion_tortuga, afeccion_uso_suelo, afeccion_esteparias, afeccion_enp, afeccion_zepa, afeccion_lic, afeccion_vp, afeccion_tm, afeccion_mup]
             
             datos = {
-                "fecha_solicitud": fecha_solicitud.strftime('%d/%m/%Y'),
                 "fecha_informe": datetime.today().strftime('%d/%m/%Y'),
                 "nombre": nombre,
                 "apellidos": apellidos,
