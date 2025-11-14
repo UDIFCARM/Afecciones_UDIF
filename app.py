@@ -1613,28 +1613,32 @@ if submitted:
             )
             afecciones = [afeccion_flora, afeccion_garbancillo, afeccion_malvasia, afeccion_fartet, afeccion_nutria, afeccion_perdicera, afeccion_tortuga, afeccion_uso_suelo, afeccion_esteparias, afeccion_enp, afeccion_zepa, afeccion_lic, afeccion_vp, afeccion_tm, afeccion_mup]
             
+            # === 7. CREAR DICCIONARIO `datos` ===
             datos = {
                 "fecha_informe": datetime.today().strftime('%d/%m/%Y'),
-                "nombre": nombre,
-                "apellidos": apellidos,
-                "dni": dni,
-                "dirección": direccion,
-                "teléfono": telefono,
-                "email": email,
+                "nombre": nombre, "apellidos": apellidos, "dni": dni,
+                "dirección": direccion, "teléfono": telefono, "email": email,
                 "objeto de la solicitud": objeto,
-                "afección MUP": afeccion_mup,
-                "afección VP": afeccion_vp,
-                "afección ENP": afeccion_enp,
-                "afección ZEPA": afeccion_zepa,
-                "afección LIC": afeccion_lic,
-                "afección TM": afeccion_tm,
-                "coordenadas_x": x,
-                "coordenadas_y": y,
-                "municipio": municipio_sel,
-                "polígono": masa_sel,
-                "parcela": parcela_sel
+                "afección MUP": afeccion_mup, "afección VP": afeccion_vp,
+                "afección ENP": afeccion_enp, "afección ZEPA": afeccion_zepa,
+                "afección LIC": afeccion_lic, "Afección TM": afeccion_tm,
+                "afección esteparias": afeccion_esteparias,
+                "afección uso_suelo": afeccion_uso_suelo,
+                "afección tortuga": afeccion_tortuga,
+                "afección perdicera": afeccion_perdicera,
+                "afección nutria": afeccion_nutria,
+                "afección fartet": afeccion_fartet,
+                "afección malvasia": afeccion_malvasia,
+                "afección garbancillo": afeccion_garbancillo,
+                "afección flora": afeccion_flora,
+                "coordenadas_x": x, "coordenadas_y": y,
+                "municipio": municipio_sel, "polígono": masa_sel, "parcela": parcela_sel
             }
-            
+            # === 8. MOSTRAR RESULTADOS EN PANTALLA ===
+            st.write(f"Municipio seleccionado: {municipio_sel}")
+            st.write(f"Polígono seleccionado: {masa_sel}")
+            st.write(f"Parcela seleccionada: {parcela_sel}")
+
             mapa_html, afecciones = crear_mapa(lon, lat, afecciones, parcela_gdf=parcela)
             if mapa_html:
                 st.session_state['mapa_html'] = mapa_html
