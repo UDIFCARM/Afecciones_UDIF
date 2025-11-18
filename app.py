@@ -360,7 +360,7 @@ def generar_pdf(datos, x, y, filename):
     if not os.path.exists(logo_path):
         st.error("FALTA EL ARCHIVO: 'logos.jpg' en la raíz del proyecto.")
         st.markdown(
-            "Descárgalo aquí: [logos.jpg](https://raw.githubusercontent.com/iberiaforestal/AFECCIONES_CARM/main/logos.jpg)"
+            "Descárgalo aquí: [logos.jpg](https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/logos.jpg)"
         )
         logo_path = None
     else:
@@ -1574,7 +1574,7 @@ def generar_pdf(datos, x, y, filename):
 
 # Interfaz de Streamlit
 st.image(
-    "https://raw.githubusercontent.com/iberiaforestal/AFECCIONES_CARM/main/logos.jpg",
+    "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/logos.jpg",
     width=250
 )
 st.title("Informe basico de Afecciones al medio")
