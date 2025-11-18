@@ -1466,6 +1466,8 @@ def generar_pdf(datos, x, y, filename):
     )
     pdf.multi_cell(pdf.w - 2 * pdf.l_margin, 5, texto_final, border=0, align="J")
     pdf.ln(2)
+pdf.output(filename)
+return filename
 
 # Interfaz de Streamlit
 st.image(
