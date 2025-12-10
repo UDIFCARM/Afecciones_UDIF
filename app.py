@@ -1150,7 +1150,7 @@ if submitted:
                 with open(mapa_html, 'r') as f:
                     html(f.read(), height=500)
 
-             pdf_filename = f"informe_{uuid.uuid4().hex[:8]}.pdf"
+            pdf_filename = f"informe_{uuid.uuid4().hex[:8]}.pdf"
             try:
                 generar_pdf(datos, x, y, pdf_filename)
                 st.session_state['pdf_file'] = pdf_filename
