@@ -973,7 +973,7 @@ def generar_pdf(datos, x, y, filename):
 
     pdf.ln(espacio_final)
 
-
+    pdf.add_page()
     pdf.set_font("Arial", "B", 9)  
     texto_final = (
         "\nLas afecciones del presente informe se fundamentan en la cartografía oficial de la Comunidad Autónoma D. G. de Patrimonio Natural y Acción Climática:  montes y vías pecuarias https://mapas-gis-inter.carm.es/geoserver/PFO_ZOR_DMVP_CARM/wfs). D. G. de Ordenación del Territorio y Arquitectura: https://mapas-gis-inter.carm.es/geoserver/SIT_USU_PLA_URB_CARM/wfs? y de la Dirección General del Catastro: https://ovc.catastro.meh.es/Cartografia/WMS/ServidorWFS.aspx cumpliendo el estándar técnico Web Feature Service (WFS) definido por el Open Geospatial Consortium (OGC) y la Directiva INSPIRE, eximiendo en todo caso a este centro directivo de cualquier error en la cartografía de planeamiento o catastral.\n\n"
