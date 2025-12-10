@@ -914,11 +914,6 @@ def generar_pdf(datos, x, y, filename):
     lineas_rojo = len(pdf.multi_cell(pdf.w - 2*margin, 5, texto_rojo, border=0, align="J", split_only=True))
     altura_cuadro = max(1, lineas_rojo) * 5 + 2  # + ln(2)
 
-  
-    lineas_resto = len(pdf.multi_cell(pdf.w - 2*margin, 5, texto_resto, border=0, align="J", split_only=True))
-    altura_resto = max(1, lineas_resto) * 5 + 2  # + ln(2)
-
-
     altura_procedimientos = 0
     for codigo, texto, url in procedimientos_con_enlace:
         lineas = len(pdf.multi_cell(ancho_texto, line_height, texto, border=0, align="J", split_only=True))
@@ -949,7 +944,6 @@ def generar_pdf(datos, x, y, filename):
 
     pdf.set_text_color(0, 0, 0)
     pdf.set_font("Arial", "B", 8)
-    pdf.multi_cell(190, 5, texto_resto, border=0, align="J")
     pdf.ln(2)
 
 
