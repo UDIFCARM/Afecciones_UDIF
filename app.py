@@ -175,7 +175,7 @@ def consultar_wfs_seguro(geom, url, nombre_afeccion, campo_nombre=None, campos_m
                 info.append("\n".join(f"{etiquetas[i]}: {valores[i]}" for i in range(len(campos_mup))))
             return f"Dentro de {nombre_afeccion}:\n" + "\n\n".join(info)
 
-         else:
+        else:
             nombres = ', '.join(seleccion[campo_nombre].dropna().unique())
             return f"Dentro de {nombre_afeccion}: {nombres}"
 
