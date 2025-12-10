@@ -21,14 +21,12 @@ from urllib3.util.retry import Retry
 import shutil
 from PIL import Image
 
-# Sesión segura con reintentos
 session = requests.Session()
 retry = Retry(total=3, backoff_factor=2, status_forcelist=[500, 502, 503, 504, 429])
 adapter = HTTPAdapter(max_retries=retry)
 session.mount('http://', adapter)
 session.mount('https://', adapter)
 
-# Diccionario con los nombres de municipios y sus nombres base de archivo
 shp_urls = {
     "ABANILLA": "ABANILLA",
     "ABARAN": "ABARAN",
@@ -77,7 +75,6 @@ shp_urls = {
     "YECLA": "YECLA",
 }
 
-# Función para cargar shapefiles desde GitHub
 @st.cache_data
 def cargar_shapefile_desde_github(base_name):
     base_url = "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/CATASTRO/"
@@ -107,7 +104,6 @@ def cargar_shapefile_desde_github(base_name):
         except Exception as e:
             st.error(f"Error al leer shapefile {shp_path}: {str(e)}")
             return None
-# Función para encontrar municipio, polígono y parcela a partir de coordenadas
 def encontrar_municipio_poligono_parcela(x, y):
     try:
         punto = Point(x, y)
@@ -126,7 +122,6 @@ def encontrar_municipio_poligono_parcela(x, y):
         st.error(f"Error al buscar parcela: {str(e)}")
         return "N/A", "N/A", "N/A", None
 
-# Función para transformar coordenadas de ETRS89 a WGS84
 def transformar_coordenadas(x, y):
     try:
         x, y = float(x), float(y)
@@ -140,9 +135,7 @@ def transformar_coordenadas(x, y):
         st.error("Coordenadas inválidas. Asegúrate de ingresar valores numéricos.")
         return None, None
 
-# Función para consultar si la geometría intersecta con algún polígono del GeoJSON
-# === FUNCIÓN DESCARGA CON CACHÉ ===
-@st.cache_data(show_spinner=False, ttl=604800)  # 7 días
+@st.cache_data(show_spinner=False, ttl=604800) 
 def _descargar_geojson(url):
     try:
         response = session.get(url, timeout=30)
@@ -157,7 +150,6 @@ def _descargar_geojson(url):
             st._wfs_warnings.add(warning_key)
         return None
 
-# === FUNCIÓN PRINCIPAL (SIN CACHÉ EN GEOMETRÍA) ===
 def consultar_wfs_seguro(geom, url, nombre_afeccion, campo_nombre=None, campos_mup=None):
     """
     Consulta WFS con:
@@ -175,7 +167,6 @@ def consultar_wfs_seguro(geom, url, nombre_afeccion, campo_nombre=None, campos_m
         if seleccion.empty:
             return f"No afecta a {nombre_afeccion}"
 
-        # --- MODO MUP: campos personalizados ---
         if campos_mup:
             info = []
             for _, row in seleccion.iterrows():
@@ -184,15 +175,13 @@ def consultar_wfs_seguro(geom, url, nombre_afeccion, campo_nombre=None, campos_m
                 info.append("\n".join(f"{etiquetas[i]}: {valores[i]}" for i in range(len(campos_mup))))
             return f"Dentro de {nombre_afeccion}:\n" + "\n\n".join(info)
 
-        # --- MODO NORMAL: solo nombres ---
-        else:
+         else:
             nombres = ', '.join(seleccion[campo_nombre].dropna().unique())
             return f"Dentro de {nombre_afeccion}: {nombres}"
 
     except Exception as e:
         return f"Indeterminado: {nombre_afeccion} (error de datos)"
 
-# Función para crear el mapa con afecciones específicas
 def crear_mapa(lon, lat, afecciones=[], parcela_gdf=None):
     if lon is None or lat is None:
         st.error("Coordenadas inválidas para generar el mapa.")
@@ -273,7 +262,6 @@ def crear_mapa(lon, lat, afecciones=[], parcela_gdf=None):
 
     return mapa_html, afecciones
 
-# Función para generar la imagen estática del mapa usando py-staticmaps
 def generar_imagen_estatica_mapa(x, y, zoom=16, size=(800, 600)):
     lon, lat = transformar_coordenadas(x, y)
     if lon is None or lat is None:
@@ -293,7 +281,6 @@ def generar_imagen_estatica_mapa(x, y, zoom=16, size=(800, 600)):
         st.error(f"Error al generar la imagen estática del mapa: {str(e)}")
         return None
 
-# Clase personalizada para el PDF con encabezado y pie de página
 class CustomPDF(FPDF):
     def __init__(self, logo_path):
         super().__init__()
@@ -302,16 +289,15 @@ class CustomPDF(FPDF):
     def header(self):
         if self.logo_path and os.path.exists(self.logo_path):
             try:
-                # --- ÁREA IMPRIMIBLE (SIN MÁRGENES) ---
-                available_width = self.w - self.l_margin - self.r_margin  # ¡CORRECTO!
+                available_width = self.w - self.l_margin - self.r_margin 
 
-                max_logo_height = 25  # Altura fija
+                max_logo_height = 25 
 
                 from PIL import Image
                 img = Image.open(self.logo_path)
                 ratio = img.width / img.height
 
-                # Escalar al ancho disponible
+               
                 target_width = available_width
                 target_height = target_width / ratio
 
@@ -319,7 +305,6 @@ class CustomPDF(FPDF):
                     target_height = max_logo_height
                     target_width = target_height * ratio
 
-                # --- CENTRAR DENTRO DEL ÁREA IMPRIMIBLE ---
                 x = self.l_margin + (available_width - target_width) / 2
                 y = 5
 
@@ -345,7 +330,6 @@ class CustomPDF(FPDF):
             self.set_text_color(0, 0, 0)
             self.cell(0, 10, f"Página {self.page_no()}", align="R")
 
-# Función para generar el PDF con los datos de la solicitud
 def hay_espacio_suficiente(pdf, altura_necesaria, margen_inferior=20):
     """
     Verifica si hay suficiente espacio en la página actual.
@@ -366,33 +350,22 @@ def generar_pdf(datos, x, y, filename):
     else:
         st.success("Logo local cargado correctamente")
 
-    # === RECUPERAR query_geom ===
     query_geom = st.session_state.get('query_geom')
     if query_geom is None:
         query_geom = Point(x, y)
 
-    # === OBTENER URLs DESDE SESSION_STATE ===
+  
     urls = st.session_state.get('wfs_urls', {})
     vp_url = urls.get('vp')
     zepa_url = urls.get('zepa')
     lic_url = urls.get('lic')
     enp_url = urls.get('enp')
-    esteparias_url = urls.get('esteparias')
     uso_suelo_url = urls.get('uso_suelo')
-    tortuga_url = urls.get('tortuga')
-    perdicera_url = urls.get('perdicera')
-    nutria_url = urls.get('nutria')
-    fartet_url = urls.get('fartet')
-    malvasia_url = urls.get('malvasia')
-    garbancillo_url = urls.get('garbancillo')
-    flora_url = urls.get('flora')
-    
-    # Crear instancia de la clase personalizada
+
     pdf = CustomPDF(logo_path)
     pdf.set_margins(left=15, top=15, right=15)
     pdf.add_page()
 
-    # TÍTULO GRANDE SOLO EN LA PRIMERA PÁGINA
     pdf.set_font("Arial", "B", 16)
     pdf.set_text_color(0, 0, 0)
     pdf.cell(0, 12, "Informe preliminar de Afecciones Forestales", ln=True, align="C")
@@ -462,7 +435,7 @@ def generar_pdf(datos, x, y, filename):
         pdf.set_font("Arial", "B", 11)
         pdf.cell(0, 7, "Mapa de localización:", ln=True, align="C")
         image_width = epw * 0.5
-        x_centered = pdf.l_margin + (epw - image_width) / 2  # Calcular posición x para centrar
+        x_centered = pdf.l_margin + (epw - image_width) / 2 
         pdf.image(imagen_mapa_path, x=x_centered, w=image_width)
     else:
         pdf.set_font("Arial", "", 11)
@@ -478,17 +451,8 @@ def generar_pdf(datos, x, y, filename):
     zepa_key = "afección ZEPA"
     lic_key = "afección LIC"
     enp_key = "afección ENP"
-    esteparias_key = "afección ESTEPARIAS"
-    uso_suelo_key = "Afección PLANEAMIENTO"
-    tortuga_key = "Afección PLAN RECUPERACION TORTUGA MORA"
-    perdicera_key = "Afección PLAN RECUPERACION ÁGUILA PERDICERA"
-    nutria_key = "Afección PLAN RECUPERACION NUTRIA"
-    fartet_key = "Afección PLAN RECUPERACION FARTET"
-    malvasia_key = "Afección PLAN RECUPERACION MALVASIA"
-    garbancillo_key = "Afección PLAN RECUPERACION GARBANCILLO"
-    flora_key = "Afección PLAN RECUPERACION FLORA"
-        
-# === PROCESAR TODAS LAS CAPAS (VP, ZEPA, LIC, ENP) ===
+    uso_suelo_key = "Afección PLANEAMIENTO"        
+
     def procesar_capa(url, key, valor_inicial, campos, detectado_list):
         valor = datos.get(key, "").strip()
         if valor and not valor.startswith("No afecta") and not valor.startswith("Error"):
@@ -509,7 +473,6 @@ def generar_pdf(datos, x, y, filename):
                 return "Error al consultar"
         return valor_inicial if not detectado_list else ""
 
-    # === VP ===
     vp_detectado = []
     vp_valor = procesar_capa(
         vp_url, "afección VP", "No afecta a ninguna Vía Pecuaria",
@@ -517,7 +480,6 @@ def generar_pdf(datos, x, y, filename):
         vp_detectado
     )
 
-    # === ZEPA ===
     zepa_detectado = []
     zepa_valor = procesar_capa(
         zepa_url, "afección ZEPA", "No afecta a ninguna Zona de especial protección para las aves",
@@ -525,7 +487,6 @@ def generar_pdf(datos, x, y, filename):
         zepa_detectado
     )
 
-    # === LIC ===
     lic_detectado = []
     lic_valor = procesar_capa(
         lic_url, "afección LIC", "No afecta a ningún Lugar de Interés Comunitario",
@@ -533,7 +494,6 @@ def generar_pdf(datos, x, y, filename):
         lic_detectado
     )
 
-    # === ENP ===
     enp_detectado = []
     enp_valor = procesar_capa(
         enp_url, "afección ENP", "No afecta a ningún Espacio Natural Protegido",
@@ -541,79 +501,13 @@ def generar_pdf(datos, x, y, filename):
         enp_detectado
     )
 
-    # === ESTEPARIAS ===
-    esteparias_detectado = []
-    esteparias_valor = procesar_capa(
-        esteparias_url, "afección esteparias", "No afecta a zona de distribución de aves esteparias",
-        ["cuad_10km", "especie", "nombre"],
-        esteparias_detectado
-    )
-
-    # === USO DEL SUELO ===
     uso_suelo_detectado = []
     uso_suelo_valor = procesar_capa(
         uso_suelo_url, "afección uso_suelo", "No afecta a ningún uso del suelo protegido",
         ["Uso_Especifico", "Clasificacion"],
         uso_suelo_detectado
     )
-    
-    # === TORTUGA MORA ===
-    tortuga_detectado = []
-    tortuga_valor = procesar_capa(
-        tortuga_url, "afección tortuga", "No afecta al Plan de Recuperación de la tortuga mora",
-        ["cat_id", "cat_desc"],
-        tortuga_detectado
-    )
 
-    # === AGUILA PERDICERA ===
-    perdicera_detectado = []
-    perdicera_valor = procesar_capa(
-        perdicera_url, "afección perdicera", "No afecta al Plan de Recuperación del águila perdicera",
-        ["zona", "nombre"],
-        perdicera_detectado
-    )
-
-    # === NUTRIA ===
-    nutria_detectado = []
-    nutria_valor = procesar_capa(
-        nutria_url, "afección nutria", "No afecta al Plan de Recuperación de la nutria",
-        ["tipo_de_ar", "nombre"],
-        nutria_detectado
-    )    
-
-    # === FARTET ===
-    fartet_detectado = []
-    fartet_valor = procesar_capa(
-        fartet_url, "afección fartet", "No afecta al Plan de Recuperación del fartet",
-        ["clasificac", "nombre"],
-        fartet_detectado
-    )
-
-    # === MALVASIA ===
-    malvasia_detectado = []
-    malvasia_valor = procesar_capa(
-        malvasia_url, "afección malvasia", "No afecta al Plan de Recuperación de la malvasia",
-        ["clasificac", "nombre"],
-        malvasia_detectado
-    )
-
-    # === GARBANCILLO ===
-    garbancillo_detectado = []
-    garbancillo_valor = procesar_capa(
-        garbancillo_url, "afección garbancillo", "No afecta al Plan de Recuperación del garbancillo",
-        ["tipo", "nombre"],
-        garbancillo_detectado
-    )
-
-    # === FLORA ===
-    flora_detectado = []
-    flora_valor = procesar_capa(
-        flora_url, "afección flora", "No afecta al Plan de Recuperación de flora",
-        ["tipo", "nombre"],
-        flora_detectado
-    )
-
-    # === MUP (ya funciona bien, lo dejamos igual) ===
     mup_valor = datos.get("afección MUP", "").strip()
     mup_detectado = []
     if mup_valor and not mup_valor.startswith("No afecta") and not mup_valor.startswith("Error"):
@@ -629,36 +523,17 @@ def generar_pdf(datos, x, y, filename):
                 ))
         mup_valor = ""
 
-    # Procesar otras afecciones como texto
     otras_afecciones = []
     for key in afecciones_keys:
         valor = datos.get(key, "").strip()
-        key_corregido = key  # ← SIN .replace()
+        key_corregido = key 
     
         if valor and not valor.startswith("Error"):
             otras_afecciones.append((key_corregido, valor))
         else:
             otras_afecciones.append((key_corregido, valor if valor else "No afecta"))
-
-    # Solo incluir MUP, VP, ZEPA, LIC, ENP, ESTEPARIAS, PLANEAMIENTO, TORTUGA, PERDICERA, NUTRIA, FARTET, MALVASIA, GARBANCILLO, FLORA en "otras afecciones" si NO tienen detecciones
-    if not flora_detectado:
-        otras_afecciones.append(("Afección a flora", flora_valor if flora_valor else "No afecta a Plan de Recuperación de flora"))
-    if not garbancillo_detectado:
-        otras_afecciones.append(("Afección a garbancillo", garbancillo_valor if garbancillo_valor else "No afecta a Plan de Recuperación del garbancillo"))
-    if not malvasia_detectado:
-        otras_afecciones.append(("Afección a malvasia", malvasia_valor if malvasia_valor else "No afecta a Plan de Recuperación de la malvasia"))
-    if not fartet_detectado:
-        otras_afecciones.append(("Afección a fartet", fartet_valor if fartet_valor else "No afecta a Plan de Recuperación del fartet"))
-    if not nutria_detectado:
-        otras_afecciones.append(("Afección a nutria", nutria_valor if nutria_valor else "No afecta a Plan de Recuperación de la nutria"))
-    if not perdicera_detectado:
-        otras_afecciones.append(("Afección a águila perdicera", perdicera_valor if perdicera_valor else "No afecta a Plan de Recuperación águila perdicera"))
-    if not tortuga_detectado:
-        otras_afecciones.append(("Afección a tortuga mora", tortuga_valor if tortuga_valor else "No afecta a Plan de Recuperación tortuga mora"))
     if not uso_suelo_detectado:
         otras_afecciones.append(("Afección Uso del Suelo", uso_suelo_valor if uso_suelo_valor else "No afecta a ningún uso del suelo protegido"))
-    if not esteparias_detectado:
-        otras_afecciones.append(("Afección Esteparias", esteparias_valor if esteparias_valor else "No se encuentra en zona de distribución de aves esteparias"))
     if not enp_detectado:
         otras_afecciones.append(("Afección ENP", enp_valor if enp_valor else "No se encuentra en ningún ENP"))
     if not lic_detectado:
@@ -669,8 +544,7 @@ def generar_pdf(datos, x, y, filename):
         otras_afecciones.append(("Afección VP", vp_valor if vp_valor else "No afecta a ninguna VP"))
     if not mup_detectado:
         otras_afecciones.append(("Afección MUP", mup_valor if mup_valor else "No afecta a ningún MUP"))
-
-    # Mostrar otras afecciones con títulos en negrita    
+ 
     if otras_afecciones:
         pdf.set_font("Arial", "B", 11)
         pdf.cell(0, 8, "Otras afecciones:", ln=True)
@@ -685,25 +559,23 @@ def generar_pdf(datos, x, y, filename):
                 x = pdf.get_x()
                 y = pdf.get_y()
 
-                # Título
+          
                 pdf.set_xy(x, y)
                 pdf.set_font("Arial", "B", 11)
                 pdf.cell(label_width, line_height, f"{titulo}:", border=0)
 
-                # Valor
+  
                 pdf.set_xy(x + label_width, y)
                 pdf.set_font("Arial", "", 11)
                 pdf.multi_cell(text_width, line_height, valor, border=0)
 
-                pdf.ln(line_height)  # Avanzar solo lo necesario
+                pdf.ln(line_height)  
         pdf.ln(2)
 
-    # === TABLA USO DEL SUELO ===    
     if uso_suelo_detectado:
-        # Estimamos altura: título + cabecera + filas + espacio
         altura_estimada = 5 + 5 + (len(uso_suelo_detectado) * 6) + 10
         if not hay_espacio_suficiente(pdf, altura_estimada):
-            pdf.add_page()  # Salta a nueva página si no cabe
+            pdf.add_page()  
             
         pdf.set_font("Arial", "B", 11)
         pdf.cell(0, 5, "Afección a Planeamiento Urbano (PGOU):", ln=True)
@@ -735,20 +607,18 @@ def generar_pdf(datos, x, y, filename):
             pdf.multi_cell(col_w_clas, 5, str(Clasificacion), align="L")
             pdf.set_y(y + row_h)
         pdf.ln(5)
-        
-    # === TABLA VP ===
+
     if vp_detectado:
-        # Estimamos altura: título + cabecera + filas + espacio
         altura_estimada = 5 + 5 + (len(vp_detectado) * 6) + 10
         if not hay_espacio_suficiente(pdf, altura_estimada):
-            pdf.add_page()  # Salta a nueva página si no cabe
+            pdf.add_page()  
         
         pdf.set_font("Arial", "B", 11)
         pdf.cell(0, 5, "Afecciones a Vías Pecuarias (VP):", ln=True)
         pdf.ln(2)
 
-        # Configurar la tabla para VP
-        col_widths = [30, 50, 40, 40, 30]  # Anchos: Código, Nombre, Municipio, Situación Legal, Ancho Legal
+     
+        col_widths = [30, 50, 40, 40, 30]  
         row_height = 5
         pdf.set_font("Arial", "B", 10)
         pdf.set_fill_color(*azul_rgb)
@@ -759,100 +629,98 @@ def generar_pdf(datos, x, y, filename):
         pdf.cell(col_widths[4], row_height, "Ancho Legal", border=1, fill=True)
         pdf.ln()
 
-        # Agregar filas a la tabla
+  
         pdf.set_font("Arial", "", 10)
 
         for codigo_vp, nombre, municipio, situacion_legal, ancho_legal in vp_detectado:
 
-            line_height = 5  # altura base de una línea
-
-            # Obtener altura necesaria para columnas multilínea
+            line_height = 5 
+  
             nombre_lines = pdf.multi_cell(col_widths[1], line_height, str(nombre), split_only=True)
             if not nombre_lines:
-                nombre_lines = [""]  # evitar None
+                nombre_lines = [""]  
             nombre_height = len(nombre_lines) * line_height
-
-            # Situación legal
+            
             sit_leg_lines = pdf.multi_cell(col_widths[3], line_height, str(situacion_legal), split_only=True)
             if not sit_leg_lines:
-                sit_leg_lines = [""]  # evitar None
+                sit_leg_lines = [""] 
             sit_leg_height = len(sit_leg_lines) * line_height
 
-            # Altura real de la fila
+         
             row_h = max(row_height, nombre_height, sit_leg_height)    
 
-            # Guardar posición actual
+        
             x = pdf.get_x()
             y = pdf.get_y()
 
-            # --- 1) DIBUJAR LA FILA (EL MARCO COMPLETO) ---
+         
             pdf.rect(x, y, col_widths[0], row_h)
             pdf.rect(x + col_widths[0], y, col_widths[1], row_h)
             pdf.rect(x + col_widths[0] + col_widths[1], y, col_widths[2], row_h)
             pdf.rect(x + col_widths[0] + col_widths[1] + col_widths[2], y, col_widths[3], row_h)
             pdf.rect(x + col_widths[0] + col_widths[1] + col_widths[2] + col_widths[3], y, col_widths[4], row_h)
 
-            # --- 2) ESCRIBIR EL TEXTO DENTRO DE LAS CELDAS ---
-            # Código
+          
+       
             pdf.set_xy(x, y)
             pdf.multi_cell(col_widths[0], line_height, str(codigo_vp), align="L")
 
-            # Nombre (multilínea)
+      
             pdf.set_xy(x + col_widths[0], y)
             pdf.multi_cell(col_widths[1], line_height, str(nombre), align="L")
 
-            # Municipio
+       
             pdf.set_xy(x + col_widths[0] + col_widths[1], y)
             pdf.multi_cell(col_widths[2], line_height, str(municipio), align="L")
 
-            # Situación legal (multilínea)
+          
             pdf.set_xy(x + col_widths[0] + col_widths[1] + col_widths[2], y)
             pdf.multi_cell(col_widths[3], line_height, str(situacion_legal), align="L")
 
-            # Ancho legal
+        
             pdf.set_xy(x + col_widths[0] + col_widths[1] + col_widths[2] + col_widths[3], y)
             pdf.multi_cell(col_widths[4], line_height, str(ancho_legal), align="L")
 
-            # Mover a la siguiente fila
+           
             pdf.set_xy(x, y + row_h)
 
-        pdf.ln(5)  # Espacio adicional después de la tabla
+        pdf.ln(5) 
 
-    # === TABLA MUP === 
+ 
     if mup_detectado:
-        # Estimamos altura: título + cabecera + filas + espacio
+     
         altura_estimada = 5 + 5 + (len(mup_detectado) * 6) + 10
         if not hay_espacio_suficiente(pdf, altura_estimada):
-            pdf.add_page()  # Salta a nueva página si no cabe
+            pdf.add_page() 
         
         pdf.set_font("Arial", "B", 11)
         pdf.cell(0, 5, "Afecciones a Montes (MUP):", ln=True)
         pdf.ln(2)
 
-        # Configurar la tabla para MUP
+       
         line_height = 5
         col_widths = [30, 80, 40, 40]
         row_height = 5
         pdf.set_font("Arial", "B", 10)
         pdf.set_fill_color(*azul_rgb)
         
-        # Cabecera
+   
         pdf.cell(col_widths[0], 5, "ID", border=1, fill=True)
         pdf.cell(col_widths[1], 5, "Nombre", border=1, fill=True)
         pdf.cell(col_widths[2], 5, "Municipio", border=1, fill=True)
         pdf.cell(col_widths[3], 5, "Propiedad", border=1, fill=True)
         pdf.ln()
 
-        # Filas
+ 
         pdf.set_font("Arial", "", 10)
         for id_monte, nombre, municipio, propiedad in mup_detectado:
-            # Calcular líneas necesarias por columna
+        
             id_lines = pdf.multi_cell(col_widths[0], line_height, str(id_monte), split_only=True) or [""]
             nombre_lines = pdf.multi_cell(col_widths[1], line_height, str(nombre), split_only=True) or [""]
             mun_lines = pdf.multi_cell(col_widths[2], line_height, str(municipio), split_only=True) or [""]
             prop_lines = pdf.multi_cell(col_widths[3], line_height, str(propiedad), split_only=True) or [""]
 
-            # Altura de fila = máximo de líneas * line_height
+   
             row_h = max(
                 5,
                 len(id_lines) * line_height,
@@ -860,49 +728,42 @@ def generar_pdf(datos, x, y, filename):
                 len(mun_lines) * line_height,
                 len(prop_lines) * line_height
             )
-
-            # Guardar posición
+         
             x = pdf.get_x()
             y = pdf.get_y()
 
-            # Dibujar bordes de celdas
+   
             pdf.rect(x, y, col_widths[0], row_h)
             pdf.rect(x + col_widths[0], y, col_widths[1], row_h)
             pdf.rect(x + col_widths[0] + col_widths[1], y, col_widths[2], row_h)
             pdf.rect(x + col_widths[0] + col_widths[1] + col_widths[2], y, col_widths[3], row_h)
-
-            # Escribir contenido centrado verticalmente
-            # ID
+ 
             id_h = len(id_lines) * line_height
             pdf.set_xy(x, y + (row_h - id_h) / 2)
             pdf.multi_cell(col_widths[0], line_height, str(id_monte), align="L")
-
-            # Nombre
+  
             nombre_h = len(nombre_lines) * line_height
             pdf.set_xy(x + col_widths[0], y + (row_h - nombre_h) / 2)
             pdf.multi_cell(col_widths[1], line_height, str(nombre), align="L")
-
-            # Municipio
+    
             mun_h = len(mun_lines) * line_height
             pdf.set_xy(x + col_widths[0] + col_widths[1], y + (row_h - mun_h) / 2)
             pdf.multi_cell(col_widths[2], line_height, str(municipio), align="L")
 
-            # Propiedad
             prop_h = len(prop_lines) * line_height
             pdf.set_xy(x + col_widths[0] + col_widths[1] + col_widths[2], y + (row_h - prop_h) / 2)
             pdf.multi_cell(col_widths[3], line_height, str(propiedad), align="L")
 
-            # Mover a siguiente fila
+
             pdf.set_y(y + row_h)
 
-        pdf.ln(5)  # Espacio después de la tabla
+        pdf.ln(5) 
 
-    # === TABLA ZEPA === 
     if zepa_detectado:
-        # Estimamos altura: título + cabecera + filas + espacio
+
         altura_estimada = 5 + 5 + (len(zepa_detectado) * 6) + 10
         if not hay_espacio_suficiente(pdf, altura_estimada):
-            pdf.add_page()  # Salta a nueva página si no cabe
+            pdf.add_page()  
         
         pdf.set_font("Arial", "B", 11)
         pdf.cell(0, 5, "Afecciones a Zonas de Especial Protección para las Aves (ZEPA):", ln=True)
@@ -936,12 +797,10 @@ def generar_pdf(datos, x, y, filename):
             pdf.set_y(y + row_h)
         pdf.ln(5)
 
-    # === TALBA LIC === 
     if lic_detectado:
-        # Estimamos altura: título + cabecera + filas + espacio
-        altura_estimada = 5 + 5 + (len(lic_detectado) * 6) + 10
+         altura_estimada = 5 + 5 + (len(lic_detectado) * 6) + 10
         if not hay_espacio_suficiente(pdf, altura_estimada):
-            pdf.add_page()  # Salta a nueva página si no cabe
+            pdf.add_page() 
         
         pdf.set_font("Arial", "B", 11)
         pdf.cell(0, 5, "Afecciones a Lugares de Importancia Comunitaria (LIC):", ln=True)
@@ -972,50 +831,43 @@ def generar_pdf(datos, x, y, filename):
             pdf.set_xy(x + col_w_code, y_name)
             pdf.multi_cell(col_w_name, 5, str(site_name), align="L") 
             pdf.set_y(y + row_h)
-        pdf.ln(5)
-        
-    # === TABLA ENP === 
-    enp_detectado = list(set(tuple(row) for row in enp_detectado))  # ← ELIMINA DUPLICADOS
+        pdf.ln(5)     
+
+    enp_detectado = list(set(tuple(row) for row in enp_detectado)) 
     if enp_detectado:
-        # Estimamos altura: título + cabecera + filas + espacio
+        
         altura_estimada = 5 + 5 + (len(enp_detectado) * 6) + 10
         if not hay_espacio_suficiente(pdf, altura_estimada):
-            pdf.add_page()  # Salta a nueva página si no cabe     
+            pdf.add_page()     
 
         pdf.set_font("Arial", "B", 11)
         pdf.cell(0, 5, "Afecciones a Espacios Naturales Protegidos (ENP):", ln=True)
         pdf.ln(2)
 
-        # --- ANCHO TOTAL DISPONIBLE ---
         ancho_total = 190
         col_widths = [ancho_total * 0.45, ancho_total * 0.55]
         line_height = 5
 
-        # --- CABECERA ---
         pdf.set_font("Arial", "B", 10)
         pdf.set_fill_color(*azul_rgb)
         pdf.cell(col_widths[0], 5, "Nombre", border=1, fill=True)
         pdf.cell(col_widths[1], 5, "Figura", border=1, fill=True, ln=True)
 
-        # --- FILAS ---
         pdf.set_font("Arial", "", 10)
         for nombre, figura in enp_detectado:
             nombre = str(nombre)
             figura = str(figura)
 
-            # Calcular líneas necesarias
             nombre_lines = len(pdf.multi_cell(col_widths[0], line_height, nombre, split_only=True))
             figura_lines = len(pdf.multi_cell(col_widths[1], line_height, figura, split_only=True))
             row_height = max(5, nombre_lines * line_height, figura_lines * line_height)
 
             x = pdf.get_x()
             y = pdf.get_y()
-
-            # Dibujar bordes
+   
             pdf.rect(x, y, col_widths[0], row_height)
             pdf.rect(x + col_widths[0], y, col_widths[1], row_height)
-
-            # Texto centrado verticalmente
+    
             pdf.set_xy(x, y + (row_height - nombre_lines * line_height) / 2)
             pdf.multi_cell(col_widths[0], line_height, nombre)
 
@@ -1024,336 +876,9 @@ def generar_pdf(datos, x, y, filename):
 
             pdf.set_y(y + row_height)
 
-        pdf.ln(5)
-        
-    # === TABLA ESTEPARIAS ===
-    if esteparias_detectado:
-        # Estimamos altura: título + cabecera + filas + espacio
-        altura_estimada = 5 + 5 + (len(esteparias_detectado) * 6) + 10
-        if not hay_espacio_suficiente(pdf, altura_estimada):
-            pdf.add_page()  # Salta a nueva página si no cabe
-        
-        pdf.set_font("Arial", "B", 11)
-        pdf.cell(0, 5, "Afecciones a zonas de distribución de aves esteparias:", ln=True)
-        pdf.ln(2)
+        pdf.ln(5)    
 
-        col_cuad = 35
-        col_esp  = 50
-        col_nom  = 190 - col_cuad - col_esp
-        line_height = 5
-
-        # --- CABECERA ---
-        pdf.set_font("Arial", "B", 10)
-        pdf.set_fill_color(*azul_rgb)
-        pdf.cell(col_cuad, 5, "Cuadrícula", border=1, fill=True)
-        pdf.cell(col_esp,  5, "Especie",     border=1, fill=True)
-        pdf.cell(col_nom,  5, "Nombre común", border=1, fill=True, ln=True)
-
-        # --- FILAS (TODO DENTRO DEL BUCLE) ---
-        pdf.set_font("Arial", "", 10)
-        for cuad, especie, nombre in esteparias_detectado:
-            # 1. Calcular altura de cada celda
-            cuad_l = len(pdf.multi_cell(col_cuad, line_height, str(cuad), split_only=True))
-            esp_l  = len(pdf.multi_cell(col_esp,  line_height, str(especie), split_only=True))
-            nom_l  = len(pdf.multi_cell(col_nom,  line_height, str(nombre), split_only=True))
-            row_h = max(5, cuad_l * line_height, esp_l * line_height, nom_l * line_height)
-
-            # 2. SALTO DE PÁGINA SI NO CABE
-            if pdf.get_y() + row_h > pdf.h - pdf.b_margin:
-                pdf.add_page()
-
-            # 3. Posición actual
-            x, y = pdf.get_x(), pdf.get_y()
-
-            # 4. Dibujar bordes
-            pdf.rect(x, y, col_cuad, row_h)
-            pdf.rect(x + col_cuad, y, col_esp, row_h)
-            pdf.rect(x + col_cuad + col_esp, y, col_nom, row_h)
-
-            # 5. Escribir texto (centrado verticalmente)
-            pdf.set_xy(x, y + (row_h - cuad_l * line_height) / 2)
-            pdf.multi_cell(col_cuad, line_height, str(cuad))
-
-            pdf.set_xy(x + col_cuad, y + (row_h - esp_l * line_height) / 2)
-            pdf.multi_cell(col_esp, line_height, str(especie))
-
-            pdf.set_xy(x + col_cuad + col_esp, y + (row_h - nom_l * line_height) / 2)
-            pdf.multi_cell(col_nom, line_height, str(nombre))
-
-            # 6. Avanzar a la siguiente fila
-            pdf.set_y(y + row_h)
-
-        pdf.ln(5)  # Espacio final
-
-    # === TABLA TORTUGA ===
-    if tortuga_detectado:
-        # Estimamos altura: título + cabecera + filas + espacio
-        altura_estimada = 5 + 5 + (len(tortuga_detectado) * 6) + 10
-        if not hay_espacio_suficiente(pdf, altura_estimada):
-            pdf.add_page()  # Salta a nueva página si no cabe
-        
-        pdf.set_font("Arial", "B", 11)
-        pdf.cell(0, 5, "Afección a Plan de Recuperación tortuga mora:", ln=True)
-        pdf.ln(2)
-        col_w_cat_id = 50
-        col_w_cat_desc = 190 - col_w_cat_id
-        row_height = 5
-        pdf.set_font("Arial", "B", 10)
-        pdf.set_fill_color(*azul_rgb)
-        pdf.cell(col_w_cat_id, row_height, "Cat_id", border=1, fill=True)
-        pdf.cell(col_w_cat_desc, row_height, "Clasificación", border=1, fill=True)
-        pdf.ln()
-        pdf.set_font("Arial", "", 10)
-        for cat_id, cat_desc in tortuga_detectado:
-            cat_id_lines = pdf.multi_cell(col_w_cat_id, 5, str(cat_id), split_only=True)
-            cat_desc_lines = pdf.multi_cell(col_w_cat_desc, 5, str(cat_desc), split_only=True)
-            row_h = max(row_height, len(cat_id_lines) * 5, len(cat_desc_lines) * 5)
-            x = pdf.get_x()
-            y = pdf.get_y()
-            pdf.rect(x, y, col_w_cat_id, row_h)
-            pdf.rect(x + col_w_cat_id, y, col_w_cat_desc, row_h)
-            cat_id_h = len(cat_id_lines) * 5
-            y_cat_id = y + (row_h - cat_id_h) / 2
-            pdf.set_xy(x, y_cat_id)
-            pdf.multi_cell(col_w_cat_id, 5, str(cat_id), align="L")
-            cat_desc_h = len(cat_desc_lines) * 5
-            y_cat_desc = y + (row_h - cat_desc_h) / 2
-            pdf.set_xy(x + col_w_cat_id, y_cat_desc)
-            pdf.multi_cell(col_w_cat_desc, 5, str(cat_desc), align="L")
-            pdf.set_y(y + row_h)
-        pdf.ln(5)
-        
-    # === TABLA PERDICERA ===
-    if perdicera_detectado:
-        # Estimamos altura: título + cabecera + filas + espacio
-        altura_estimada = 5 + 5 + (len(perdicera_detectado) * 6) + 10
-        if not hay_espacio_suficiente(pdf, altura_estimada):
-            pdf.add_page()  # Salta a nueva página si no cabe
-        
-        pdf.set_font("Arial", "B", 11)
-        pdf.cell(0, 5, "Afección a Plan de Recuperación águila perdicera:", ln=True)
-        pdf.ln(2)
-        col_w_zona = 50
-        col_w_nombre = 190 - col_w_zona
-        row_height = 5
-        pdf.set_font("Arial", "B", 10)
-        pdf.set_fill_color(*azul_rgb)
-        pdf.cell(col_w_zona, row_height, "Zona", border=1, fill=True)
-        pdf.cell(col_w_nombre, row_height, "Nombre", border=1, fill=True)
-        pdf.ln()
-        pdf.set_font("Arial", "", 10)
-        for zona, nombre in perdicera_detectado:
-            zona_lines = pdf.multi_cell(col_w_zona, 5, str(zona), split_only=True)
-            nombre_lines = pdf.multi_cell(col_w_nombre, 5, str(nombre), split_only=True)
-            row_h = max(row_height, len(zona_lines) * 5, len(nombre_lines) * 5)
-            x = pdf.get_x()
-            y = pdf.get_y()
-            pdf.rect(x, y, col_w_zona, row_h)
-            pdf.rect(x + col_w_zona, y, col_w_nombre, row_h)
-            zona_h = len(zona_lines) * 5
-            y_zona = y + (row_h - zona_h) / 2
-            pdf.set_xy(x, y_zona)
-            pdf.multi_cell(col_w_zona, 5, str(zona), align="L")
-            nombre_h = len(nombre_lines) * 5
-            y_nombre = y + (row_h - nombre_h) / 2
-            pdf.set_xy(x + col_w_zona, y_nombre)
-            pdf.multi_cell(col_w_nombre, 5, str(nombre), align="L")
-            pdf.set_y(y + row_h)
-        pdf.ln(5)
-
-    # === TABLA NUTRIA ===
-    if nutria_detectado:
-        # Estimamos altura: título + cabecera + filas + espacio
-        altura_estimada = 5 + 5 + (len(nutria_detectado) * 6) + 10
-        if not hay_espacio_suficiente(pdf, altura_estimada):
-            pdf.add_page()  # Salta a nueva página si no cabe
-        
-        pdf.set_font("Arial", "B", 11)
-        pdf.cell(0, 5, "Afección a Plan de Recuperación nutria:", ln=True)
-        pdf.ln(2)
-        col_w_tipo_de_ar = 50
-        col_w_nombre = 190 - col_w_tipo_de_ar
-        row_height = 5
-        pdf.set_font("Arial", "B", 10)
-        pdf.set_fill_color(*azul_rgb)
-        pdf.cell(col_w_tipo_de_ar, row_height, "Área", border=1, fill=True)
-        pdf.cell(col_w_nombre, row_height, "Nombre", border=1, fill=True)
-        pdf.ln()
-        pdf.set_font("Arial", "", 10)
-        for tipo_de_ar, nombre in nutria_detectado:
-            tipo_de_ar_lines = pdf.multi_cell(col_w_tipo_de_ar, 5, str(tipo_de_ar), split_only=True)
-            nombre_lines = pdf.multi_cell(col_w_nombre, 5, str(nombre), split_only=True)
-            row_h = max(row_height, len(tipo_de_ar_lines) * 5, len(nombre_lines) * 5)
-            x = pdf.get_x()
-            y = pdf.get_y()
-            pdf.rect(x, y, col_w_tipo_de_ar, row_h)
-            pdf.rect(x + col_w_tipo_de_ar, y, col_w_nombre, row_h)
-            tipo_de_ar_h = len(tipo_de_ar_lines) * 5
-            y_tipo_de_ar = y + (row_h - tipo_de_ar_h) / 2
-            pdf.set_xy(x, y_tipo_de_ar)
-            pdf.multi_cell(col_w_tipo_de_ar, 5, str(tipo_de_ar), align="L")
-            nombre_h = len(nombre_lines) * 5
-            y_nombre = y + (row_h - nombre_h) / 2
-            pdf.set_xy(x + col_w_tipo_de_ar, y_nombre)
-            pdf.multi_cell(col_w_nombre, 5, str(nombre), align="L")
-            pdf.set_y(y + row_h)
-        pdf.ln(5)
-
-    # === TABLA FARTET ===
-    if fartet_detectado:
-        # Estimamos altura: título + cabecera + filas + espacio
-        altura_estimada = 5 + 5 + (len(fartet_detectado) * 6) + 10
-        if not hay_espacio_suficiente(pdf, altura_estimada):
-            pdf.add_page()  # Salta a nueva página si no cabe
-        
-        pdf.set_font("Arial", "B", 11)
-        pdf.cell(0, 5, "Afección a Plan de Recuperación fartet:", ln=True)
-        pdf.ln(2)
-        col_w_clasificac = 50
-        col_w_nombre = 190 - col_w_clasificac
-        row_height = 5
-        pdf.set_font("Arial", "B", 10)
-        pdf.set_fill_color(*azul_rgb)
-        pdf.cell(col_w_clasificac, row_height, "Área", border=1, fill=True)
-        pdf.cell(col_w_nombre, row_height, "Nombre", border=1, fill=True)
-        pdf.ln()
-        pdf.set_font("Arial", "", 10)
-        for clasificac, nombre in fartet_detectado:
-            clasificac_lines = pdf.multi_cell(col_w_clasificac, 5, str(clasificac), split_only=True)
-            nombre_lines = pdf.multi_cell(col_w_nombre, 5, str(nombre), split_only=True)
-            row_h = max(row_height, len(clasificac_lines) * 5, len(nombre_lines) * 5)
-            x = pdf.get_x()
-            y = pdf.get_y()
-            pdf.rect(x, y, col_w_clasificac, row_h)
-            pdf.rect(x + col_w_clasificac, y, col_w_nombre, row_h)
-            clasificac_h = len(clasificac_lines) * 5
-            y_clasificac = y + (row_h - clasificac_h) / 2
-            pdf.set_xy(x, y_clasificac)
-            pdf.multi_cell(col_w_clasificac, 5, str(clasificac), align="L")
-            nombre_h = len(nombre_lines) * 5
-            y_nombre = y + (row_h - nombre_h) / 2
-            pdf.set_xy(x + col_w_clasificac, y_nombre)
-            pdf.multi_cell(col_w_nombre, 5, str(nombre), align="L")
-            pdf.set_y(y + row_h)
-        pdf.ln(5)
-
-    # === TABLA MALVASIA ===
-    if malvasia_detectado:
-        # Estimamos altura: título + cabecera + filas + espacio
-        altura_estimada = 5 + 5 + (len(malvasia_detectado) * 6) + 10
-        if not hay_espacio_suficiente(pdf, altura_estimada):
-            pdf.add_page()  # Salta a nueva página si no cabe
-        
-        pdf.set_font("Arial", "B", 11)
-        pdf.cell(0, 5, "Afección a Plan de Recuperación malvasia:", ln=True)
-        pdf.ln(2)
-        col_w_clasificac = 50
-        col_w_nombre = 190 - col_w_clasificac
-        row_height = 5
-        pdf.set_font("Arial", "B", 10)
-        pdf.set_fill_color(*azul_rgb)
-        pdf.cell(col_w_clasificac, row_height, "Área", border=1, fill=True)
-        pdf.cell(col_w_nombre, row_height, "Nombre", border=1, fill=True)
-        pdf.ln()
-        pdf.set_font("Arial", "", 10)
-        for clasificac, nombre in malvasia_detectado:
-            clasificac_lines = pdf.multi_cell(col_w_clasificac, 5, str(clasificac), split_only=True)
-            nombre_lines = pdf.multi_cell(col_w_nombre, 5, str(nombre), split_only=True)
-            row_h = max(row_height, len(clasificac_lines) * 5, len(nombre_lines) * 5)
-            x = pdf.get_x()
-            y = pdf.get_y()
-            pdf.rect(x, y, col_w_clasificac, row_h)
-            pdf.rect(x + col_w_clasificac, y, col_w_nombre, row_h)
-            clasificac_h = len(clasificac_lines) * 5
-            y_clasificac = y + (row_h - clasificac_h) / 2
-            pdf.set_xy(x, y_clasificac)
-            pdf.multi_cell(col_w_clasificac, 5, str(clasificac), align="L")
-            nombre_h = len(nombre_lines) * 5
-            y_nombre = y + (row_h - nombre_h) / 2
-            pdf.set_xy(x + col_w_clasificac, y_nombre)
-            pdf.multi_cell(col_w_nombre, 5, str(nombre), align="L")
-            pdf.set_y(y + row_h)
-        pdf.ln(5)
-
-    # === TABLA GARBANCILLO ===
-    if garbancillo_detectado:
-        # Estimamos altura: título + cabecera + filas + espacio
-        altura_estimada = 5 + 5 + (len(garbancillo_detectado) * 6) + 10
-        if not hay_espacio_suficiente(pdf, altura_estimada):
-            pdf.add_page()  # Salta a nueva página si no cabe
-        
-        pdf.set_font("Arial", "B", 11)
-        pdf.cell(0, 5, "Afección a Plan de Recuperación garbancillo:", ln=True)
-        pdf.ln(2)
-        col_w_tipo = 50
-        col_w_nombre = 190 - col_w_tipo
-        row_height = 5
-        pdf.set_font("Arial", "B", 10)
-        pdf.set_fill_color(*azul_rgb)
-        pdf.cell(col_w_tipo, row_height, "Área", border=1, fill=True)
-        pdf.cell(col_w_nombre, row_height, "Nombre", border=1, fill=True)
-        pdf.ln()
-        pdf.set_font("Arial", "", 10)
-        for tipo, nombre in garbancillo_detectado:
-            tipo_lines = pdf.multi_cell(col_w_tipo, 5, str(tipo), split_only=True)
-            nombre_lines = pdf.multi_cell(col_w_nombre, 5, str(nombre), split_only=True)
-            row_h = max(row_height, len(tipo_lines) * 5, len(nombre_lines) * 5)
-            x = pdf.get_x()
-            y = pdf.get_y()
-            pdf.rect(x, y, col_w_tipo, row_h)
-            pdf.rect(x + col_w_tipo, y, col_w_nombre, row_h)
-            tipo_h = len(tipo_lines) * 5
-            y_tipo = y + (row_h - tipo_h) / 2
-            pdf.set_xy(x, y_tipo)
-            pdf.multi_cell(col_w_tipo, 5, str(tipo), align="L")
-            nombre_h = len(nombre_lines) * 5
-            y_nombre = y + (row_h - nombre_h) / 2
-            pdf.set_xy(x + col_w_tipo, y_nombre)
-            pdf.multi_cell(col_w_nombre, 5, str(nombre), align="L")
-            pdf.set_y(y + row_h)
-        pdf.ln(5)
-        
-    # === TABLA FLORA ===
-    if flora_detectado:
-        # Estimamos altura: título + cabecera + filas + espacio
-        altura_estimada = 5 + 5 + (len(flora_detectado) * 6) + 10
-        if not hay_espacio_suficiente(pdf, altura_estimada):
-            pdf.add_page()  # Salta a nueva página si no cabe
-        
-        pdf.set_font("Arial", "B", 11)
-        pdf.cell(0, 5, "Afección a Plan de Recuperación flora:", ln=True)
-        pdf.ln(2)
-        col_w_tipo = 50
-        col_w_nombre = 190 - col_w_tipo
-        row_height = 5
-        pdf.set_font("Arial", "B", 10)
-        pdf.set_fill_color(*azul_rgb)
-        pdf.cell(col_w_tipo, row_height, "Área", border=1, fill=True)
-        pdf.cell(col_w_nombre, row_height, "Nombre", border=1, fill=True)
-        pdf.ln()
-        pdf.set_font("Arial", "", 10)
-        for tipo, nombre in flora_detectado:
-            tipo_lines = pdf.multi_cell(col_w_tipo, 5, str(tipo), split_only=True)
-            nombre_lines = pdf.multi_cell(col_w_nombre, 5, str(nombre), split_only=True)
-            row_h = max(row_height, len(tipo_lines) * 5, len(nombre_lines) * 5)
-            x = pdf.get_x()
-            y = pdf.get_y()
-            pdf.rect(x, y, col_w_tipo, row_h)
-            pdf.rect(x + col_w_tipo, y, col_w_nombre, row_h)
-            tipo_h = len(tipo_lines) * 5
-            y_tipo = y + (row_h - tipo_h) / 2
-            pdf.set_xy(x, y_tipo)
-            pdf.multi_cell(col_w_tipo, 5, str(tipo), align="L")
-            nombre_h = len(nombre_lines) * 5
-            y_nombre = y + (row_h - nombre_h) / 2
-            pdf.set_xy(x + col_w_tipo, y_nombre)
-            pdf.multi_cell(col_w_nombre, 5, str(nombre), align="L") 
-            pdf.set_y(y + row_h)
-        pdf.ln(5)        
-          
-    # Nueva sección para el texto en cuadro
-    # Procedimientos sin negrita
-    pdf.set_font("Arial", "", 8)  # Fuente normal para los procedimientos
+    pdf.set_font("Arial", "", 8)  
     procedimientos_con_enlace = [
         ("1609", "Solicitudes, escritos y comunicaciones que no disponen de un procedimiento específico en la Guía de Procedimientos y Servicios.", "https://sede.carm.es/web/pagina?IDCONTENIDO=1609&IDTIPO=240&RASTRO=c$m40288"),
         ("1802", "Emisión de certificación sobre delimitación vías pecuarias con respecto a fincas particulares para inscripción registral.", "https://sede.carm.es/web/pagina?IDCONTENIDO=1802&IDTIPO=240&RASTRO=c$m40288"),
@@ -1373,13 +898,9 @@ def generar_pdf(datos, x, y, filename):
     ]
 
     texto_rojo = (
-        "Este borrador preliminar de afecciones no tiene el valor de una certificación oficial y por tanto carece de validez legal y solo sirve como información general con carácter orientativo."
-    )
-    texto_resto = (
-        "En caso de ser detectadas afecciones a Dominio público forestal o pecuario, así como a Espacios Naturales Protegidos o RN2000, debe solicitar informe oficial a la D. G. de Patrimonio Natural y Acción Climática, a través de los procedimientos establecidos en sede electrónica:\n"
+        "Este informe carece validez legal y sirve solo como información general, por lo que de ser detectadas afecciones a Dominio público forestal y/o pecuario, así como a Espacios Naturales Protegidos o RN2000, solicitar informe a la D. G. de Patrimonio Natural y Acción Climática, a través de los procedimientos establecidos en sede electrónica."
     )
 
-    # === 1. CALCULAR ALTURA TOTAL ANTES DE DIBUJAR NADA ===
     margin = pdf.l_margin
     line_height = 4
     codigo_width = 9
@@ -1388,34 +909,34 @@ def generar_pdf(datos, x, y, filename):
     x_texto = margin + codigo_width + espacio_entre
     ancho_texto = 190
 
-    # Medir cuadro rojo
+ 
     lineas_rojo = len(pdf.multi_cell(pdf.w - 2*margin, 5, texto_rojo, border=0, align="J", split_only=True))
     altura_cuadro = max(1, lineas_rojo) * 5 + 2  # + ln(2)
 
-    # Medir texto en negrita
+  
     lineas_resto = len(pdf.multi_cell(pdf.w - 2*margin, 5, texto_resto, border=0, align="J", split_only=True))
     altura_resto = max(1, lineas_resto) * 5 + 2  # + ln(2)
 
-    # Medir procedimientos
+
     altura_procedimientos = 0
     for codigo, texto, url in procedimientos_con_enlace:
         lineas = len(pdf.multi_cell(ancho_texto, line_height, texto, border=0, align="J", split_only=True))
         altura_procedimientos += max(1, lineas) * line_height
 
-    # Espacios
+ 
     espacio_inicial = 10
     espacio_entre = 4
     espacio_final = 5
     altura_total = espacio_inicial + altura_cuadro + espacio_entre + altura_resto + altura_procedimientos + espacio_final
 
-    # === 2. SI NO CABE TODO → NUEVA PÁGINA ===
+
     if not hay_espacio_suficiente(pdf, altura_total):
         pdf.add_page()
 
-    # === 3. AHORA SÍ: DIBUJAR TODO JUNTO (sin cortes) ===
-    pdf.ln(10)  # Espacio inicial
 
-    # --- CUADRO ROJO (completo) ---
+    pdf.ln(10) 
+
+
     pdf.set_font("Arial", "B", 10)
     pdf.set_text_color(255, 0, 0)
     pdf.set_draw_color(0, 0, 0)
@@ -1424,13 +945,13 @@ def generar_pdf(datos, x, y, filename):
     pdf.multi_cell(190, 5, texto_rojo, border=1, align="J", fill=True)
     pdf.ln(2)
 
-    # --- TEXTO EN NEGRITA ---
+
     pdf.set_text_color(0, 0, 0)
     pdf.set_font("Arial", "B", 8)
     pdf.multi_cell(190, 5, texto_resto, border=0, align="J")
     pdf.ln(2)
 
-    # --- PROCEDIMIENTOS ---
+
     pdf.set_font("Arial", "", 8)
     y = pdf.get_y()
 
@@ -1457,19 +978,27 @@ def generar_pdf(datos, x, y, filename):
 
     pdf.ln(espacio_final)
 
-        # Volver a negrita para el resto del texto
-    pdf.set_font("Arial", "B", 9)  # Restaurar negrita
+
+    pdf.set_font("Arial", "B", 9)  
     texto_final = (
-        "\nDe acuerdo con lo establecido en el artículo 22 de la ley 43/2003 de 21 de noviembre de Montes, toda inmatriculación o inscripción de exceso de cabida en el Registro de la Propiedad de un monte o de una finca colindante con monte demanial o ubicado en un término municipal en el que existan montes demaniales requerirá el previo informe favorable de los titulares de dichos montes y, para los montes catalogados, el del órgano forestal de la comunidad autónoma.\n\n"
+        "\nLas afecciones del presente informe se fundamentan en la cartografía oficial de la Comunidad Autónoma D. G. de Patrimonio Natural y Acción Climática:  montes y vías pecuarias https://mapas-gis-inter.carm.es/geoserver/PFO_ZOR_DMVP_CARM/wfs)
+          D. G. de Ordenación del Territorio y Arquitectura: https://mapas-gis-inter.carm.es/geoserver/SIT_USU_PLA_URB_CARM/wfs? y de la Dirección General del Catastro: https://ovc.catastro.meh.es/Cartografia/WMS/ServidorWFS.aspx
+          cumpliendo el estándar técnico Web Feature Service (WFS) definido por el Open Geospatial Consortium (OGC) y la Directiva INSPIRE, eximiendo en todo caso a este centro directivo de cualquier error en la cartografía de planeamiento o catastral.\n\n"
+        "El Planeamiento se rige por la Ley 13/2015, de 30 de marzo, de ordenación territorial y urbanística de la Región de Murcia, y por el PGOU de cada término municipal. El Régimen del suelo no urbanizable se recoge en el artículo 5 de la citada ley.\n\n"
+        "En suelo no urbanizable se prestará especial atención a la Disposición adicional segunda de la Ley 3/2020, de 27 de julio, de recuperación y protección del Mar Menor, y artículo 5 de la Ley 43/2003, de 21 de noviembre, de Montes. Solicitando para posibles cambios de uso lo establecido en la normativa de referencia.\n\n"
+        "De acuerdo con lo establecido en el artículo 22.1 de la ley 43/2003 de 21 de noviembre de Montes, toda inmatriculación o inscripción de exceso de cabida en el Registro de la Propiedad de un monte o de una finca colindante con monte demanial o ubicado en un término municipal en el que existan montes demaniales requerirá el previo informe favorable de los titulares de dichos montes y, para los montes catalogados, el del órgano forestal de la Comunidad Autónoma.\n\n\"
+        "De acuerdo con lo establecido en el artículo 25.5 de la ley 43/2003 de 21 de noviembre de Montes, para posibilitar el ejercicio del derecho de adquisición preferente a través de la acción de tanteo, el transmitente deberá notificar fehacientemente a la Administración pública titular de ese derecho los datos relativos al precio y características de la transmisión proyectada, la cual dispondrá de un plazo de tres meses, a partir de dicha notificación, para ejercitar dicho derecho, mediante el abono o consignación de su importe en las referidas condiciones.\n\n"
+        "En relación al Dominio Público Pecuario, salvaguardando lo que pudiera resultar de los futuros deslindes, en la parcela objeto este informe, cualquier construcción, plantación, vallado, obras, instalaciones, etc., no deberían realizarse dentro del área delimitada como Dominio Público Pecuario provisional para evitar invadir este.\n\n"
         "En cuanto a vías pecuarias, salvaguardando lo que pudiera resultar de los futuros deslindes, en las parcelas objeto este informe-borrador, cualquier construcción, plantación, vallado, obras, instalaciones, etc., no deberían realizarse dentro del área delimitada como dominio público pecuario provisional para evitar invadir éste.\n\n"
-        "En todo caso, no podrá interrumpirse el tránsito por las Vías Pecuarias, dejando siempre el paso adecuado para el tránsito ganadero y otros usos legalmente establecidos en la Ley 3/1995, de 23 de marzo, de Vías Pecuarias."
+        "En todo caso, no podrá interrumpirse el tránsito por las Vías Pecuarias, dejando siempre el paso adecuado para el tránsito ganadero y otros usos legalmente establecidos en la Ley 3/1995, de 23 de marzo, de Vías Pecuarias.\n\n"
+        "Este informe preliminar con carácter de borrador, se emite a efectos ambientales, sin perjuicio de terceros, no prejuzga derechos de propiedad y se habrán de obtener cuantas autorizaciones, licencias o permisos sean preceptivos conforme a la Ley."
     )
     pdf.multi_cell(190, 5, texto_final, border=0, align="J")
     pdf.ln(2)
     pdf.output(filename)
     return filename
 
-# Interfaz de Streamlit
+
 st.image(
     "https://raw.githubusercontent.com/UDIFCARM/Afecciones_UDIF/main/logos.jpg",
     width=250
@@ -1540,7 +1069,7 @@ if 'afecciones' not in st.session_state:
     st.session_state['afecciones'] = []
 
 if submitted:
-# === 1. LIMPIAR ARCHIVOS DE BÚSQUEDAS ANTERIORES ===
+
     for key in ['mapa_html', 'pdf_file']:
         if key in st.session_state and st.session_state[key]:
             try:
@@ -1551,32 +1080,24 @@ if submitted:
     st.session_state.pop('mapa_html', None)
     st.session_state.pop('pdf_file', None)
 
-    # === 2. VALIDAR CAMPOS OBLIGATORIOS ===
+
     if not nombre or not apellidos or not dni or x == 0 or y == 0:
         st.warning("Por favor, completa todos los campos obligatorios y asegúrate de que las coordenadas son válidas.")
     else:
-        # === 3. TRANSFORMAR COORDENADAS ===
+ 
         lon, lat = transformar_coordenadas(x, y)
         if lon is None or lat is None:
             st.error("No se pudo generar el informe debido a coordenadas inválidas.")
         else:
-            # === 4. DEFINIR query_geom (UNA VEZ) ===
+
             if modo == "Por parcela":
                 query_geom = parcela.geometry.iloc[0]
             else:
                 query_geom = Point(x, y)
 
-            # === 5. GUARDAR query_geom Y URLs EN SESSION_STATE ===
-            st.session_state['query_geom'] = query_geom
-            flora_url = "https://mapas-gis-inter.carm.es/geoserver/SIG_ZOR_PLANIGEST_CARM/wfs?service=WFS&version=1.1.0&request=GetFeature&typeName=SIG_ZOR_PLANIGEST_CARM:planes_recuperacion_flora2014&outputFormat=application/json"
-            garbancillo_url = "https://mapas-gis-inter.carm.es/geoserver/SIG_ZOR_PLANIGEST_CARM/wfs?service=WFS&version=1.1.0&request=GetFeature&typeName=SIG_ZOR_PLANIGEST_CARM:plan_recuperacion_garbancillo&outputFormat=application/json"
-            malvasia_url = "https://mapas-gis-inter.carm.es/geoserver/SIG_ZOR_PLANIGEST_CARM/wfs?service=WFS&version=1.1.0&request=GetFeature&typeName=SIG_ZOR_PLANIGEST_CARM:plan_recuperacion_malvasia&outputFormat=application/json"
-            fartet_url = "https://mapas-gis-inter.carm.es/geoserver/SIG_ZOR_PLANIGEST_CARM/wfs?service=WFS&version=1.1.0&request=GetFeature&typeName=SIG_ZOR_PLANIGEST_CARM:plan_recuperacion_fartet&outputFormat=application/json"
-            nutria_url = "https://mapas-gis-inter.carm.es/geoserver/SIG_ZOR_PLANIGEST_CARM/wfs?service=WFS&version=1.1.0&request=GetFeature&typeName=SIG_ZOR_PLANIGEST_CARM:plan_recuperacion_nutria&outputFormat=application/json"
-            perdicera_url = "https://mapas-gis-inter.carm.es/geoserver/SIG_ZOR_PLANIGEST_CARM/wfs?service=WFS&version=1.1.0&request=GetFeature&typeName=SIG_ZOR_PLANIGEST_CARM:plan_recuperacion_perdicera&outputFormat=application/json"
-            tortuga_url = "https://mapas-gis-inter.carm.es/geoserver/SIG_DES_BIOTA_CARM/wfs?service=WFS&version=1.1.0&request=GetFeature&typeName=SIG_DES_BIOTA_CARM:tortuga_distribucion_2001&outputFormat=application/json"
+
+            st.session_state['query_geom'] = query_geom        
             uso_suelo_url = "https://mapas-gis-inter.carm.es/geoserver/SIT_USU_PLA_URB_CARM/wfs?service=WFS&version=1.1.0&request=GetFeature&typeName=SIT_USU_PLA_URB_CARM:plu_ze_37_mun_uso_suelo&outputFormat=application/json"
-            esteparias_url = "https://mapas-gis-inter.carm.es/geoserver/SIG_DES_BIOTA_CARM/wfs?service=WFS&version=1.1.0&request=GetFeature&typeName=SIG_DES_BIOTA_CARM:esteparias_ceea_2019_10x10&outputFormat=application/json"
             enp_url = "https://mapas-gis-inter.carm.es/geoserver/SIG_LUP_SITES_CARM/wfs?service=WFS&version=1.1.0&request=GetFeature&typeName=SIG_LUP_SITES_CARM:ENP&outputFormat=application/json"
             zepa_url = "https://mapas-gis-inter.carm.es/geoserver/SIG_LUP_SITES_CARM/wfs?service=WFS&version=1.1.0&request=GetFeature&typeName=SIG_LUP_SITES_CARM:ZEPA&outputFormat=application/json"
             lic_url = "https://mapas-gis-inter.carm.es/geoserver/SIG_LUP_SITES_CARM/wfs?service=WFS&version=1.1.0&request=GetFeature&typeName=SIG_LUP_SITES_CARM:LIC-ZEC&outputFormat=application/json"
@@ -1585,28 +1106,11 @@ if submitted:
             mup_url = "https://mapas-gis-inter.carm.es/geoserver/PFO_ZOR_DMVP_CARM/wfs?service=WFS&version=1.1.0&request=GetFeature&typeName=PFO_ZOR_DMVP_CARM:MONTES&outputFormat=application/json"
             st.session_state['wfs_urls'] = {
                 'enp': enp_url, 'zepa': zepa_url, 'lic': lic_url,
-                'vp': vp_url, 'tm': tm_url, 'mup': mup_url, 
-                'esteparias': esteparias_url,
-                'uso_suelo': uso_suelo_url,
-                'tortuga': tortuga_url,
-                'perdicera': perdicera_url,
-                'nutria': nutria_url,
-                'fartet': fartet_url,
-                'malvasia': malvasia_url,
-                'garbancillo': garbancillo_url,
-                'flora': flora_url
+                'vp': vp_url, 'tm': tm_url, 'mup': mup_url,                
+                'uso_suelo': uso_suelo_url               
             }
-
-            # === 6. CONSULTAR AFECCIONES ===
-            afeccion_flora = consultar_wfs_seguro(query_geom, flora_url, "FLORA", campo_nombre="tipo")
-            afeccion_garbancillo = consultar_wfs_seguro(query_geom, garbancillo_url, "GARBANCILLO", campo_nombre="tipo")
-            afeccion_malvasia = consultar_wfs_seguro(query_geom, malvasia_url, "MALVASIA", campo_nombre="clasificac")
-            afeccion_fartet = consultar_wfs_seguro(query_geom, fartet_url, "FARTET", campo_nombre="clasificac")
-            afeccion_nutria = consultar_wfs_seguro(query_geom, nutria_url, "NUTRIA", campo_nombre="tipo_de_ar")
-            afeccion_perdicera = consultar_wfs_seguro(query_geom, perdicera_url, "ÁGUILA PERDICERA", campo_nombre="zona")
-            afeccion_tortuga = consultar_wfs_seguro(query_geom, tortuga_url, "TORTUGA MORA", campo_nombre="cat_desc")
+      
             afeccion_uso_suelo = consultar_wfs_seguro(query_geom, uso_suelo_url, "PLANEAMIENTO", campo_nombre="Clasificacion")
-            afeccion_esteparias = consultar_wfs_seguro(query_geom, esteparias_url, "ESTEPARIAS", campo_nombre="nombre")
             afeccion_enp = consultar_wfs_seguro(query_geom, enp_url, "ENP", campo_nombre="nombre")
             afeccion_zepa = consultar_wfs_seguro(query_geom, zepa_url, "ZEPA", campo_nombre="site_name")
             afeccion_lic = consultar_wfs_seguro(query_geom, lic_url, "LIC", campo_nombre="site_name")
@@ -1616,9 +1120,9 @@ if submitted:
                 query_geom, mup_url, "MUP",
                 campos_mup=["id_monte:ID", "nombremont:Nombre", "municipio:Municipio", "propiedad:Propiedad"]
             )
-            afecciones = [afeccion_flora, afeccion_garbancillo, afeccion_malvasia, afeccion_fartet, afeccion_nutria, afeccion_perdicera, afeccion_tortuga, afeccion_uso_suelo, afeccion_esteparias, afeccion_enp, afeccion_zepa, afeccion_lic, afeccion_vp, afeccion_tm, afeccion_mup]
+            afecciones = [afeccion_uso_suelo, afeccion_enp, afeccion_zepa, afeccion_lic, afeccion_vp, afeccion_tm, afeccion_mup]
 
-            # === 7. CREAR DICCIONARIO `datos` ===
+ 
             datos = {
                 "fecha_informe": datetime.today().strftime('%d/%m/%Y'),
                 "nombre": nombre, "apellidos": apellidos, "dni": dni,
@@ -1626,26 +1130,17 @@ if submitted:
                 "objeto de la solicitud": objeto,
                 "afección MUP": afeccion_mup, "afección VP": afeccion_vp,
                 "afección ENP": afeccion_enp, "afección ZEPA": afeccion_zepa,
-                "afección LIC": afeccion_lic, "Afección TM": afeccion_tm,
-                "afección esteparias": afeccion_esteparias,
-                "afección uso_suelo": afeccion_uso_suelo,
-                "afección tortuga": afeccion_tortuga,
-                "afección perdicera": afeccion_perdicera,
-                "afección nutria": afeccion_nutria,
-                "afección fartet": afeccion_fartet,
-                "afección malvasia": afeccion_malvasia,
-                "afección garbancillo": afeccion_garbancillo,
-                "afección flora": afeccion_flora,
+                "afección LIC": afeccion_lic, "Afección TM": afeccion_tm,                
+                "afección uso_suelo": afeccion_uso_suelo,                
                 "coordenadas_x": x, "coordenadas_y": y,
                 "municipio": municipio_sel, "polígono": masa_sel, "parcela": parcela_sel
             }
 
-            # === 8. MOSTRAR RESULTADOS EN PANTALLA ===
+
             st.write(f"Municipio seleccionado: {municipio_sel}")
             st.write(f"Polígono seleccionado: {masa_sel}")
             st.write(f"Parcela seleccionada: {parcela_sel}")
 
-            # === 9. GENERAR MAPA ===
             mapa_html, afecciones_lista = crear_mapa(lon, lat, afecciones, parcela_gdf=parcela)
             if mapa_html:
                 st.session_state['mapa_html'] = mapa_html
@@ -1656,15 +1151,13 @@ if submitted:
                 with open(mapa_html, 'r') as f:
                     html(f.read(), height=500)
 
-            # === 10. GENERAR PDF (AL FINAL, CUANDO `datos` EXISTE) ===
-            pdf_filename = f"informe_{uuid.uuid4().hex[:8]}.pdf"
+             pdf_filename = f"informe_{uuid.uuid4().hex[:8]}.pdf"
             try:
                 generar_pdf(datos, x, y, pdf_filename)
                 st.session_state['pdf_file'] = pdf_filename
             except Exception as e:
                 st.error(f"Error al generar el PDF: {str(e)}")
 
-            # === 11. LIMPIAR DATOS TEMPORALES ===
             st.session_state.pop('query_geom', None)
             st.session_state.pop('wfs_urls', None)
 if st.session_state['mapa_html'] and st.session_state['pdf_file']:
