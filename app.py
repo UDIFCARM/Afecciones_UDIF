@@ -799,7 +799,7 @@ def generar_pdf(datos, x, y, filename):
 
     if lic_detectado:
          altura_estimada = 5 + 5 + (len(lic_detectado) * 6) + 10
-        if not hay_espacio_suficiente(pdf, altura_estimada):
+         if not hay_espacio_suficiente(pdf, altura_estimada):
             pdf.add_page() 
         
         pdf.set_font("Arial", "B", 11)
