@@ -798,13 +798,14 @@ def generar_pdf(datos, x, y, filename):
         pdf.ln(5)
 
     if lic_detectado:
-         altura_estimada = 5 + 5 + (len(lic_detectado) * 6) + 10
-         if not hay_espacio_suficiente(pdf, altura_estimada):
+        altura_estimada = 5 + 5 + (len(lic_detectado) * 6) + 10
+        if not hay_espacio_suficiente(pdf, altura_estimada):
             pdf.add_page() 
         
         pdf.set_font("Arial", "B", 11)
         pdf.cell(0, 5, "Afecciones a Lugares de Importancia Comunitaria (LIC):", ln=True)
         pdf.ln(2)
+
         col_w_code = 30
         col_w_name = 190 - col_w_code
         row_height = 5
