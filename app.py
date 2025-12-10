@@ -923,7 +923,7 @@ def generar_pdf(datos, x, y, filename):
     espacio_inicial = 10
     espacio_entre = 4
     espacio_final = 5
-    altura_total = espacio_inicial + altura_cuadro + espacio_entre + altura_resto + altura_procedimientos + espacio_final
+    altura_total = espacio_inicial + altura_cuadro + espacio_entre + altura_procedimientos + espacio_final
 
 
     if not hay_espacio_suficiente(pdf, altura_total):
@@ -1153,7 +1153,7 @@ if submitted:
 
             st.session_state.pop('query_geom', None)
             st.session_state.pop('wfs_urls', None)
-if st.session_state['mapa_html'] and st.session_state['pdf_file']:
+if st.session_state.get('mapa_html') and st.session_state.get('pdf_file'):
     try:
         with open(st.session_state['pdf_file'], "rb") as f:
             st.download_button("📄 Descargar informe PDF", f, file_name="informe_afecciones.pdf")
